@@ -1,0 +1,531 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum StockMovementType {
+  PURCHASE       // goods received from supplier
+  SALE           // goods dispatched on sale
+  ADJUSTMENT_IN  // manual stock increase (requires notes)
+  ADJUSTMENT_OUT // manual stock decrease (requires notes)
+  RETURN_IN      // customer return → stock in
+  RETURN_OUT     // supplier return → stock out
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  CONFIRMED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum SalesOrderStatus {
+  DRAFT
+  CONFIRMED
+  PARTIALLY_PAID
+  PAID
+  CANCELLED
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  CHECK
+  ESEWA
+  KHALTI
+  IME_PAY
+  FONEPAY
+  OTHER
+}
+
+enum PayrollStatus {
+  DRAFT
+  FINALIZED
+}
+
+enum ExpenseStatus {
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+// ─────────────────────────────────────────────
+// INVENTORY
+// ─────────────────────────────────────────────
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Unit {
+  id        String    @id @default(cuid())
+  name      String    @unique // e.g. "kg", "pcs", "box", "litre"
+  products  Product[]
+  createdAt DateTime  @default(now())
+}
+
+model Product {
+  id           String  @id @default(cuid())
+  name         String
+  sku          String  @unique
+  description  String?
+  categoryId   String
+  unitId       String
+
+  // Pricing
+  costPrice    Decimal @default(0) @db.Decimal(10, 2)
+  sellingPrice Decimal @default(0) @db.Decimal(10, 2)
+
+  // Stock — updated ONLY via StockMovement, never directly
+  currentStock Decimal @default(0) @db.Decimal(10, 3)
+  reorderLevel Decimal @default(0) @db.Decimal(10, 3)
+
+  category            Category             @relation(fields: [categoryId], references: [id])
+  unit                Unit                 @relation(fields: [unitId], references: [id])
+  stockMovements      StockMovement[]
+  purchaseOrderItems  PurchaseOrderItem[]
+  salesOrderItems     SalesOrderItem[]
+  purchaseReturnItems PurchaseReturnItem[]
+  salesReturnItems    SalesReturnItem[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([categoryId])
+  @@index([sku])
+}
+
+model StockMovement {
+  id             String            @id @default(cuid())
+  productId      String
+  type           StockMovementType
+  quantity       Decimal           @db.Decimal(10, 3) // always positive
+  quantityBefore Decimal           @db.Decimal(10, 3)
+  quantityAfter  Decimal           @db.Decimal(10, 3)
+  unitCost       Decimal?          @db.Decimal(10, 2)
+  notes          String? // required for ADJUSTMENT_IN / ADJUSTMENT_OUT
+  referenceId    String? // ID of the source document
+  referenceType  String? // "PurchaseOrder" | "SalesOrder" | "PurchaseReturn" | "SalesReturn"
+  isAdminOverride Boolean          @default(false) // true if negative stock was allowed
+
+  product   Product  @relation(fields: [productId], references: [id])
+  createdBy String // Clerk userId
+  createdAt DateTime @default(now())
+
+  @@index([productId])
+  @@index([referenceId])
+  @@index([createdAt])
+  @@index([type])
+}
+
+// ─────────────────────────────────────────────
+// SUPPLIERS & PURCHASES
+// ─────────────────────────────────────────────
+
+model Supplier {
+  id          String  @id @default(cuid())
+  name        String
+  contactName String?
+  email       String?
+  phone       String?
+  address     String?
+  pan         String? // PAN number (Permanent Account Number)
+
+  purchaseOrders PurchaseOrder[]
+  payments       SupplierPayment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model PurchaseOrder {
+  id           String              @id @default(cuid())
+  orderNumber  String              @unique
+  supplierId   String
+  status       PurchaseOrderStatus @default(DRAFT)
+  orderDate    DateTime            @default(now())
+  expectedDate DateTime?
+
+  subtotal    Decimal @db.Decimal(10, 2)
+  taxAmount   Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount Decimal @db.Decimal(10, 2)
+  amountPaid  Decimal @default(0) @db.Decimal(10, 2) // must never exceed totalAmount
+
+  notes String?
+
+  supplier  Supplier            @relation(fields: [supplierId], references: [id])
+  items     PurchaseOrderItem[]
+  payments  SupplierPayment[]
+  returns   PurchaseReturn[]
+
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderDate])
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(cuid())
+  purchaseOrderId String
+  productId       String
+  quantity        Decimal @db.Decimal(10, 3)
+  receivedQty     Decimal @default(0) @db.Decimal(10, 3)
+  unitCost        Decimal @db.Decimal(10, 2)
+  totalCost       Decimal @db.Decimal(10, 2)
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+}
+
+model PurchaseReturn {
+  id              String @id @default(cuid())
+  returnNumber    String @unique
+  purchaseOrderId String
+  reason          String
+  totalAmount     Decimal @db.Decimal(10, 2)
+
+  purchaseOrder PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  items         PurchaseReturnItem[]
+
+  createdBy String
+  createdAt DateTime @default(now())
+}
+
+model PurchaseReturnItem {
+  id               String  @id @default(cuid())
+  purchaseReturnId String
+  productId        String
+  quantity         Decimal @db.Decimal(10, 3)
+  unitCost         Decimal @db.Decimal(10, 2)
+
+  purchaseReturn PurchaseReturn @relation(fields: [purchaseReturnId], references: [id])
+  product        Product        @relation(fields: [productId], references: [id])
+
+  @@index([purchaseReturnId])
+}
+
+model SupplierPayment {
+  id              String        @id @default(cuid())
+  purchaseOrderId String
+  supplierId      String
+  amount          Decimal       @db.Decimal(10, 2)
+  method          PaymentMethod
+  reference       String?
+  notes           String?
+  paidAt          DateTime      @default(now())
+
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id])
+  supplier      Supplier      @relation(fields: [supplierId], references: [id])
+
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([purchaseOrderId])
+  @@index([supplierId])
+}
+
+// ─────────────────────────────────────────────
+// CUSTOMERS & SALES
+// ─────────────────────────────────────────────
+
+model Customer {
+  id      String  @id @default(cuid())
+  name    String
+  email   String?
+  phone   String?
+  address String?
+  pan     String? // PAN number (Permanent Account Number)
+
+  salesOrders SalesOrder[]
+  payments    CustomerPayment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model SalesOrder {
+  id          String           @id @default(cuid())
+  orderNumber String           @unique
+  customerId  String
+  status      SalesOrderStatus @default(DRAFT)
+  orderDate   DateTime         @default(now())
+  dueDate     DateTime?
+
+  subtotal    Decimal @db.Decimal(10, 2)
+  taxAmount   Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount Decimal @db.Decimal(10, 2)
+  amountPaid  Decimal @default(0) @db.Decimal(10, 2) // must never exceed totalAmount
+
+  notes String?
+
+  customer Customer         @relation(fields: [customerId], references: [id])
+  items    SalesOrderItem[]
+  payments CustomerPayment[]
+  returns  SalesReturn[]
+
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([customerId])
+  @@index([status])
+  @@index([orderDate])
+}
+
+model SalesOrderItem {
+  id           String  @id @default(cuid())
+  salesOrderId String
+  productId    String
+  quantity     Decimal @db.Decimal(10, 3)
+  unitPrice    Decimal @db.Decimal(10, 2)
+  totalPrice   Decimal @db.Decimal(10, 2)
+
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id])
+  product    Product    @relation(fields: [productId], references: [id])
+
+  @@index([salesOrderId])
+  @@index([productId])
+}
+
+model SalesReturn {
+  id           String  @id @default(cuid())
+  returnNumber String  @unique
+  salesOrderId String
+  reason       String
+  totalAmount  Decimal @db.Decimal(10, 2)
+
+  salesOrder SalesOrder      @relation(fields: [salesOrderId], references: [id])
+  items      SalesReturnItem[]
+
+  createdBy String
+  createdAt DateTime @default(now())
+}
+
+model SalesReturnItem {
+  id            String  @id @default(cuid())
+  salesReturnId String
+  productId     String
+  quantity      Decimal @db.Decimal(10, 3)
+  unitPrice     Decimal @db.Decimal(10, 2)
+
+  salesReturn SalesReturn @relation(fields: [salesReturnId], references: [id])
+  product     Product     @relation(fields: [productId], references: [id])
+
+  @@index([salesReturnId])
+}
+
+model CustomerPayment {
+  id           String        @id @default(cuid())
+  salesOrderId String
+  customerId   String
+  amount       Decimal       @db.Decimal(10, 2)
+  method       PaymentMethod
+  reference    String?
+  notes        String?
+  paidAt       DateTime      @default(now())
+
+  salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id])
+  customer   Customer   @relation(fields: [customerId], references: [id])
+
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([salesOrderId])
+  @@index([customerId])
+}
+
+// ─────────────────────────────────────────────
+// EMPLOYEES & PAYROLL
+// ─────────────────────────────────────────────
+
+model Department {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  employees Employee[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  deletedAt DateTime?
+}
+
+model Employee {
+  id            String    @id @default(cuid())
+  employeeNo    String    @unique
+  firstName     String
+  lastName      String
+  email         String?   @unique
+  phone         String
+  citizenshipId String?
+  address       String?
+  departmentId  String
+  position      String
+  basicSalary   Decimal   @db.Decimal(10, 2)
+  startDate     DateTime
+  endDate       DateTime? // set when employee leaves
+
+  clerkUserId String? @unique // links to Clerk user if they have app access
+
+  department   Department         @relation(fields: [departmentId], references: [id])
+  payrollItems PayrollItem[]
+  withdrawals  SalaryWithdrawal[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([departmentId])
+  @@index([clerkUserId])
+}
+
+model SalaryWithdrawal {
+  id          String   @id @default(cuid())
+  employeeId  String
+  amount      Decimal  @db.Decimal(10, 2)
+  takenAt     DateTime @default(now())
+  filedBy     String?  // name of person who filed/recorded this entry
+  givenBy     String?  // name of person who physically handed the cash
+  paymentMode String   @default("CASH") // "CASH" or "ONLINE"
+  notes       String?
+  photoUrl    String?  // proof of payment photo
+
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  recordedBy String   // Clerk userId
+  createdAt  DateTime @default(now())
+
+  @@index([employeeId])
+  @@index([takenAt])
+}
+
+model PayrollRun {
+  id     String        @id @default(cuid())
+  month  Int // 1–12
+  year   Int
+  status PayrollStatus @default(DRAFT)
+  notes  String?
+
+  items PayrollItem[]
+
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([month, year]) // DB-enforced: one run per month
+}
+
+model PayrollItem {
+  id           String  @id @default(cuid())
+  payrollRunId String
+  employeeId   String
+  basicSalary  Decimal @db.Decimal(10, 2)
+  carryoverIn  Decimal @default(0) @db.Decimal(10, 2) // outstanding salary carried from previous month
+  allowances   Decimal @default(0) @db.Decimal(10, 2)
+  deductions   Decimal @default(0) @db.Decimal(10, 2) // total amount paid out in partial payments
+  netPay       Decimal @db.Decimal(10, 2)             // remaining = basicSalary + carryoverIn − deductions
+  notes        String?
+
+  payrollRun       PayrollRun        @relation(fields: [payrollRunId], references: [id])
+  employee         Employee          @relation(fields: [employeeId], references: [id])
+  deductionEntries PayrollDeduction[]
+
+  @@unique([payrollRunId, employeeId]) // one payslip per employee per run
+  @@index([payrollRunId])
+  @@index([employeeId])
+}
+
+model PayrollDeduction {
+  id            String   @id @default(cuid())
+  payrollItemId String
+  amount        Decimal  @db.Decimal(10, 2)
+  givenBy       String?
+  givenAt       DateTime @default(now()) // date the money was physically handed
+  paymentMode   String   @default("CASH") // "CASH" or "ONLINE"
+  notes         String?
+  photoUrl      String?
+  recordedBy    String   // Clerk userId
+  createdAt     DateTime @default(now())
+
+  payrollItem PayrollItem @relation(fields: [payrollItemId], references: [id], onDelete: Cascade)
+
+  @@index([payrollItemId])
+}
+
+// ─────────────────────────────────────────────
+// EXPENSES
+// ─────────────────────────────────────────────
+
+model ExpenseCategory {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  expenses  Expense[]
+  createdAt DateTime  @default(now())
+  deletedAt DateTime?
+}
+
+model Expense {
+  id            String        @id @default(cuid())
+  categoryId    String
+  description   String
+  amount        Decimal       @db.Decimal(10, 2)
+  date          DateTime
+  status        ExpenseStatus @default(SUBMITTED)
+  notes         String?
+  attachmentUrl String?
+
+  category ExpenseCategory @relation(fields: [categoryId], references: [id])
+
+  submittedBy String // Clerk userId
+  approvedBy  String? // Clerk userId
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([date])
+}
+
+// ─────────────────────────────────────────────
+// AUDIT LOG
+// ─────────────────────────────────────────────
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String // Clerk userId
+  action     String // e.g. "CONFIRM_SALES_ORDER", "FINALIZE_PAYROLL"
+  entityType String // e.g. "SalesOrder", "PayrollRun"
+  entityId   String?
+  before     Json? // state snapshot before change
+  after      Json? // state snapshot after change
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}

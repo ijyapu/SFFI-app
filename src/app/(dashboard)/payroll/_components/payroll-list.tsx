@@ -1,0 +1,152 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { toast } from "sonner";
+import { Plus, ExternalLink, Trash2, Lock } from "lucide-react";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
+import { CreateRunForm } from "./create-run-form";
+import { deletePayrollRun } from "../../employees/actions";
+
+const MONTHS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December",
+];
+
+type PayrollRun = {
+  id: string;
+  month: number;
+  year: number;
+  status: "DRAFT" | "FINALIZED";
+  notes: string | null;
+  totalPayroll: number;
+  totalPaid: number;
+  employeeCount: number;
+  createdAt: string;
+};
+
+export function PayrollList({ runs }: { runs: PayrollRun[] }) {
+  const [createOpen, setCreateOpen] = useState(false);
+
+  async function handleDelete(id: string, label: string) {
+    try {
+      await deletePayrollRun(id);
+      toast.success(`${label} payroll deleted`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete payroll run");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={() => setCreateOpen(true)}>
+          <Plus className="h-4 w-4" />
+          New Payroll Run
+        </Button>
+      </div>
+
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Period</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="text-right">Employees</TableHead>
+              <TableHead className="text-right">Total Owed (Rs)</TableHead>
+              <TableHead className="text-right">Paid Out (Rs)</TableHead>
+              <TableHead className="w-20" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {runs.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                  No payroll runs yet. Create one to get started.
+                </TableCell>
+              </TableRow>
+            )}
+            {runs.map((run) => {
+              const label = `${MONTHS[run.month - 1]} ${run.year}`;
+              return (
+                <TableRow key={run.id}>
+                  <TableCell className="font-medium">{label}</TableCell>
+                  <TableCell>
+                    {run.status === "FINALIZED" ? (
+                      <Badge variant="secondary" className="bg-green-100 text-green-700">
+                        <Lock className="h-3 w-3 mr-1" />
+                        Finalized
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="bg-amber-100 text-amber-700">
+                        Draft
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right text-muted-foreground">
+                    {run.employeeCount}
+                  </TableCell>
+                  <TableCell className="text-right font-medium">
+                    {run.totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {run.totalPaid > 0 ? (
+                      <span className="text-emerald-600 font-medium">
+                        {run.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Link
+                        href={`/payroll/${run.id}`}
+                        className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                      <AlertDialog>
+                        <AlertDialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete {label} payroll?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently delete the {label} payroll run and all its payment records.
+                              If a following month exists, its carryover will be recalculated automatically.
+                              This cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(run.id, label)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </div>
+
+      <CreateRunForm open={createOpen} onClose={() => setCreateOpen(false)} />
+    </div>
+  );
+}

@@ -1,0 +1,163 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { format } from "date-fns";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { setUserRole } from "../actions";
+import type { AppRole } from "@/types/globals";
+
+export interface UserRow {
+  id: string;
+  email: string;
+  fullName: string | null;
+  imageUrl: string;
+  role: AppRole | null;
+  createdAt: string;
+  isCurrentUser: boolean;
+}
+
+interface Props {
+  users: UserRow[];
+}
+
+const ROLES: { value: AppRole | "none"; label: string; color: string }[] = [
+  { value: "none",       label: "No access",  color: "text-muted-foreground" },
+  { value: "employee",   label: "Employee",   color: "text-foreground" },
+  { value: "accountant", label: "Accountant", color: "text-blue-600" },
+  { value: "manager",    label: "Manager",    color: "text-purple-600" },
+  { value: "admin",      label: "Admin",      color: "text-emerald-600" },
+];
+
+const ROLE_BADGE: Record<string, string> = {
+  admin:      "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300",
+  manager:    "bg-purple-100 text-purple-700 dark:bg-purple-950/50 dark:text-purple-300",
+  accountant: "bg-blue-100 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300",
+  employee:   "bg-muted text-muted-foreground",
+};
+
+function Avatar({ src, name }: { src: string; name: string }) {
+  return (
+    <img
+      src={src}
+      alt={name}
+      className="h-8 w-8 rounded-full object-cover shrink-0"
+      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+    />
+  );
+}
+
+function RoleSelect({
+  userId,
+  current,
+  isCurrentUser,
+}: {
+  userId: string;
+  current: AppRole | null;
+  isCurrentUser: boolean;
+}) {
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function handleChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const newRole = e.target.value as AppRole | "none";
+    setError(null);
+    startTransition(async () => {
+      try {
+        await setUserRole(userId, newRole);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to update role.");
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <select
+        value={current ?? "none"}
+        onChange={handleChange}
+        disabled={pending || isCurrentUser}
+        title={isCurrentUser ? "You cannot change your own role" : undefined}
+        className={`rounded-md border border-border bg-background px-2 py-1.5 text-sm disabled:opacity-60 disabled:cursor-not-allowed ${pending ? "opacity-60" : ""}`}
+      >
+        {ROLES.map((r) => (
+          <option key={r.value} value={r.value}>
+            {r.label}
+          </option>
+        ))}
+      </select>
+      {error && <p className="text-xs text-destructive max-w-[200px] text-right">{error}</p>}
+    </div>
+  );
+}
+
+export function UserRoleTable({ users }: Props) {
+  const noAccessCount = users.filter((u) => !u.role).length;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle>Users & Roles</CardTitle>
+        <p className="text-sm text-muted-foreground mt-1">
+          {users.length} user{users.length !== 1 ? "s" : ""} total
+          {noAccessCount > 0 && (
+            <span className="ml-2 text-amber-600">· {noAccessCount} without a role</span>
+          )}
+        </p>
+      </CardHeader>
+      <CardContent className="p-0">
+        <table className="w-full text-sm">
+          <thead className="border-b border-border bg-muted/30">
+            <tr>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">User</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">Joined</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Current role</th>
+              <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Change role</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <tr
+                key={user.id}
+                className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
+              >
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar src={user.imageUrl} name={user.fullName ?? user.email} />
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">
+                        {user.fullName ?? <span className="text-muted-foreground italic">No name</span>}
+                        {user.isCurrentUser && (
+                          <span className="ml-2 text-xs text-muted-foreground">(you)</span>
+                        )}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-muted-foreground text-xs hidden sm:table-cell whitespace-nowrap">
+                  {format(new Date(user.createdAt), "d MMM yyyy")}
+                </td>
+                <td className="px-4 py-3">
+                  {user.role ? (
+                    <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${ROLE_BADGE[user.role]}`}>
+                      {user.role}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-amber-600 font-medium">No access</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <RoleSelect
+                    userId={user.id}
+                    current={user.role}
+                    isCurrentUser={user.isCurrentUser}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </CardContent>
+    </Card>
+  );
+}
