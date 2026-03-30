@@ -37,6 +37,7 @@ type Expense = {
   status: keyof typeof STATUS_CONFIG;
   notes: string | null;
   submittedBy: string;
+  attachmentUrl: string | null;
 };
 
 type Props = {

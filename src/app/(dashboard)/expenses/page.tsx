@@ -43,7 +43,8 @@ export default async function ExpensesPage() {
     date:         e.date.toISOString(),
     status:       e.status,
     notes:        e.notes,
-    submittedBy:  e.submittedBy,
+    submittedBy:   e.submittedBy,
+    attachmentUrl: e.attachmentUrl ?? null,
   }));
 
   return (
