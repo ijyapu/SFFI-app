@@ -1,283 +1,781 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, UserPlus, PackagePlus, ChevronDown } from "lucide-react";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { createPoSchema, type CreatePoValues } from "@/lib/validators/purchase";
-import { createPurchaseOrder } from "../../actions";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import { PhotoUpload } from "@/components/ui/photo-upload";
+import {
+  createPurchaseSchema, newSupplierSchema, newProductSchema,
+  type CreatePurchaseValues, type NewSupplierValues, type NewProductValues,
+} from "@/lib/validators/purchase";
+import { createPurchase, updatePurchase, createSupplierInline, createProductInline } from "../../actions";
 
-type Supplier = { id: string; name: string };
-type Product  = { id: string; name: string; sku: string; costPrice: number; unit: { name: string } };
+type Supplier  = { id: string; name: string; contactName: string | null; phone: string | null };
+type Product   = { id: string; name: string; sku: string; costPrice: number; unit: string };
+type Category  = { id: string; name: string };
+type Unit      = { id: string; name: string };
 
 type Props = {
-  suppliers: Supplier[];
-  products:  Product[];
+  suppliers:     Supplier[];
+  products:      Product[];
+  categories:    Category[];
+  units:         Unit[];
+  purchaseId?:   string;
+  initialValues?: Partial<CreatePurchaseValues>;
 };
 
-export function PoForm({ suppliers, products }: Props) {
-  const router = useRouter();
+// ── Product Combobox ─────────────────────────────────────────────────────────
+function ProductCombobox({
+  value,
+  productId,
+  products,
+  onChange,
+  onProductSelect,
+}: {
+  value: string;
+  productId?: string;
+  products: Product[];
+  onChange: (name: string) => void;
+  onProductSelect: (product: Product) => void;
+}) {
+  const [open, setOpen]     = useState(false);
+  const [query, setQuery]   = useState(value);
+  const wrapRef             = useRef<HTMLDivElement>(null);
 
-  const form = useForm<CreatePoValues>({
-    resolver: zodResolver(createPoSchema),
+  // Keep local query in sync if value is changed externally (e.g. reset)
+  useEffect(() => { setQuery(value); }, [value]);
+
+  const matches = query.trim().length > 0
+    ? products.filter((p) =>
+        p.name.toLowerCase().includes(query.toLowerCase()) ||
+        p.sku.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 10)
+    : products.slice(0, 10);
+
+  function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value;
+    setQuery(v);
+    onChange(v);
+    setOpen(true);
+  }
+
+  function handleSelect(p: Product) {
+    setQuery(p.name);
+    onChange(p.name);
+    onProductSelect(p);
+    setOpen(false);
+  }
+
+  // Close on outside click
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const linkedProduct = productId ? products.find((p) => p.id === productId) : undefined;
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <div className="flex gap-1 items-center">
+        <div className="relative flex-1">
+          <Input
+            className="h-8 text-sm pr-6"
+            placeholder="Type or select product…"
+            value={query}
+            onChange={handleInput}
+            onFocus={() => setOpen(true)}
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => setOpen((o) => !o)}
+          >
+            <ChevronDown className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+      {linkedProduct && (
+        <p className="text-xs text-muted-foreground pt-0.5">{linkedProduct.unit}</p>
+      )}
+      {open && (
+        <div className="absolute z-50 top-full mt-1 w-full min-w-56 rounded-md border bg-popover shadow-md overflow-hidden">
+          {matches.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">
+              No match — name will be saved as-is
+            </div>
+          ) : (
+            <ul className="max-h-52 overflow-y-auto">
+              {matches.map((p) => (
+                <li key={p.id}>
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-1.5 text-sm hover:bg-accent flex items-center justify-between gap-2"
+                    onMouseDown={(e) => { e.preventDefault(); handleSelect(p); }}
+                  >
+                    <span>{p.name}</span>
+                    <span className="text-xs text-muted-foreground shrink-0">{p.sku}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Form ────────────────────────────────────────────────────────────────
+export function PurchaseForm({ suppliers: initSuppliers, products: initProducts, categories, units, purchaseId, initialValues }: Props) {
+  const router = useRouter();
+  const [suppliers, setSuppliers]       = useState(initSuppliers);
+  const [products,  setProducts]        = useState(initProducts);
+  const [supplierOpen, setSupplierOpen] = useState(false);
+  const [productOpen,  setProductOpen]  = useState(false);
+  const [invoiceUrl, setInvoiceUrl]     = useState<string | null>(initialValues?.invoiceUrl ?? "");
+
+  const form = useForm<CreatePurchaseValues>({
+    resolver: zodResolver(createPurchaseSchema),
     defaultValues: {
-      supplierId:   "",
-      expectedDate: "",
-      notes:        "",
-      items:        [{ productId: "", quantity: 1, unitCost: 0 }],
+      invoiceNo:     initialValues?.invoiceNo     ?? "",
+      supplierId:    initialValues?.supplierId    ?? "",
+      date:          initialValues?.date          ?? new Date().toISOString().split("T")[0],
+      paymentMethod: initialValues?.paymentMethod ?? "CASH",
+      amountPaid:    initialValues?.amountPaid    ?? 0,
+      notes:         initialValues?.notes         ?? "",
+      invoiceUrl:    initialValues?.invoiceUrl    ?? "",
+      items:         initialValues?.items         ?? [{ productId: "", productName: "", categoryId: "", unitId: "", description: "", quantity: 1, unitPrice: 0, vatPct: 0 }],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "items",
+  const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
+
+  const watchItems         = form.watch("items");
+  const watchSupplierId    = form.watch("supplierId");
+  const watchPaymentMethod = form.watch("paymentMethod");
+  const watchAmountPaid    = form.watch("amountPaid");
+
+  const computedItems = watchItems.map((item) => {
+    const gross = (item.quantity || 0) * (item.unitPrice || 0);
+    const vat   = gross * ((item.vatPct || 0) / 100);
+    return { gross, vat, total: gross + vat };
   });
+  const subtotal    = computedItems.reduce((s, i) => s + i.gross, 0);
+  const vatTotal    = computedItems.reduce((s, i) => s + i.vat, 0);
+  const totalCost   = subtotal + vatTotal;
+  const outstanding = Math.max(0, totalCost - (watchAmountPaid || 0));
 
-  const watchItems = form.watch("items");
-
-  const subtotal = watchItems.reduce(
-    (sum, i) => sum + (i.quantity || 0) * (i.unitCost || 0),
-    0
-  );
-
-  function handleProductChange(index: number, productId: string) {
-    const product = products.find((p) => p.id === productId);
-    if (product) {
-      form.setValue(`items.${index}.productId`, productId);
-      form.setValue(`items.${index}.unitCost`, product.costPrice);
-    }
+  function handleProductSelect(index: number, product: Product) {
+    form.setValue(`items.${index}.productId`,   product.id);
+    form.setValue(`items.${index}.productName`, product.name);
+    form.setValue(`items.${index}.unitPrice`,   product.costPrice);
+    form.setValue(`items.${index}.categoryId`,  "");
+    form.setValue(`items.${index}.unitId`,      "");
   }
 
-  async function onSubmit(values: CreatePoValues) {
+  async function onSubmit(values: CreatePurchaseValues) {
     try {
-      await createPurchaseOrder(values);
-      toast.success("Purchase order created");
+      const payload = { ...values, invoiceUrl: invoiceUrl || undefined };
+      if (purchaseId) {
+        await updatePurchase(purchaseId, payload);
+        toast.success(`Purchase ${values.invoiceNo} updated`);
+      } else {
+        await createPurchase(payload);
+        toast.success(`Purchase ${values.invoiceNo} logged and inventory updated`);
+      }
       router.push("/purchases");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to create order");
+      toast.error(e instanceof Error ? e.message : purchaseId ? "Failed to update purchase" : "Failed to create purchase");
     }
   }
 
+  // ── Inline supplier form ────────────────────────────────────────────────────
+  const supplierForm = useForm<NewSupplierValues>({
+    resolver: zodResolver(newSupplierSchema),
+    defaultValues: { name: "", contactName: "", phone: "", address: "" },
+  });
+
+  async function handleCreateSupplier(values: NewSupplierValues) {
+    try {
+      const created = await createSupplierInline(values);
+      setSuppliers((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      form.setValue("supplierId", created.id);
+      supplierForm.reset();
+      setSupplierOpen(false);
+      toast.success(`Supplier "${created.name}" added`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add supplier");
+    }
+  }
+
+  // ── Inline product form ─────────────────────────────────────────────────────
+  const productForm = useForm<NewProductValues>({
+    resolver: zodResolver(newProductSchema),
+    defaultValues: { name: "", sku: "", categoryId: "", unitId: "", costPrice: 0 },
+  });
+
+  async function handleCreateProduct(values: NewProductValues) {
+    try {
+      const created = await createProductInline(values);
+      setProducts((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+      productForm.reset();
+      setProductOpen(false);
+      toast.success(`Product "${created.name}" added`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add product");
+    }
+  }
+
+  const selectedSupplierName = suppliers.find((s) => s.id === watchSupplierId)?.name;
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        {/* Header fields */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <FormField
-            control={form.control}
-            name="supplierId"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Supplier *</FormLabel>
-                <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select supplier" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {suppliers.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="expectedDate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Expected Delivery</FormLabel>
-                <FormControl>
-                  <Input type="date" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
+    <>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
 
-        <FormField
-          control={form.control}
-          name="notes"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Notes</FormLabel>
-              <FormControl>
-                <Textarea {...field} rows={2} placeholder="Optional notes for this order..." />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          {/* ── Invoice Details ── */}
+          <div className="rounded-lg border p-4 space-y-4">
+            <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Invoice Details</h3>
 
-        {/* Line items */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-sm">Order Items</h3>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => append({ productId: "", quantity: 1, unitCost: 0 })}
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Item
-            </Button>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {/* Supplier */}
+              <FormField
+                control={form.control}
+                name="supplierId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Supplier *</FormLabel>
+                    <div className="flex gap-1.5">
+                      <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
+                        <FormControl>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue placeholder="Select supplier">
+                              {selectedSupplierName ?? undefined}
+                            </SelectValue>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="min-w-72 max-h-64">
+                          {suppliers.map((s) => (
+                            <SelectItem key={s.id} value={s.id} label={s.name}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <Button type="button" variant="outline" size="icon" onClick={() => setSupplierOpen(true)} title="Add supplier">
+                        <UserPlus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Invoice No */}
+              <FormField
+                control={form.control}
+                name="invoiceNo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Invoice Number *</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="e.g. INV-2025-001" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Date */}
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Purchase Date *</FormLabel>
+                    <FormControl>
+                      <Input type="date" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Payment method + Amount paid */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="paymentMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Method *</FormLabel>
+                    <div className="flex gap-2">
+                      {(["CASH", "CREDIT"] as const).map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => field.onChange(m)}
+                          className={`flex-1 rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
+                            field.value === m
+                              ? m === "CASH"
+                                ? "bg-green-600 text-white border-green-600"
+                                : "bg-orange-500 text-white border-orange-500"
+                              : "bg-background hover:bg-muted"
+                          }`}
+                        >
+                          {m === "CASH" ? "Cash" : "Credit"}
+                        </button>
+                      ))}
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="amountPaid"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount Paid (Rs) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number" min="0" step="0.01"
+                        value={field.value === 0 ? "" : field.value}
+                        placeholder="0.00"
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <div className="flex justify-between text-xs mt-1">
+                      <span className="text-muted-foreground">Total: Rs {totalCost.toFixed(2)}</span>
+                      {outstanding > 0.005
+                        ? <span className="text-orange-600 font-medium">Balance: Rs {outstanding.toFixed(2)}</span>
+                        : totalCost > 0 ? <span className="text-green-600 font-medium">Fully paid</span> : null
+                      }
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </div>
 
-          {form.formState.errors.items?.root && (
-            <p className="text-sm text-destructive">{form.formState.errors.items.root.message}</p>
-          )}
-          {form.formState.errors.items?.message && (
-            <p className="text-sm text-destructive">{form.formState.errors.items.message}</p>
-          )}
+          {/* ── Line Items ── */}
+          <div className="rounded-lg border p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Items</h3>
+              <Button
+                type="button" variant="outline" size="sm"
+                onClick={() => append({ productId: "", productName: "", categoryId: "", unitId: "", description: "", quantity: 1, unitPrice: 0, vatPct: 0 })}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Item
+              </Button>
+            </div>
 
-          <div className="rounded-lg border divide-y">
-            {/* Header row */}
-            <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
+            {/* Desktop header */}
+            <div className="hidden lg:grid lg:grid-cols-[2fr_1.5fr_70px_110px_90px_90px_90px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40 rounded-md">
               <span>Product</span>
+              <span>Description</span>
               <span>Qty</span>
-              <span>Unit Cost (Rs)</span>
+              <span>Unit Price (Rs)</span>
+              <span>Gross</span>
+              <span>VAT</span>
               <span className="text-right">Total</span>
               <span />
             </div>
 
-            {fields.map((field, index) => {
-              const qty  = watchItems[index]?.quantity || 0;
-              const cost = watchItems[index]?.unitCost || 0;
-              const lineTotal = qty * cost;
-              const selectedProduct = products.find(
-                (p) => p.id === watchItems[index]?.productId
-              );
+            <div className="divide-y rounded-md border">
+              {fields.map((field, index) => {
+                const { gross, vat, total } = computedItems[index] ?? { gross: 0, vat: 0, total: 0 };
+                const item = watchItems[index];
 
-              return (
-                <div key={field.id} className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 items-start">
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.productId`}
-                    render={({ field: f }) => (
-                      <FormItem className="space-y-0">
-                        <Select
-                          value={f.value}
-                          onValueChange={(v) => v && handleProductChange(index, v)}
-                        >
+                const isNewProduct = !item?.productId && !!item?.productName;
+
+                return (
+                  <div key={field.id} className="p-3 space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[2fr_1.5fr_70px_110px_90px_90px_90px_32px] lg:gap-2 lg:items-start">
+
+                    {/* Product combobox + optional category/unit for new products */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.productName`}
+                      render={({ field: f }) => (
+                        <FormItem className="space-y-0">
+                          <FormLabel className="lg:hidden text-xs">Product *</FormLabel>
+                          <div className="flex gap-1">
+                            <div className="flex-1">
+                              <ProductCombobox
+                                value={f.value}
+                                productId={item?.productId}
+                                products={products}
+                                onChange={(name) => {
+                                  f.onChange(name);
+                                  // Clear linked product if user types manually
+                                  const match = products.find((p) => p.name === name);
+                                  if (!match) form.setValue(`items.${index}.productId`, "");
+                                }}
+                                onProductSelect={(p) => handleProductSelect(index, p)}
+                              />
+                            </div>
+                            <Button
+                              type="button" variant="ghost" size="icon-sm"
+                              onClick={() => setProductOpen(true)}
+                              title="Add new product to inventory"
+                              className="shrink-0 mt-0.5"
+                            >
+                              <PackagePlus className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                          </div>
+                          {/* Category + Unit only for new (free-text) products */}
+                          {isNewProduct && (
+                            <div className="flex gap-1.5 mt-1.5">
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.categoryId`}
+                                render={({ field: cf }) => (
+                                  <Select value={cf.value ?? ""} onValueChange={(v) => cf.onChange(v)}>
+                                    <SelectTrigger className="h-7 text-xs flex-1">
+                                      <SelectValue placeholder="Category">
+                                        {categories.find(c => c.id === cf.value)?.name ?? undefined}
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent className="min-w-40">
+                                      {categories.map((c) => (
+                                        <SelectItem key={c.id} value={c.id} label={c.name}>{c.name}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`items.${index}.unitId`}
+                                render={({ field: uf }) => (
+                                  <Select value={uf.value ?? ""} onValueChange={(v) => uf.onChange(v)}>
+                                    <SelectTrigger className="h-7 text-xs w-24">
+                                      <SelectValue placeholder="Unit">
+                                        {units.find(u => u.id === uf.value)?.name ?? undefined}
+                                      </SelectValue>
+                                    </SelectTrigger>
+                                    <SelectContent className="min-w-24">
+                                      {units.map((u) => (
+                                        <SelectItem key={u.id} value={u.id} label={u.name}>{u.name}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
+                            </div>
+                          )}
+                          {isNewProduct && item?.categoryId && item?.unitId && (
+                            <p className="text-xs text-green-600 mt-0.5">Will be added to inventory</p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Description */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.description`}
+                      render={({ field: f }) => (
+                        <FormItem className="space-y-0">
+                          <FormLabel className="lg:hidden text-xs">Description</FormLabel>
                           <FormControl>
-                            <SelectTrigger className="h-8 text-sm">
-                              <SelectValue placeholder="Select product" />
-                            </SelectTrigger>
+                            <Input className="h-8 text-sm" placeholder="Optional" {...f} />
                           </FormControl>
-                          <SelectContent>
-                            {products.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                {p.name}
-                                <span className="ml-1 text-muted-foreground text-xs">({p.sku})</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {selectedProduct && (
-                          <p className="text-xs text-muted-foreground pt-0.5">
-                            {selectedProduct.unit.name}
-                          </p>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.quantity`}
-                    render={({ field: f }) => (
-                      <FormItem className="space-y-0">
-                        <FormControl>
-                          <Input
-                            className="h-8 text-sm"
-                            type="number"
-                            min="0.001"
-                            step="0.001"
-                            value={f.value}
-                            onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name={`items.${index}.unitCost`}
-                    render={({ field: f }) => (
-                      <FormItem className="space-y-0">
-                        <FormControl>
-                          <Input
-                            className="h-8 text-sm"
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={f.value}
-                            onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="text-right text-sm font-medium pt-1.5">
-                    {lineTotal.toFixed(2)}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="mt-0.5"
-                    onClick={() => remove(index)}
-                    disabled={fields.length === 1}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                  </Button>
-                </div>
-              );
-            })}
+                        </FormItem>
+                      )}
+                    />
 
-            {/* Subtotal row */}
-            <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 bg-muted/30">
-              <div className="col-span-3 text-right text-sm font-medium text-muted-foreground">
-                Subtotal
+                    {/* Qty */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.quantity`}
+                      render={({ field: f }) => (
+                        <FormItem className="space-y-0">
+                          <FormLabel className="lg:hidden text-xs">Qty *</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="h-8 text-sm" type="number" min="0.001" step="0.001"
+                              value={f.value}
+                              onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Unit Price */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.unitPrice`}
+                      render={({ field: f }) => (
+                        <FormItem className="space-y-0">
+                          <FormLabel className="lg:hidden text-xs">Unit Price (Rs) *</FormLabel>
+                          <FormControl>
+                            <Input
+                              className="h-8 text-sm" type="number" min="0" step="0.01"
+                              value={f.value}
+                              onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Gross (read-only) */}
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground lg:hidden">Gross</span>
+                      <div className="h-8 flex items-center text-sm font-medium bg-muted/30 rounded-md px-2">
+                        {gross.toFixed(2)}
+                      </div>
+                    </div>
+
+                    {/* VAT toggle */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.vatPct`}
+                      render={({ field: f }) => (
+                        <FormItem className="space-y-0">
+                          <FormLabel className="lg:hidden text-xs">VAT</FormLabel>
+                          <button
+                            type="button"
+                            onClick={() => f.onChange(f.value === 0 ? 13 : 0)}
+                            className={`h-8 w-full rounded-md border px-2 text-xs font-medium transition-colors ${
+                              f.value > 0
+                                ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300"
+                                : "bg-muted/30 text-muted-foreground border-input hover:bg-muted"
+                            }`}
+                          >
+                            {f.value > 0 ? `13% = ${vat.toFixed(2)}` : "No VAT"}
+                          </button>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Line Total (read-only) */}
+                    <div className="flex flex-col">
+                      <span className="text-xs text-muted-foreground lg:hidden">Total</span>
+                      <div className="h-8 flex items-center justify-end text-sm font-semibold bg-muted/30 rounded-md px-2">
+                        {total.toFixed(2)}
+                      </div>
+                    </div>
+
+                    {/* Remove */}
+                    <Button
+                      type="button" variant="ghost" size="icon-sm"
+                      className="hidden lg:flex mt-0.5"
+                      onClick={() => remove(index)}
+                      disabled={fields.length === 1}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                    <Button
+                      type="button" variant="outline" size="sm"
+                      className="w-full lg:hidden text-destructive hover:text-destructive"
+                      onClick={() => remove(index)}
+                      disabled={fields.length === 1}
+                    >
+                      <Trash2 className="h-3.5 w-3.5 mr-1" /> Remove Item
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Totals */}
+            <div className="rounded-md bg-muted/30 p-3 space-y-1.5 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Subtotal</span>
+                <span>Rs {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-              <div className="text-right text-sm font-semibold">
-                Rs {subtotal.toFixed(2)}
+              {vatTotal > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>VAT (13%)</span>
+                  <span>Rs {vatTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-semibold text-base border-t pt-1.5 mt-1.5">
+                <span>Total Cost</span>
+                <span>Rs {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-              <div />
+              <div className="flex justify-between text-green-700">
+                <span>Amount Paid</span>
+                <span>Rs {(watchAmountPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              {outstanding > 0.005 ? (
+                <div className="flex justify-between text-orange-600 font-medium border-t pt-1.5">
+                  <span>Outstanding Balance</span>
+                  <span>Rs {outstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              ) : totalCost > 0 ? (
+                <div className="flex justify-between text-green-600 font-medium border-t pt-1.5">
+                  <span>Outstanding Balance</span>
+                  <span>Fully Paid</span>
+                </div>
+              ) : null}
             </div>
           </div>
-        </div>
 
-        {/* Actions */}
-        <div className="flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => router.push("/purchases")}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Creating..." : "Create Draft Order"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+          {/* ── Notes + Upload ── */}
+          <div className="rounded-lg border p-4 space-y-4">
+            <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Attachments & Notes</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} rows={3} placeholder="Any additional notes..." />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Invoice Photo / Attachment</label>
+                <PhotoUpload value={invoiceUrl} onChange={setInvoiceUrl} label="Upload invoice" />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Submit ── */}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => router.push("/purchases")}>Cancel</Button>
+            <Button type="submit" disabled={form.formState.isSubmitting}>
+              {form.formState.isSubmitting ? "Saving..." : purchaseId ? "Save Changes" : "Log Purchase & Update Inventory"}
+            </Button>
+          </div>
+        </form>
+      </Form>
+
+      {/* ── New Supplier Dialog ── */}
+      <Dialog open={supplierOpen} onOpenChange={(v) => !v && setSupplierOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add New Supplier</DialogTitle></DialogHeader>
+          <Form {...supplierForm}>
+            <form onSubmit={supplierForm.handleSubmit(handleCreateSupplier)} className="space-y-3">
+              <FormField control={supplierForm.control} name="name" render={({ field }) => (
+                <FormItem><FormLabel>Name *</FormLabel><FormControl><Input {...field} placeholder="Company name" /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={supplierForm.control} name="contactName" render={({ field }) => (
+                <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={supplierForm.control} name="phone" render={({ field }) => (
+                <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} placeholder="+977" /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={supplierForm.control} name="address" render={({ field }) => (
+                <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setSupplierOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={supplierForm.formState.isSubmitting}>
+                  {supplierForm.formState.isSubmitting ? "Adding..." : "Add Supplier"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── New Product Dialog ── */}
+      <Dialog open={productOpen} onOpenChange={(v) => !v && setProductOpen(false)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader><DialogTitle>Add New Product</DialogTitle></DialogHeader>
+          <Form {...productForm}>
+            <form onSubmit={productForm.handleSubmit(handleCreateProduct)} className="space-y-3">
+              <FormField control={productForm.control} name="name" render={({ field }) => (
+                <FormItem><FormLabel>Product Name *</FormLabel><FormControl><Input {...field} placeholder="Product name" /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={productForm.control} name="sku" render={({ field }) => (
+                <FormItem><FormLabel>SKU *</FormLabel><FormControl><Input {...field} placeholder="e.g. PROD-001" /></FormControl><FormMessage /></FormItem>
+              )} />
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={productForm.control} name="categoryId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category *</FormLabel>
+                    <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Category">
+                          {categories.find(c => c.id === field.value)?.name ?? undefined}
+                        </SelectValue></SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="min-w-40">
+                        {categories.map((c) => (
+                          <SelectItem key={c.id} value={c.id} label={c.name}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={productForm.control} name="unitId" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit *</FormLabel>
+                    <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Unit">
+                          {units.find(u => u.id === field.value)?.name ?? undefined}
+                        </SelectValue></SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="min-w-32">
+                        {units.map((u) => (
+                          <SelectItem key={u.id} value={u.id} label={u.name}>{u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <FormField control={productForm.control} name="costPrice" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Cost Price (Rs)</FormLabel>
+                  <FormControl>
+                    <Input type="number" min="0" step="0.01" value={field.value}
+                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setProductOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={productForm.formState.isSubmitting}>
+                  {productForm.formState.isSubmitting ? "Adding..." : "Add Product"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

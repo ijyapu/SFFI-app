@@ -1,20 +1,23 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { applyStockMovement } from "@/lib/stock";
 import { StockMovementType } from "@prisma/client";
 import {
   supplierSchema, createPoSchema, receiveGoodsSchema, paymentSchema,
+  createPurchaseSchema, newSupplierSchema, newProductSchema,
   type SupplierFormValues, type CreatePoValues,
   type ReceiveGoodsValues, type PaymentFormValues,
+  type CreatePurchaseValues,
 } from "@/lib/validators/purchase";
 
 async function requirePurchasesAccess() {
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
   if (!userId) throw new Error("Unauthenticated");
-  const role = sessionClaims?.publicMetadata?.role as string | undefined;
+  const user = await currentUser();
+  const role = user?.publicMetadata?.role as string | undefined;
   if (!role || !["admin", "manager", "accountant"].includes(role)) {
     throw new Error("Unauthorized");
   }
@@ -63,6 +66,7 @@ export async function updateSupplier(id: string, values: SupplierFormValues) {
     },
   });
   revalidatePath("/purchases/suppliers");
+  revalidatePath("/purchases");
 }
 
 export async function deleteSupplier(id: string) {
@@ -295,5 +299,292 @@ export async function recordPayment(poId: string, values: PaymentFormValues) {
   });
 
   revalidatePath(`/purchases/${poId}`);
+  revalidatePath("/purchases");
+}
+
+// ─── Quick Product Create (returns new product for inline form use) ───────
+
+export async function createProductInline(values: {
+  name: string; sku: string; categoryId: string; unitId: string; costPrice: number;
+}) {
+  await requirePurchasesAccess();
+  const data = newProductSchema.parse(values);
+  const existing = await prisma.product.findUnique({ where: { sku: data.sku } });
+  if (existing) throw new Error(`SKU "${data.sku}" is already taken`);
+  const product = await prisma.product.create({
+    data: {
+      name:         data.name,
+      sku:          data.sku,
+      categoryId:   data.categoryId,
+      unitId:       data.unitId,
+      costPrice:    data.costPrice,
+      sellingPrice: 0,
+    },
+    select: { id: true, name: true, sku: true, costPrice: true, unit: { select: { name: true } } },
+  });
+  revalidatePath("/inventory");
+  revalidatePath("/purchases/new");
+  return { id: product.id, name: product.name, sku: product.sku, costPrice: Number(product.costPrice), unit: product.unit.name };
+}
+
+// ─── Quick Supplier Create (returns new supplier for inline form use) ──────
+
+export async function createSupplierInline(
+  values: { name: string; contactName?: string; phone?: string; address?: string }
+) {
+  await requirePurchasesAccess();
+  const data = newSupplierSchema.parse(values);
+  const supplier = await prisma.supplier.create({
+    data: {
+      name:        data.name,
+      contactName: data.contactName || null,
+      phone:       data.phone || null,
+      address:     data.address || null,
+    },
+    select: { id: true, name: true, contactName: true, phone: true },
+  });
+  revalidatePath("/purchases");
+  return supplier;
+}
+
+// ─── Purchase Invoice ──────────────────────────
+
+export async function createPurchase(values: CreatePurchaseValues) {
+  const userId = await requirePurchasesAccess();
+  const data   = createPurchaseSchema.parse(values);
+
+  // Compute per-item amounts
+  const computedItems = data.items.map((item) => {
+    const grossAmount = item.quantity * item.unitPrice;
+    const vatAmount   = grossAmount * (item.vatPct / 100);
+    const lineTotal   = grossAmount + vatAmount;
+    return { ...item, grossAmount, vatAmount, lineTotal };
+  });
+
+  const subtotal  = computedItems.reduce((s, i) => s + i.grossAmount, 0);
+  const vatTotal  = computedItems.reduce((s, i) => s + i.vatAmount, 0);
+  const totalCost = subtotal + vatTotal;
+
+  if (data.amountPaid > totalCost + 0.005) {
+    throw new Error("Amount paid cannot exceed total cost");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Resolve productIds — auto-create products for free-text items that have a category
+    const resolvedItems = await Promise.all(
+      computedItems.map(async (item) => {
+        if (item.productId) return item;
+        if (!item.categoryId || !item.unitId) return item;
+        // Check if a matching product already exists (by name, case-insensitive)
+        const existing = await tx.product.findFirst({
+          where: { name: { equals: item.productName, mode: "insensitive" }, deletedAt: null },
+        });
+        if (existing) return { ...item, productId: existing.id };
+        // Auto-create the product
+        const created = await tx.product.create({
+          data: {
+            name:         item.productName,
+            sku:          `AUTO-${Date.now()}`,
+            categoryId:   item.categoryId,
+            unitId:       item.unitId,
+            costPrice:    item.unitPrice,
+            sellingPrice: 0,
+          },
+        });
+        return { ...item, productId: created.id };
+      })
+    );
+
+    const purchase = await tx.purchase.create({
+      data: {
+        invoiceNo:     data.invoiceNo,
+        supplierId:    data.supplierId,
+        date:          new Date(data.date),
+        paymentMethod: data.paymentMethod,
+        subtotal,
+        vatTotal,
+        totalCost,
+        amountPaid:    data.amountPaid,
+        notes:         data.notes || null,
+        invoiceUrl:    data.invoiceUrl || null,
+        createdBy:     userId,
+        items: {
+          create: resolvedItems.map((i) => ({
+            ...(i.productId ? { product: { connect: { id: i.productId } } } : {}),
+            productName: i.productName,
+            categoryId:  i.categoryId || null,
+            unitId:      i.unitId || null,
+            description: i.description || null,
+            quantity:    i.quantity,
+            unitPrice:   i.unitPrice,
+            grossAmount: i.grossAmount,
+            vatPct:      i.vatPct,
+            vatAmount:   i.vatAmount,
+            lineTotal:   i.lineTotal,
+          })),
+        },
+      },
+    });
+
+    // Update inventory stock for all resolved items
+    for (const item of resolvedItems) {
+      if (!item.productId) continue;
+      await applyStockMovement(
+        {
+          productId:     item.productId,
+          type:          StockMovementType.PURCHASE,
+          quantity:      item.quantity,
+          unitCost:      item.unitPrice,
+          notes:         `Purchase invoice ${data.invoiceNo}`,
+          referenceId:   purchase.id,
+          referenceType: "Purchase",
+          createdBy:     userId,
+        },
+        tx as Parameters<typeof applyStockMovement>[1]
+      );
+    }
+  });
+
+  revalidatePath("/purchases");
+  revalidatePath("/inventory");
+}
+
+export async function updatePurchase(id: string, values: CreatePurchaseValues) {
+  const userId = await requirePurchasesAccess();
+  const data   = createPurchaseSchema.parse(values);
+
+  const computedItems = data.items.map((item) => {
+    const grossAmount = item.quantity * item.unitPrice;
+    const vatAmount   = grossAmount * (item.vatPct / 100);
+    const lineTotal   = grossAmount + vatAmount;
+    return { ...item, grossAmount, vatAmount, lineTotal };
+  });
+
+  const subtotal  = computedItems.reduce((s, i) => s + i.grossAmount, 0);
+  const vatTotal  = computedItems.reduce((s, i) => s + i.vatAmount, 0);
+  const totalCost = subtotal + vatTotal;
+
+  if (data.amountPaid > totalCost + 0.005) {
+    throw new Error("Amount paid cannot exceed total cost");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Reverse old stock movements for items that had a productId
+    const oldItems = await tx.purchaseLineItem.findMany({
+      where: { purchaseId: id },
+      select: { productId: true, quantity: true, unitPrice: true },
+    });
+
+    for (const old of oldItems) {
+      if (!old.productId) continue;
+      await applyStockMovement(
+        {
+          productId:     old.productId,
+          type:          StockMovementType.RETURN_OUT,
+          quantity:      Number(old.quantity),
+          unitCost:      Number(old.unitPrice),
+          notes:         `Purchase edit reversal`,
+          referenceId:   id,
+          referenceType: "Purchase",
+          createdBy:     userId,
+        },
+        tx as Parameters<typeof applyStockMovement>[1]
+      );
+    }
+
+    // Delete old items
+    await tx.purchaseLineItem.deleteMany({ where: { purchaseId: id } });
+
+    // Resolve productIds for new items
+    const resolvedItems = await Promise.all(
+      computedItems.map(async (item) => {
+        if (item.productId) return item;
+        if (!item.categoryId || !item.unitId) return item;
+        const existing = await tx.product.findFirst({
+          where: { name: { equals: item.productName, mode: "insensitive" }, deletedAt: null },
+        });
+        if (existing) return { ...item, productId: existing.id };
+        const created = await tx.product.create({
+          data: {
+            name:         item.productName,
+            sku:          `AUTO-${Date.now()}`,
+            categoryId:   item.categoryId,
+            unitId:       item.unitId,
+            costPrice:    item.unitPrice,
+            sellingPrice: 0,
+          },
+        });
+        return { ...item, productId: created.id };
+      })
+    );
+
+    // Update purchase header
+    await tx.purchase.update({
+      where: { id },
+      data: {
+        invoiceNo:     data.invoiceNo,
+        supplierId:    data.supplierId,
+        date:          new Date(data.date),
+        paymentMethod: data.paymentMethod,
+        subtotal,
+        vatTotal,
+        totalCost,
+        amountPaid:    data.amountPaid,
+        notes:         data.notes || null,
+        invoiceUrl:    data.invoiceUrl || null,
+        items: {
+          create: resolvedItems.map((i) => ({
+            ...(i.productId ? { product: { connect: { id: i.productId } } } : {}),
+            productName: i.productName,
+            categoryId:  i.categoryId || null,
+            unitId:      i.unitId || null,
+            description: i.description || null,
+            quantity:    i.quantity,
+            unitPrice:   i.unitPrice,
+            grossAmount: i.grossAmount,
+            vatPct:      i.vatPct,
+            vatAmount:   i.vatAmount,
+            lineTotal:   i.lineTotal,
+          })),
+        },
+      },
+    });
+
+    // Apply new stock movements
+    for (const item of resolvedItems) {
+      if (!item.productId) continue;
+      await applyStockMovement(
+        {
+          productId:     item.productId,
+          type:          StockMovementType.PURCHASE,
+          quantity:      item.quantity,
+          unitCost:      item.unitPrice,
+          notes:         `Purchase invoice ${data.invoiceNo} (edited)`,
+          referenceId:   id,
+          referenceType: "Purchase",
+          createdBy:     userId,
+        },
+        tx as Parameters<typeof applyStockMovement>[1]
+      );
+    }
+  });
+
+  revalidatePath("/purchases");
+  revalidatePath("/inventory");
+}
+
+export async function deletePurchase(id: string) {
+  await requirePurchasesAccess();
+  const purchase = await prisma.purchase.findUnique({
+    where: { id },
+    select: { invoiceNo: true },
+  });
+  if (!purchase) throw new Error("Purchase not found");
+
+  await prisma.purchase.update({
+    where: { id },
+    data: { deletedAt: new Date() },
+  });
+
   revalidatePath("/purchases");
 }

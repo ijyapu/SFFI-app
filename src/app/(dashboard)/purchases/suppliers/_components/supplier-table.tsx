@@ -24,7 +24,7 @@ type Supplier = {
   phone: string | null;
   address: string | null;
   pan: string | null;
-  _count: { purchaseOrders: number };
+  _count: { purchases: number };
 };
 
 export function SupplierTable({ suppliers }: { suppliers: Supplier[] }) {
@@ -109,7 +109,7 @@ export function SupplierTable({ suppliers }: { suppliers: Supplier[] }) {
                   </div>
                 </TableCell>
                 <TableCell className="text-right text-muted-foreground">
-                  {s._count.purchaseOrders}
+                  {s._count.purchases}
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">

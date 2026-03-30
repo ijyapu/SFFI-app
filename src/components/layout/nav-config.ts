@@ -10,6 +10,7 @@ import {
   BarChart3,
   FileText,
   Settings,
+  Truck,
   type LucideIcon,
 } from "lucide-react";
 import type { PermissionKey } from "@/lib/roles";
@@ -50,6 +51,12 @@ export const NAV_GROUPS: NavGroup[] = [
         title: "Purchases",
         href: "/purchases",
         icon: ShoppingCart,
+        permission: "purchases",
+      },
+      {
+        title: "Suppliers",
+        href: "/purchases/suppliers",
+        icon: Truck,
         permission: "purchases",
       },
       {

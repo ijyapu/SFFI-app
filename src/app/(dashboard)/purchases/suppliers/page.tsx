@@ -15,7 +15,7 @@ export default async function SuppliersPage() {
     where: { deletedAt: null },
     orderBy: { name: "asc" },
     include: {
-      _count: { select: { purchaseOrders: true } },
+      _count: { select: { purchases: true } },
     },
   });
 

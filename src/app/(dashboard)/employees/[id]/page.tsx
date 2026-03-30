@@ -5,7 +5,7 @@ import { requirePermission } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Building2, Phone, Mail, Calendar } from "lucide-react";
-import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { EmployeeDetail } from "./_components/employee-detail";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -54,12 +54,14 @@ export default async function EmployeeDetailPage({
   const totalWithdrawn = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
 
   const serialisedWithdrawals = withdrawals.map((w) => ({
-    id:       w.id,
-    amount:   Number(w.amount),
-    takenAt:  w.takenAt.toISOString(),
-    givenBy:  w.givenBy,
-    notes:    w.notes,
-    photoUrl: w.photoUrl,
+    id:          w.id,
+    amount:      Number(w.amount),
+    takenAt:     w.takenAt.toISOString(),
+    filedBy:     w.filedBy,
+    givenBy:     w.givenBy,
+    paymentMode: w.paymentMode as "CASH" | "ONLINE",
+    notes:       w.notes,
+    photoUrl:    w.photoUrl,
   }));
 
   // Build prev/next month links

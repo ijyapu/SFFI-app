@@ -52,3 +52,48 @@ export const paymentSchema = z.object({
 });
 
 export type PaymentFormValues = z.infer<typeof paymentSchema>;
+
+// ─── Purchase Invoice ─────────────────────────
+
+export const purchaseItemSchema = z.object({
+  productId:   z.string().optional(),
+  productName: z.string().min(1, "Product name is required"),
+  categoryId:  z.string().optional(),
+  unitId:      z.string().optional(),
+  description: z.string().optional(),
+  quantity:    z.number().min(0.001, "Quantity must be > 0"),
+  unitPrice:   z.number().min(0, "Price must be ≥ 0"),
+  vatPct:      z.number().min(0).max(100),
+});
+
+export const createPurchaseSchema = z.object({
+  invoiceNo:     z.string().min(1, "Invoice number is required"),
+  supplierId:    z.string().min(1, "Select a supplier"),
+  date:          z.string().min(1, "Date is required"),
+  paymentMethod: z.enum(["CASH", "CREDIT"]),
+  amountPaid:    z.number().min(0, "Amount paid must be ≥ 0"),
+  notes:         z.string().optional(),
+  invoiceUrl:    z.string().optional(),
+  items:         z.array(purchaseItemSchema).min(1, "Add at least one item"),
+});
+
+export type CreatePurchaseValues = z.infer<typeof createPurchaseSchema>;
+
+export const newSupplierSchema = z.object({
+  name:        z.string().min(1, "Name is required"),
+  contactName: z.string().optional(),
+  phone:       z.string().optional(),
+  address:     z.string().optional(),
+});
+
+export type NewSupplierValues = z.infer<typeof newSupplierSchema>;
+
+export const newProductSchema = z.object({
+  name:       z.string().min(1, "Name is required"),
+  sku:        z.string().min(1, "SKU is required"),
+  categoryId: z.string().min(1, "Select a category"),
+  unitId:     z.string().min(1, "Select a unit"),
+  costPrice:  z.number().min(0, "Cost must be ≥ 0"),
+});
+
+export type NewProductValues = z.infer<typeof newProductSchema>;

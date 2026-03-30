@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { PayrollList } from "./_components/payroll-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DollarSign, Lock, FileText } from "lucide-react";
+import { DollarSign, Lock, FileText, AlertCircle } from "lucide-react";
 
 export const metadata = { title: "Payroll — Shanti Special Food Industry ERP" };
 
@@ -11,7 +11,7 @@ export default async function PayrollPage() {
 
   const runs = await prisma.payrollRun.findMany({
     include: {
-      items: { select: { basicSalary: true, carryoverIn: true, deductions: true } },
+      items: { select: { basicSalary: true, carryoverIn: true, deductions: true, netPay: true } },
     },
     orderBy: [{ year: "desc" }, { month: "desc" }],
   });
@@ -22,17 +22,18 @@ export default async function PayrollPage() {
     year:          run.year,
     status:        run.status,
     notes:         run.notes,
-    totalPayroll:  run.items.reduce((sum, i) => sum + Number(i.basicSalary) + Number(i.carryoverIn), 0),
-    totalPaid:     run.items.reduce((sum, i) => sum + Number(i.deductions), 0),
+    totalPayroll:   run.items.reduce((sum, i) => sum + Number(i.basicSalary) + Number(i.carryoverIn), 0),
+    totalPaid:      run.items.reduce((sum, i) => sum + Number(i.deductions), 0),
+    totalRemaining: run.items.reduce((sum, i) => sum + Math.max(0, Number(i.netPay)), 0),
     employeeCount: run.items.length,
     createdAt:     run.createdAt.toISOString(),
   }));
 
-  const latestFinalized  = serialised.find((r) => r.status === "FINALIZED");
-  const draftCount       = serialised.filter((r) => r.status === "DRAFT").length;
-  const totalPaidOut     = serialised
-    .filter((r) => r.status === "FINALIZED")
-    .reduce((sum, r) => sum + r.totalPaid, 0);
+  const latestFinalized   = serialised.find((r) => r.status === "FINALIZED");
+  const draftCount        = serialised.filter((r) => r.status === "DRAFT").length;
+  const finalizedRuns     = serialised.filter((r) => r.status === "FINALIZED");
+  const totalPaidOut      = finalizedRuns.reduce((sum, r) => sum + r.totalPaid, 0);
+  const totalCarryover    = finalizedRuns.reduce((sum, r) => sum + r.totalRemaining, 0);
 
   return (
     <div className="space-y-6">
@@ -43,7 +44,7 @@ export default async function PayrollPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Draft Runs</CardTitle>
@@ -86,6 +87,21 @@ export default async function PayrollPage() {
               Rs {totalPaidOut.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             <p className="text-xs text-muted-foreground mt-1">All finalized runs</p>
+          </CardContent>
+        </Card>
+
+        <Card className={totalCarryover > 0.005 ? "border-orange-300" : ""}>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Still Owed</CardTitle>
+            <AlertCircle className={`h-4 w-4 ${totalCarryover > 0.005 ? "text-orange-500" : "text-muted-foreground"}`} />
+          </CardHeader>
+          <CardContent>
+            <p className={`text-2xl font-bold ${totalCarryover > 0.005 ? "text-orange-600" : ""}`}>
+              Rs {totalCarryover.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {totalCarryover > 0.005 ? "Carries to next month" : "All caught up"}
+            </p>
           </CardContent>
         </Card>
       </div>
