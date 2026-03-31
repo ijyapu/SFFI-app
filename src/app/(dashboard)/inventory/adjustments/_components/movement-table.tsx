@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -8,6 +8,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 
 type Movement = {
   id: string;
@@ -41,6 +43,7 @@ type Props = { movements: Movement[] };
 export function MovementTable({ movements }: Props) {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
+  const { sortKey, sortDir, toggle } = useSortable("createdAt");
 
   const filtered = movements.filter((m) => {
     const matchSearch =
@@ -50,6 +53,15 @@ export function MovementTable({ movements }: Props) {
     const matchType = typeFilter === "all" || m.type === typeFilter;
     return matchSearch && matchType;
   });
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aVals: Record<string, string | number> = { createdAt: a.createdAt, product: a.product.name, type: a.type, quantity: Number(a.quantity) };
+      const bVals: Record<string, string | number> = { createdAt: b.createdAt, product: b.product.name, type: b.type, quantity: Number(b.quantity) };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [filtered, sortKey, sortDir]);
 
   return (
     <div className="space-y-3">
@@ -77,25 +89,27 @@ export function MovementTable({ movements }: Props) {
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
+            {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
+              <TableHead><SortButton col="createdAt" label="Date"    {...sp} /></TableHead>
+              <TableHead><SortButton col="product"   label="Product" {...sp} /></TableHead>
+              <TableHead><SortButton col="type"      label="Type"    {...sp} /></TableHead>
+              <TableHead className="text-right"><SortButton col="quantity" label="Qty" {...sp} className="justify-end" /></TableHead>
               <TableHead className="text-right">Before</TableHead>
               <TableHead className="text-right">After</TableHead>
               <TableHead>Notes</TableHead>
             </TableRow>
+            ); })()}
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
                   No movements found.
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((m) => {
+            {sorted.map((m) => {
               const isDecrease = DECREASE_TYPES.includes(m.type);
               const style = TYPE_STYLES[m.type] ?? { label: m.type, className: "" };
               return (
@@ -148,7 +162,7 @@ export function MovementTable({ movements }: Props) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {filtered.length} of {movements.length} movements
+        {sorted.length} of {movements.length} movements
       </p>
     </div>
   );

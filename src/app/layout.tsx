@@ -13,6 +13,7 @@ const geistSans = Geist({
 export const metadata: Metadata = {
   title: "Shanti Special Food Industry ERP",
   description: "Enterprise Resource Planning for SSFI",
+  icons: { icon: "/ssfi-logo.jpg" },
 };
 
 export default function RootLayout({
@@ -21,7 +22,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      afterSignInUrl="/auth-callback"
+      afterSignUpUrl="/auth-callback"
+    >
       <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
         <body className="min-h-full bg-background text-foreground">
           <TooltipProvider>{children}</TooltipProvider>

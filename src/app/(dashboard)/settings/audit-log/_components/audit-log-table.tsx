@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 
 export interface AuditEntry {
   id: string;
@@ -67,6 +69,16 @@ function DiffViewer({ before, after }: { before: unknown; after: unknown }) {
 
 export function AuditLogTable({ entries, total, page, pageSize }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const { sortKey, sortDir, toggle } = useSortable("createdAt");
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return entries;
+    return [...entries].sort((a, b) => {
+      const aVals: Record<string, string> = { createdAt: a.createdAt, userLabel: a.userLabel, action: a.action, entityType: a.entityType };
+      const bVals: Record<string, string> = { createdAt: b.createdAt, userLabel: b.userLabel, action: b.action, entityType: b.entityType };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [entries, sortKey, sortDir]);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -90,13 +102,15 @@ export function AuditLogTable({ entries, total, page, pageSize }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/30">
+              {(() => { const sp = { sortKey, sortDir, toggle }; return (
               <tr>
                 <th className="w-8" />
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">When</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">User</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Action</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Entity</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="createdAt"  label="When"   {...sp} /></th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="userLabel"  label="User"   {...sp} /></th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="action"     label="Action" {...sp} /></th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="entityType" label="Entity" {...sp} /></th>
               </tr>
+              ); })()}
             </thead>
             <tbody>
               {entries.length === 0 && (
@@ -106,7 +120,7 @@ export function AuditLogTable({ entries, total, page, pageSize }: Props) {
                   </td>
                 </tr>
               )}
-              {entries.map((entry) => {
+              {sorted.map((entry) => {
                 const isExpanded = expanded.has(entry.id);
                 const hasDiff    = !!(entry.before || entry.after);
                 return (

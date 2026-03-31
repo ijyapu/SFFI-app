@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import {
@@ -38,8 +39,8 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/dashboard" />}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground text-xs font-bold shrink-0">
-                SS
+              <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-white border border-border">
+                <Image src="/ssfi-logo.jpg" alt="SSFI" width={32} height={32} className="object-contain" />
               </div>
               <div className="flex flex-col leading-none">
                 <span className="font-semibold text-sm">SSFI ERP</span>

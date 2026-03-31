@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ExternalLink, Printer } from "lucide-react";
 import {
@@ -9,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 
 type ReorderItem = {
   id: string;
@@ -24,6 +27,17 @@ type ReorderItem = {
 };
 
 export function ReorderTable({ items }: { items: ReorderItem[] }) {
+  const { sortKey, sortDir, toggle } = useSortable("status");
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return items;
+    return [...items].sort((a, b) => {
+      const aVals: Record<string, string | number> = { name: a.name, category: a.category.name, currentStock: a.currentStock, reorderLevel: a.reorderLevel, shortfall: a.shortfall, suggestedQty: a.suggestedQty, status: a.status };
+      const bVals: Record<string, string | number> = { name: b.name, category: b.category.name, currentStock: b.currentStock, reorderLevel: b.reorderLevel, shortfall: b.shortfall, suggestedQty: b.suggestedQty, status: b.status };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [items, sortKey, sortDir]);
+
   function handlePrint() {
     window.print();
   }
@@ -57,26 +71,28 @@ export function ReorderTable({ items }: { items: ReorderItem[] }) {
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
+            {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Current Stock</TableHead>
-              <TableHead className="text-right">Reorder Level</TableHead>
-              <TableHead className="text-right">Shortfall</TableHead>
-              <TableHead className="text-right">Suggested Order</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead><SortButton col="name"         label="Product"        {...sp} /></TableHead>
+              <TableHead><SortButton col="category"     label="Category"       {...sp} /></TableHead>
+              <TableHead className="text-right"><SortButton col="currentStock" label="Current Stock"  {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="reorderLevel" label="Reorder Level"  {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="shortfall"    label="Shortfall"      {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="suggestedQty" label="Suggested Order" {...sp} className="justify-end" /></TableHead>
+              <TableHead><SortButton col="status"       label="Status"         {...sp} /></TableHead>
               <TableHead className="w-10" />
             </TableRow>
+            ); })()}
           </TableHeader>
           <TableBody>
-            {items.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                   All stock levels are healthy — no reorders needed.
                 </TableCell>
               </TableRow>
             )}
-            {items.map((item) => (
+            {sorted.map((item) => (
               <TableRow
                 key={item.id}
                 className={item.status === "out" ? "bg-red-50/50 dark:bg-red-950/10" : ""}

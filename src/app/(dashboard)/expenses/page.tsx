@@ -1,5 +1,5 @@
+import { requirePermission, getCurrentRole } from "@/lib/auth";
 import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { ExpenseTable } from "./_components/expense-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,10 +8,11 @@ import { Receipt, CheckCircle, Clock, XCircle } from "lucide-react";
 export const metadata = { title: "Expenses — Shanti Special Food Industry ERP" };
 
 export default async function ExpensesPage() {
-  const { userId, sessionClaims } = await auth();
-  if (!userId) redirect("/sign-in");
+  await requirePermission("expenses");
 
-  const role = (sessionClaims?.publicMetadata?.role as string | undefined) ?? null;
+  const { userId } = await auth();
+  const role = await getCurrentRole();
+  // Approvers: anyone except employee-only role
   const userCanApprove = role !== null && ["admin", "manager", "accountant"].includes(role);
 
   const [expenses, categories] = await Promise.all([

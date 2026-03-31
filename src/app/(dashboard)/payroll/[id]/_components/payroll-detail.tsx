@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Lock, Loader2, Printer, ArrowRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,8 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { DeductionDialog } from "./deduction-dialog";
 import { finalizePayrollRun } from "../../../employees/actions";
 
@@ -54,6 +56,16 @@ type Props = {
 export function PayrollDetail({ id, month, year, status, notes, items }: Props) {
   const [finalizing, setFinalizing] = useState(false);
   const [openItemId, setOpenItemId] = useState<string | null>(null);
+  const { sortKey, sortDir, toggle } = useSortable("employeeName");
+
+  const sortedItems = useMemo(() => {
+    if (!sortKey) return items;
+    return [...items].sort((a, b) => {
+      const aVals: Record<string, string | number> = { employeeName: a.employeeName, department: a.department, basicSalary: a.basicSalary, carryoverIn: a.carryoverIn, totalPaid: a.totalPaid, remaining: a.remaining };
+      const bVals: Record<string, string | number> = { employeeName: b.employeeName, department: b.department, basicSalary: b.basicSalary, carryoverIn: b.carryoverIn, totalPaid: b.totalPaid, remaining: b.remaining };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [items, sortKey, sortDir]);
 
   const period    = `${MONTHS[month - 1]} ${year}`;
   const finalized = status === "FINALIZED";
@@ -127,20 +139,22 @@ export function PayrollDetail({ id, month, year, status, notes, items }: Props) 
           <div className="rounded-lg border min-w-160">
             <Table>
               <TableHeader>
+                {(() => { const sp = { sortKey, sortDir, toggle }; return (
                 <TableRow className="bg-muted/40">
-                  <TableHead className="w-48">Employee</TableHead>
-                  <TableHead className="text-right">Salary (Rs)</TableHead>
+                  <TableHead className="w-48"><SortButton col="employeeName" label="Employee"       {...sp} /></TableHead>
+                  <TableHead className="text-right"><SortButton col="basicSalary"  label="Salary (Rs)"    {...sp} className="justify-end" /></TableHead>
                   {hasCarryover && (
-                    <TableHead className="text-right text-blue-600">Carryover (Rs)</TableHead>
+                    <TableHead className="text-right text-blue-600"><SortButton col="carryoverIn" label="Carryover (Rs)" {...sp} className="justify-end" /></TableHead>
                   )}
                   <TableHead className="text-right">Total Owed (Rs)</TableHead>
-                  <TableHead className="text-right">Paid (Rs)</TableHead>
-                  <TableHead className="text-right">Remaining (Rs)</TableHead>
+                  <TableHead className="text-right"><SortButton col="totalPaid"    label="Paid (Rs)"      {...sp} className="justify-end" /></TableHead>
+                  <TableHead className="text-right"><SortButton col="remaining"    label="Remaining (Rs)" {...sp} className="justify-end" /></TableHead>
                   <TableHead className="w-24" />
                 </TableRow>
+                ); })()}
               </TableHeader>
               <TableBody>
-                {items.map((item) => {
+                {sortedItems.map((item) => {
                   const totalOwedItem = item.basicSalary + item.carryoverIn;
                   const fullyPaid     = item.remaining <= 0.005;
                   return (

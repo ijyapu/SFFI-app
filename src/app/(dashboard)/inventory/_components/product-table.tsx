@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Pencil, Trash2, AlertTriangle, Plus, Tag } from "lucide-react";
@@ -16,6 +16,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { ProductForm } from "./product-form";
 import { CategoryDialog } from "./category-dialog";
 import { deleteProduct } from "../actions";
@@ -47,6 +49,7 @@ export function ProductTable({ products, categories, units }: Props) {
   const [formOpen, setFormOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const { sortKey, sortDir, toggle } = useSortable("name");
 
   const filtered = products.filter((p) => {
     const matchSearch =
@@ -56,6 +59,15 @@ export function ProductTable({ products, categories, units }: Props) {
       categoryFilter === "all" || p.categoryId === categoryFilter;
     return matchSearch && matchCategory;
   });
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aVals: Record<string, string | number> = { sku: a.sku, name: a.name, category: a.category.name, costPrice: Number(a.costPrice), sellingPrice: Number(a.sellingPrice), currentStock: Number(a.currentStock) };
+      const bVals: Record<string, string | number> = { sku: b.sku, name: b.name, category: b.category.name, costPrice: Number(b.costPrice), sellingPrice: Number(b.sellingPrice), currentStock: Number(b.currentStock) };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [filtered, sortKey, sortDir]);
 
   function isLowStock(p: Product) {
     return Number(p.currentStock) <= Number(p.reorderLevel);
@@ -120,26 +132,28 @@ export function ProductTable({ products, categories, units }: Props) {
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
+            {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead>SKU</TableHead>
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
+              <TableHead><SortButton col="sku"          label="SKU"        {...sp} /></TableHead>
+              <TableHead><SortButton col="name"         label="Product"    {...sp} /></TableHead>
+              <TableHead><SortButton col="category"     label="Category"   {...sp} /></TableHead>
               <TableHead>Unit</TableHead>
-              <TableHead className="text-right">Cost (Rs)</TableHead>
-              <TableHead className="text-right">Price (Rs)</TableHead>
-              <TableHead className="text-right">Stock</TableHead>
+              <TableHead className="text-right"><SortButton col="costPrice"    label="Cost (Rs)"  {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="sellingPrice" label="Price (Rs)" {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="currentStock" label="Stock"      {...sp} className="justify-end" /></TableHead>
               <TableHead className="w-20" />
             </TableRow>
+            ); })()}
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
                   {search || categoryFilter !== "all" ? "No products match your filters." : "No products yet."}
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((product) => {
+            {sorted.map((product) => {
               const low = isLowStock(product);
               return (
                 <TableRow key={product.id}>
@@ -229,10 +243,10 @@ export function ProductTable({ products, categories, units }: Props) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {filtered.length} of {products.length} products
-        {filtered.some(isLowStock) && (
+        {sorted.length} of {products.length} products
+        {sorted.some(isLowStock) && (
           <span className="ml-2 text-amber-500">
-            · {filtered.filter(isLowStock).length} low stock
+            · {sorted.filter(isLowStock).length} low stock
           </span>
         )}
       </p>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -17,6 +17,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { EmployeeForm } from "./employee-form";
 import { DepartmentDialog } from "./department-dialog";
 import { deleteEmployee } from "../actions";
@@ -52,6 +54,7 @@ export function EmployeeTable({ employees, departments }: Props) {
   const [formOpen, setFormOpen]         = useState(false);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const [deptOpen, setDeptOpen]         = useState(false);
+  const { sortKey, sortDir, toggle }    = useSortable("firstName");
 
   const now = new Date();
 
@@ -70,6 +73,27 @@ export function EmployeeTable({ employees, departments }: Props) {
     return matchSearch && matchDept && matchStatus;
   });
 
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      const vals: Record<string, string | number> = {
+        firstName:   `${a.firstName} ${a.lastName}`,
+        department:  a.department.name,
+        position:    a.position,
+        basicSalary: a.basicSalary,
+        startDate:   a.startDate,
+      };
+      const bVals: Record<string, string | number> = {
+        firstName:   `${b.firstName} ${b.lastName}`,
+        department:  b.department.name,
+        position:    b.position,
+        basicSalary: b.basicSalary,
+        startDate:   b.startDate,
+      };
+      return compareValues(vals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [filtered, sortKey, sortDir]);
+
   async function handleDelete(id: string, name: string) {
     try {
       await deleteEmployee(id);
@@ -78,6 +102,8 @@ export function EmployeeTable({ employees, departments }: Props) {
       toast.error(e instanceof Error ? e.message : "Failed to delete employee");
     }
   }
+
+  const sp = { sortKey, sortDir, toggle };
 
   return (
     <div className="space-y-4">
@@ -132,17 +158,17 @@ export function EmployeeTable({ employees, departments }: Props) {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Employee</TableHead>
-              <TableHead>Department</TableHead>
-              <TableHead>Position</TableHead>
-              <TableHead className="text-right min-w-32.5">Salary (Rs)</TableHead>
-              <TableHead className="min-w-27.5">Start Date</TableHead>
+              <TableHead><SortButton col="firstName"   label="Employee"   {...sp} /></TableHead>
+              <TableHead><SortButton col="department"  label="Department" {...sp} /></TableHead>
+              <TableHead><SortButton col="position"    label="Position"   {...sp} /></TableHead>
+              <TableHead className="text-right"><SortButton col="basicSalary" label="Salary (Rs)" {...sp} className="justify-end" /></TableHead>
+              <TableHead><SortButton col="startDate"   label="Start Date" {...sp} /></TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-20" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   {search || deptFilter !== "all" || statusFilter !== "all"
@@ -151,15 +177,13 @@ export function EmployeeTable({ employees, departments }: Props) {
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((emp) => {
+            {sorted.map((emp) => {
               const isActive = !emp.endDate || new Date(emp.endDate) > now;
               return (
                 <TableRow key={emp.id}>
                   <TableCell>
                     <Link href={`/employees/${emp.id}`} className="hover:underline">
-                      <div className="font-medium">
-                        {emp.firstName} {emp.lastName}
-                      </div>
+                      <div className="font-medium">{emp.firstName} {emp.lastName}</div>
                     </Link>
                     <div className="text-xs text-muted-foreground font-mono">{emp.employeeNo}</div>
                   </TableCell>
@@ -185,11 +209,7 @@ export function EmployeeTable({ employees, departments }: Props) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => { setEditEmployee(emp); setFormOpen(true); }}
-                      >
+                      <Button variant="ghost" size="icon-sm" onClick={() => { setEditEmployee(emp); setFormOpen(true); }}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       <AlertDialog>
@@ -198,18 +218,14 @@ export function EmployeeTable({ employees, departments }: Props) {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>
-                              Remove {emp.firstName} {emp.lastName}?
-                            </AlertDialogTitle>
+                            <AlertDialogTitle>Remove {emp.firstName} {emp.lastName}?</AlertDialogTitle>
                             <AlertDialogDescription>
                               This will soft-delete the employee. Payroll history will be preserved.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(emp.id, `${emp.firstName} ${emp.lastName}`)}
-                            >
+                            <AlertDialogAction onClick={() => handleDelete(emp.id, `${emp.firstName} ${emp.lastName}`)}>
                               Remove
                             </AlertDialogAction>
                           </AlertDialogFooter>
@@ -225,7 +241,7 @@ export function EmployeeTable({ employees, departments }: Props) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {filtered.length} of {employees.length} employees
+        {sorted.length} of {employees.length} employees
       </p>
 
       <EmployeeForm

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 
 export interface AgingRow {
   id: string;
@@ -47,6 +49,7 @@ const Rs = (n: number) =>
 
 export function AgingTable({ rows, partyLabel, orderLabel, linkBase }: Props) {
   const [filterBucket, setFilterBucket] = useState<string>("all");
+  const { sortKey, sortDir, toggle } = useSortable("ageDays");
 
   const totals = BUCKETS.reduce(
     (acc, b) => {
@@ -57,9 +60,16 @@ export function AgingTable({ rows, partyLabel, orderLabel, linkBase }: Props) {
   );
   const grandTotal = rows.reduce((s, r) => s + r.outstanding, 0);
 
-  const visible = filterBucket === "all"
-    ? rows
-    : rows.filter((r) => r.bucket === filterBucket);
+  const bucketFiltered = filterBucket === "all" ? rows : rows.filter((r) => r.bucket === filterBucket);
+
+  const visible = useMemo(() => {
+    if (!sortKey) return bucketFiltered;
+    return [...bucketFiltered].sort((a, b) => {
+      const aVals: Record<string, string | number> = { orderNumber: a.orderNumber, partyName: a.partyName, orderDate: a.orderDate, dueDate: a.dueDate ?? "", totalAmount: a.totalAmount, amountPaid: a.amountPaid, outstanding: a.outstanding, ageDays: a.ageDays };
+      const bVals: Record<string, string | number> = { orderNumber: b.orderNumber, partyName: b.partyName, orderDate: b.orderDate, dueDate: b.dueDate ?? "", totalAmount: b.totalAmount, amountPaid: b.amountPaid, outstanding: b.outstanding, ageDays: b.ageDays };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [bucketFiltered, sortKey, sortDir]);
 
   return (
     <div className="space-y-4">
@@ -95,16 +105,18 @@ export function AgingTable({ rows, partyLabel, orderLabel, linkBase }: Props) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="border-b border-border bg-muted/30">
+                {(() => { const sp = { sortKey, sortDir, toggle }; return (
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{orderLabel}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">{partyLabel}</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">Date</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden md:table-cell">Due</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Total</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Paid</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Outstanding</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Age</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="orderNumber" label={orderLabel}  {...sp} /></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="partyName"   label={partyLabel}  {...sp} /></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden md:table-cell"><SortButton col="orderDate" label="Date" {...sp} /></th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden md:table-cell"><SortButton col="dueDate"   label="Due"  {...sp} /></th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground"><SortButton col="totalAmount"  label="Total"       {...sp} className="justify-end" /></th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground"><SortButton col="amountPaid"   label="Paid"        {...sp} className="justify-end" /></th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground"><SortButton col="outstanding"  label="Outstanding" {...sp} className="justify-end" /></th>
+                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground"><SortButton col="ageDays"      label="Age"         {...sp} className="justify-end" /></th>
                 </tr>
+                ); })()}
               </thead>
               <tbody>
                 {visible.length === 0 && (

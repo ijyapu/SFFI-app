@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { deletePurchaseOrder } from "../actions";
 
 const STATUS_CONFIG = {
@@ -43,6 +45,7 @@ type PO = {
 export function PoTable({ orders }: { orders: PO[] }) {
   const [search, setSearch]           = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const { sortKey, sortDir, toggle }  = useSortable("orderDate");
 
   const filtered = orders.filter((o) => {
     const matchSearch =
@@ -51,6 +54,15 @@ export function PoTable({ orders }: { orders: PO[] }) {
     const matchStatus = statusFilter === "all" || o.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aVals: Record<string, string | number> = { orderNumber: a.orderNumber, supplierName: a.supplierName, orderDate: a.orderDate, status: a.status, totalAmount: a.totalAmount, outstanding: a.totalAmount - a.amountPaid };
+      const bVals: Record<string, string | number> = { orderNumber: b.orderNumber, supplierName: b.supplierName, orderDate: b.orderDate, status: b.status, totalAmount: b.totalAmount, outstanding: b.totalAmount - b.amountPaid };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [filtered, sortKey, sortDir]);
 
   async function handleDelete(id: string, orderNumber: string) {
     try {
@@ -86,18 +98,20 @@ export function PoTable({ orders }: { orders: PO[] }) {
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
+            {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead>PO Number</TableHead>
-              <TableHead>Supplier</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total (Rs)</TableHead>
-              <TableHead className="text-right">Outstanding</TableHead>
+              <TableHead><SortButton col="orderNumber"  label="PO Number"   {...sp} /></TableHead>
+              <TableHead><SortButton col="supplierName" label="Supplier"    {...sp} /></TableHead>
+              <TableHead><SortButton col="orderDate"    label="Date"        {...sp} /></TableHead>
+              <TableHead><SortButton col="status"       label="Status"      {...sp} /></TableHead>
+              <TableHead className="text-right"><SortButton col="totalAmount"  label="Total (Rs)"   {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="outstanding"  label="Outstanding"  {...sp} className="justify-end" /></TableHead>
               <TableHead className="w-20" />
             </TableRow>
+            ); })()}
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   {search || statusFilter !== "all"
@@ -106,7 +120,7 @@ export function PoTable({ orders }: { orders: PO[] }) {
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((po) => {
+            {sorted.map((po) => {
               const cfg = STATUS_CONFIG[po.status];
               const outstanding = po.totalAmount - po.amountPaid;
               return (
@@ -170,7 +184,7 @@ export function PoTable({ orders }: { orders: PO[] }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {filtered.length} of {orders.length} orders
+        {sorted.length} of {orders.length} orders
       </p>
     </div>
   );

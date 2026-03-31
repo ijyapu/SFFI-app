@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { PackageCheck, CreditCard, CheckCircle, XCircle, Loader2 } from "lucide-react";
@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { ReceiveForm } from "./receive-form";
 import { PaymentForm } from "./payment-form";
 import { confirmPurchaseOrder, cancelPurchaseOrder } from "../../actions";
@@ -75,6 +77,16 @@ export function PoDetail(props: Props) {
   const [paymentOpen, setPaymentOpen]   = useState(false);
   const [confirming,  setConfirming]    = useState(false);
   const [cancelling,  setCancelling]    = useState(false);
+  const { sortKey, sortDir, toggle }    = useSortable("productName");
+
+  const sortedItems = useMemo(() => {
+    if (!sortKey) return items;
+    return [...items].sort((a, b) => {
+      const aVals: Record<string, string | number> = { productName: a.productName, quantity: Number(a.quantity), receivedQty: Number(a.receivedQty), unitCost: Number(a.unitCost), totalCost: Number(a.totalCost) };
+      const bVals: Record<string, string | number> = { productName: b.productName, quantity: Number(b.quantity), receivedQty: Number(b.receivedQty), unitCost: Number(b.unitCost), totalCost: Number(b.totalCost) };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [items, sortKey, sortDir]);
 
   const outstanding = totalAmount - amountPaid;
   const cfg = STATUS_CONFIG[status];
@@ -194,16 +206,18 @@ export function PoDetail(props: Props) {
           <div className="rounded-lg border">
             <Table>
               <TableHeader>
+                {(() => { const sp = { sortKey, sortDir, toggle }; return (
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="text-right">Ordered</TableHead>
-                  <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Unit Cost</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead><SortButton col="productName" label="Product"   {...sp} /></TableHead>
+                  <TableHead className="text-right"><SortButton col="quantity"    label="Ordered"   {...sp} className="justify-end" /></TableHead>
+                  <TableHead className="text-right"><SortButton col="receivedQty" label="Received"  {...sp} className="justify-end" /></TableHead>
+                  <TableHead className="text-right"><SortButton col="unitCost"    label="Unit Cost" {...sp} className="justify-end" /></TableHead>
+                  <TableHead className="text-right"><SortButton col="totalCost"   label="Total"     {...sp} className="justify-end" /></TableHead>
                 </TableRow>
+                ); })()}
               </TableHeader>
               <TableBody>
-                {items.map((item) => {
+                {sortedItems.map((item) => {
                   const fullyReceived = Number(item.receivedQty) >= Number(item.quantity);
                   return (
                     <TableRow key={item.id}>

@@ -24,16 +24,17 @@ interface Props {
   employeeId: string;
   employeeName: string;
   monthlySalary: number;
-  // All withdrawals for the selected month
   withdrawals: WithdrawalRow[];
-  selectedMonth: number; // 1-12
+  selectedMonth: number;
   selectedYear: number;
   totalWithdrawn: number;
-  allTimeWithdrawals: WithdrawalRow[]; // for year view
+  allTimeWithdrawals: WithdrawalRow[];
 }
 
-const GHS = (n: number) =>
+const Rs = (n: number) =>
   "Rs " + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 export function EmployeeDetail({
   employeeId,
@@ -44,37 +45,35 @@ export function EmployeeDetail({
   selectedYear,
   totalWithdrawn,
 }: Props) {
-  const [formOpen, setFormOpen] = useState(false);
-  const [lightbox, setLightbox]  = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [formOpen, setFormOpen]     = useState(false);
+  const [lightbox, setLightbox]     = useState<string | null>(null);
+  const [pending, startTransition]  = useTransition();
 
-  const remaining  = monthlySalary - totalWithdrawn;
-  const pct        = monthlySalary > 0 ? Math.min(100, (totalWithdrawn / monthlySalary) * 100) : 0;
+  const remaining = monthlySalary - totalWithdrawn;
+  const pct       = monthlySalary > 0 ? Math.min(100, (totalWithdrawn / monthlySalary) * 100) : 0;
 
   function handleDelete(id: string) {
-    if (!confirm("Delete this withdrawal record?")) return;
+    if (!confirm("Delete this deduction record?")) return;
     startTransition(async () => {
       try {
         await deleteWithdrawal(id, employeeId);
-        toast.success("Withdrawal deleted");
+        toast.success("Deduction deleted");
       } catch (e) {
         toast.error(e instanceof Error ? e.message : "Failed to delete");
       }
     });
   }
 
-  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-
   return (
     <div className="space-y-6">
-      {/* Balance card */}
+      {/* Summary cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Salary</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{GHS(monthlySalary)}</p>
+            <p className="text-2xl font-bold">{Rs(monthlySalary)}</p>
             <p className="text-xs text-muted-foreground mt-1">Fixed monthly amount</p>
           </CardContent>
         </Card>
@@ -82,12 +81,12 @@ export function EmployeeDetail({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Taken — {MONTHS[selectedMonth - 1]} {selectedYear}
+              Deducted — {MONTHS[selectedMonth - 1]} {selectedYear}
             </CardTitle>
           </CardHeader>
           <CardContent>
             <p className={`text-2xl font-bold ${totalWithdrawn > monthlySalary ? "text-destructive" : "text-amber-600"}`}>
-              {GHS(totalWithdrawn)}
+              {Rs(totalWithdrawn)}
             </p>
             <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
               <div
@@ -104,23 +103,21 @@ export function EmployeeDetail({
           </CardHeader>
           <CardContent>
             <p className={`text-2xl font-bold ${remaining < 0 ? "text-destructive" : "text-emerald-600"}`}>
-              {GHS(remaining)}
+              {Rs(remaining)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {remaining < 0 ? "Over-withdrawn this month" : "Still available this month"}
+              {remaining < 0 ? "Over-deducted this month" : "Still available this month"}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Withdrawal list */}
+      {/* Deductions table */}
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>
-                Deductions — {MONTHS[selectedMonth - 1]} {selectedYear}
-              </CardTitle>
+              <CardTitle>Deductions — {MONTHS[selectedMonth - 1]} {selectedYear}</CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {withdrawals.length} deduction{withdrawals.length !== 1 ? "s" : ""}
               </p>
@@ -134,77 +131,92 @@ export function EmployeeDetail({
         <CardContent className="p-0">
           {withdrawals.length === 0 ? (
             <div className="px-4 py-10 text-center text-muted-foreground text-sm">
-              No withdrawals recorded for this month.
+              No deductions recorded for this month.
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/30">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Date</th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Amount</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Given by</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Notes</th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground">Proof</th>
-                  <th className="px-4 py-3 w-10" />
-                </tr>
-              </thead>
-              <tbody>
-                {withdrawals.map((w) => (
-                  <tr key={w.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {format(parseISO(w.takenAt), "d MMM yyyy")}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums font-semibold">
-                      {GHS(w.amount)}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-30 truncate">
-                      {w.givenBy ?? <span className="italic opacity-50">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground max-w-45 truncate">
-                      {w.notes ?? <span className="italic opacity-50">—</span>}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {w.photoUrl ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-border bg-muted/30">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Date</th>
+                    <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Amount</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Mode</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Filed by</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Given by</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Notes</th>
+                    <th className="px-4 py-3 text-center text-xs font-medium text-muted-foreground whitespace-nowrap">Proof</th>
+                    <th className="px-4 py-3 w-10" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {withdrawals.map((w) => (
+                    <tr key={w.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        {format(parseISO(w.takenAt), "d MMM yyyy")}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums font-semibold whitespace-nowrap">
+                        {Rs(w.amount)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          w.paymentMode === "ONLINE"
+                            ? "bg-blue-100 text-blue-700"
+                            : "bg-amber-100 text-amber-700"
+                        }`}>
+                          {w.paymentMode === "ONLINE" ? "Online" : "Cash"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground max-w-32 truncate">
+                        {w.filedBy ?? <span className="italic opacity-40">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground max-w-32 truncate">
+                        {w.givenBy ?? <span className="italic opacity-40">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground max-w-40 truncate">
+                        {w.notes ?? <span className="italic opacity-40">—</span>}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {w.photoUrl ? (
+                          <button
+                            onClick={() => setLightbox(w.photoUrl)}
+                            className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
+                          >
+                            <ImageIcon className="h-3.5 w-3.5" />
+                            View
+                          </button>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
                         <button
-                          onClick={() => setLightbox(w.photoUrl)}
-                          className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
+                          onClick={() => handleDelete(w.id)}
+                          disabled={pending}
+                          className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
+                          title="Delete"
                         >
-                          <ImageIcon className="h-3.5 w-3.5" />
-                          View
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">—</span>
-                      )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="border-t border-border bg-muted/20">
+                  <tr>
+                    <td colSpan={5} className="px-4 py-2 text-xs font-medium text-muted-foreground">
+                      Month total
                     </td>
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => handleDelete(w.id)}
-                        disabled={pending}
-                        className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-50"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                    <td colSpan={3} className="px-4 py-2 text-right tabular-nums font-bold">
+                      {Rs(totalWithdrawn)}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-              <tfoot className="border-t border-border bg-muted/20">
-                <tr>
-                  <td className="px-4 py-2 text-xs font-medium text-muted-foreground" colSpan={4}>
-                    Month total
-                  </td>
-                  <td colSpan={2} className="px-4 py-2 text-right tabular-nums font-bold">
-                    {GHS(totalWithdrawn)}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+                </tfoot>
+              </table>
+            </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Withdrawal form */}
       <WithdrawalForm
         employeeId={employeeId}
         employeeName={employeeName}

@@ -1,17 +1,43 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
+import { ROLE_PROTECTED_ROUTES } from "@/lib/roles";
+import type { AppRole } from "@/types/globals";
 
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
+  "/auth-callback",
+  "/request-access(.*)",
   "/unauthorized",
+  "/pending",
   "/api/webhooks(.*)",
   "/api/debug-role(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Always let public routes through
   if (isPublicRoute(req)) return;
-  // Enforce authentication only — role checks are handled per-page via requirePermission()
+
+  // Ensure the user is signed in
   await auth.protect();
+
+  // Role enforcement via session claims — fast but can be stale by a few minutes
+  // after a role is assigned. Per-page requirePermission() uses currentUser() for
+  // the authoritative live check. Here we only block users whose claims already
+  // show a role that isn't allowed (defence-in-depth, not the primary gate).
+  const { sessionClaims } = await auth();
+  const role = (sessionClaims?.publicMetadata?.role as AppRole | undefined) ?? null;
+  const { pathname } = req.nextUrl;
+
+  if (role) {
+    const restricted = ROLE_PROTECTED_ROUTES.find((r) => r.pattern.test(pathname));
+    if (restricted && !(restricted.allowed as AppRole[]).includes(role)) {
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
+    }
+  }
+  // No role in claims → let the request through to the page.
+  // requirePermission() / requireMinRole() in each page calls currentUser()
+  // which always returns fresh data and will redirect to /pending if still no role.
 });
 
 export const config = {

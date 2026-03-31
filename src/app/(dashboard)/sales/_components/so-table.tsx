@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -18,6 +18,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { deleteSalesOrder } from "../actions";
 
 const STATUS_CONFIG = {
@@ -41,6 +43,7 @@ type SO = {
 export function SoTable({ orders }: { orders: SO[] }) {
   const [search, setSearch]             = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const { sortKey, sortDir, toggle }    = useSortable("orderDate");
 
   const filtered = orders.filter((o) => {
     const matchSearch =
@@ -49,6 +52,15 @@ export function SoTable({ orders }: { orders: SO[] }) {
     const matchStatus = statusFilter === "all" || o.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aVals: Record<string, string | number> = { orderNumber: a.orderNumber, customerName: a.customerName, orderDate: a.orderDate, status: a.status, totalAmount: a.totalAmount, outstanding: a.totalAmount - a.amountPaid };
+      const bVals: Record<string, string | number> = { orderNumber: b.orderNumber, customerName: b.customerName, orderDate: b.orderDate, status: b.status, totalAmount: b.totalAmount, outstanding: b.totalAmount - b.amountPaid };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [filtered, sortKey, sortDir]);
 
   async function handleDelete(id: string, orderNumber: string) {
     try {
@@ -84,18 +96,20 @@ export function SoTable({ orders }: { orders: SO[] }) {
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
+            {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead>SO Number</TableHead>
-              <TableHead>Customer</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Total (Rs)</TableHead>
-              <TableHead className="text-right">Outstanding</TableHead>
+              <TableHead><SortButton col="orderNumber"  label="SO Number"    {...sp} /></TableHead>
+              <TableHead><SortButton col="customerName" label="Customer"     {...sp} /></TableHead>
+              <TableHead><SortButton col="orderDate"    label="Date"         {...sp} /></TableHead>
+              <TableHead><SortButton col="status"       label="Status"       {...sp} /></TableHead>
+              <TableHead className="text-right"><SortButton col="totalAmount"  label="Total (Rs)"    {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="outstanding"  label="Outstanding"   {...sp} className="justify-end" /></TableHead>
               <TableHead className="w-20" />
             </TableRow>
+            ); })()}
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   {search || statusFilter !== "all"
@@ -104,7 +118,7 @@ export function SoTable({ orders }: { orders: SO[] }) {
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((so) => {
+            {sorted.map((so) => {
               const cfg = STATUS_CONFIG[so.status];
               const outstanding = so.totalAmount - so.amountPaid;
               return (
@@ -168,7 +182,7 @@ export function SoTable({ orders }: { orders: SO[] }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        {filtered.length} of {orders.length} orders
+        {sorted.length} of {orders.length} orders
       </p>
     </div>
   );

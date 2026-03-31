@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { Plus, Pencil, Trash2, CheckCircle, XCircle, Tag } from "lucide-react";
@@ -16,6 +16,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { ExpenseForm } from "./expense-form";
 import { approveExpense, rejectExpense, deleteExpense } from "../actions";
 
@@ -53,6 +55,7 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [formOpen, setFormOpen]         = useState(false);
   const [editExpense, setEditExpense]   = useState<Expense | null>(null);
+  const { sortKey, sortDir, toggle }    = useSortable("date");
 
   const filtered = expenses.filter((e) => {
     const matchSearch =
@@ -62,6 +65,15 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
     const matchCategory = categoryFilter === "all" || e.categoryId === categoryFilter;
     return matchSearch && matchStatus && matchCategory;
   });
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aVals: Record<string, string | number> = { date: a.date, description: a.description, category: a.categoryName, amount: a.amount, status: a.status };
+      const bVals: Record<string, string | number> = { date: b.date, description: b.description, category: b.categoryName, amount: b.amount, status: b.status };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [filtered, sortKey, sortDir]);
 
   async function handleApprove(id: string) {
     try {
@@ -90,8 +102,8 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
     }
   }
 
-  const totalFiltered = filtered.reduce((sum, e) => sum + e.amount, 0);
-  const totalApproved = filtered
+  const totalFiltered = sorted.reduce((sum, e) => sum + e.amount, 0);
+  const totalApproved = sorted
     .filter((e) => e.status === "APPROVED")
     .reduce((sum, e) => sum + e.amount, 0);
 
@@ -140,16 +152,18 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Amount (Rs)</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-28" />
+              {(() => { const sp = { sortKey, sortDir, toggle }; return (<>
+                <TableHead><SortButton col="date"        label="Date"        {...sp} /></TableHead>
+                <TableHead><SortButton col="description" label="Description" {...sp} /></TableHead>
+                <TableHead><SortButton col="category"    label="Category"    {...sp} /></TableHead>
+                <TableHead className="text-right"><SortButton col="amount" label="Amount (Rs)" {...sp} className="justify-end" /></TableHead>
+                <TableHead><SortButton col="status"      label="Status"      {...sp} /></TableHead>
+                <TableHead className="w-28" />
+              </>); })()}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                   {search || statusFilter !== "all" || categoryFilter !== "all"
@@ -158,7 +172,7 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((expense) => {
+            {sorted.map((expense) => {
               const cfg       = STATUS_CONFIG[expense.status];
               const isOwner   = expense.submittedBy === currentUserId;
               const canEdit   = isOwner && expense.status === "SUBMITTED";
@@ -256,10 +270,10 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
       </div>
 
       {/* Footer totals */}
-      {filtered.length > 0 && (
+      {sorted.length > 0 && (
         <div className="flex items-center justify-between text-sm">
           <span className="text-muted-foreground">
-            {filtered.length} expense{filtered.length !== 1 ? "s" : ""}
+            {sorted.length} expense{sorted.length !== 1 ? "s" : ""}
           </span>
           <div className="flex gap-6">
             <span className="text-muted-foreground">

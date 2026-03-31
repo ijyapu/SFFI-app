@@ -25,6 +25,10 @@ export async function getAuthUser() {
  */
 export async function requirePermission(permission: PermissionKey): Promise<AppRole> {
   const role = await getCurrentRole();
+  if (!role) {
+    // Authenticated but no role assigned yet — send to pending review page
+    redirect("/pending");
+  }
   if (!hasPermission(role, permission)) {
     redirect("/unauthorized");
   }
@@ -33,9 +37,8 @@ export async function requirePermission(permission: PermissionKey): Promise<AppR
 
 export async function requireMinRole(minRole: AppRole): Promise<AppRole> {
   const role = await getCurrentRole();
-  if (!hasMinRole(role, minRole)) {
-    redirect("/unauthorized");
-  }
+  if (!role) redirect("/pending");
+  if (!hasMinRole(role, minRole)) redirect("/unauthorized");
   return role!;
 }
 

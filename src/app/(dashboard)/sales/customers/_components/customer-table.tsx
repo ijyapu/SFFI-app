@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { Pencil, Trash2, Plus, Phone, Mail, ShoppingBag } from "lucide-react";
 import {
@@ -13,6 +13,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { CustomerForm } from "./customer-form";
 import { deleteCustomer } from "../../actions";
 
@@ -30,11 +32,21 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
   const [search, setSearch]           = useState("");
   const [formOpen, setFormOpen]       = useState(false);
   const [editCustomer, setEditCustomer] = useState<Customer | null>(null);
+  const { sortKey, sortDir, toggle }  = useSortable("name");
 
   const filtered = customers.filter((c) =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     (c.email ?? "").toLowerCase().includes(search.toLowerCase())
   );
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aVals: Record<string, string | number> = { name: a.name, email: a.email ?? "", orders: a._count.salesOrders };
+      const bVals: Record<string, string | number> = { name: b.name, email: b.email ?? "", orders: b._count.salesOrders };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [filtered, sortKey, sortDir]);
 
   async function handleDelete(id: string, name: string) {
     try {
@@ -63,22 +75,24 @@ export function CustomerTable({ customers }: { customers: Customer[] }) {
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
+            {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead className="text-right">Orders</TableHead>
+              <TableHead><SortButton col="name"   label="Customer" {...sp} /></TableHead>
+              <TableHead><SortButton col="email"  label="Contact"  {...sp} /></TableHead>
+              <TableHead className="text-right"><SortButton col="orders" label="Orders" {...sp} className="justify-end" /></TableHead>
               <TableHead className="w-20" />
             </TableRow>
+            ); })()}
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
                   {search ? "No customers match your search." : "No customers yet."}
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((c) => (
+            {sorted.map((c) => (
               <TableRow key={c.id}>
                 <TableCell>
                   <div className="font-medium">{c.name}</div>

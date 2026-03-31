@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { Plus, ExternalLink, Trash2, Lock } from "lucide-react";
@@ -15,6 +15,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { CreateRunForm } from "./create-run-form";
 import { deletePayrollRun } from "../../employees/actions";
 
@@ -37,6 +39,16 @@ type PayrollRun = {
 
 export function PayrollList({ runs }: { runs: PayrollRun[] }) {
   const [createOpen, setCreateOpen] = useState(false);
+  const { sortKey, sortDir, toggle } = useSortable("period");
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return runs;
+    return [...runs].sort((a, b) => {
+      const aVals: Record<string, string | number> = { period: a.year * 12 + a.month, status: a.status, employeeCount: a.employeeCount, totalPayroll: a.totalPayroll, totalPaid: a.totalPaid };
+      const bVals: Record<string, string | number> = { period: b.year * 12 + b.month, status: b.status, employeeCount: b.employeeCount, totalPayroll: b.totalPayroll, totalPaid: b.totalPaid };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [runs, sortKey, sortDir]);
 
   async function handleDelete(id: string, label: string) {
     try {
@@ -59,24 +71,26 @@ export function PayrollList({ runs }: { runs: PayrollRun[] }) {
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
+            {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead>Period</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Employees</TableHead>
-              <TableHead className="text-right">Total Owed (Rs)</TableHead>
-              <TableHead className="text-right">Paid Out (Rs)</TableHead>
+              <TableHead><SortButton col="period"        label="Period"          {...sp} /></TableHead>
+              <TableHead><SortButton col="status"        label="Status"          {...sp} /></TableHead>
+              <TableHead className="text-right"><SortButton col="employeeCount" label="Employees"     {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="totalPayroll"  label="Total Owed (Rs)" {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="totalPaid"     label="Paid Out (Rs)" {...sp} className="justify-end" /></TableHead>
               <TableHead className="w-20" />
             </TableRow>
+            ); })()}
           </TableHeader>
           <TableBody>
-            {runs.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
                   No payroll runs yet. Create one to get started.
                 </TableCell>
               </TableRow>
             )}
-            {runs.map((run) => {
+            {sorted.map((run) => {
               const label = `${MONTHS[run.month - 1]} ${run.year}`;
               return (
                 <TableRow key={run.id}>

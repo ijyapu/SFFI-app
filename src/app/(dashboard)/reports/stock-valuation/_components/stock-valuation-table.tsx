@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 
 export interface StockRow {
   id: string;
@@ -33,6 +35,16 @@ const Rs = (n: number) =>
 
 export function StockValuationTable({ categories, grandTotal, asOf }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const { sortKey, sortDir, toggle } = useSortable("name");
+
+  function sortProducts(products: StockRow[]) {
+    if (!sortKey) return products;
+    return [...products].sort((a, b) => {
+      const aVals: Record<string, string | number> = { name: a.name, currentStock: a.currentStock, reorderLevel: a.reorderLevel, costPrice: a.costPrice, totalValue: a.totalValue };
+      const bVals: Record<string, string | number> = { name: b.name, currentStock: b.currentStock, reorderLevel: b.reorderLevel, costPrice: b.costPrice, totalValue: b.totalValue };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }
 
   function toggle(name: string) {
     setCollapsed((prev) => {
@@ -84,16 +96,18 @@ export function StockValuationTable({ categories, grandTotal, asOf }: Props) {
               <CardContent className="p-0">
                 <table className="w-full text-sm">
                   <thead className="border-t border-border bg-muted/20">
+                    {(() => { const sp = { sortKey, sortDir, toggle }; return (
                     <tr>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Product</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Stock</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Reorder</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Cost Price</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Value</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground"><SortButton col="name"         label="Product"    {...sp} /></th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground"><SortButton col="currentStock" label="Stock"      {...sp} className="justify-end" /></th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground"><SortButton col="reorderLevel" label="Reorder"    {...sp} className="justify-end" /></th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground"><SortButton col="costPrice"    label="Cost Price" {...sp} className="justify-end" /></th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground"><SortButton col="totalValue"   label="Value"      {...sp} className="justify-end" /></th>
                     </tr>
+                    ); })()}
                   </thead>
                   <tbody>
-                    {cat.products.map((p) => (
+                    {sortProducts(cat.products).map((p) => (
                       <tr
                         key={p.id}
                         className={`border-t border-border last:border-0 ${p.belowReorder ? "bg-amber-50/50 dark:bg-amber-950/10" : ""}`}

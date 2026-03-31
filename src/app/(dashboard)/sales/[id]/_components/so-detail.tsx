@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import {
@@ -13,6 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { SoPaymentForm } from "./so-payment-form";
 import { ReturnForm }    from "./return-form";
 import { confirmSalesOrder, cancelSalesOrder } from "../../actions";
@@ -73,6 +75,16 @@ export function SoDetail(props: Props) {
   const [returnOpen,  setReturnOpen]  = useState(false);
   const [confirming,  setConfirming]  = useState(false);
   const [cancelling,  setCancelling]  = useState(false);
+  const { sortKey, sortDir, toggle }  = useSortable("productName");
+
+  const sortedItems = useMemo(() => {
+    if (!sortKey) return items;
+    return [...items].sort((a, b) => {
+      const aVals: Record<string, string | number> = { productName: a.productName, quantity: a.quantity, unitPrice: a.unitPrice, totalPrice: a.totalPrice };
+      const bVals: Record<string, string | number> = { productName: b.productName, quantity: b.quantity, unitPrice: b.unitPrice, totalPrice: b.totalPrice };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [items, sortKey, sortDir]);
 
   const outstanding = totalAmount - amountPaid;
   const cfg = STATUS_CONFIG[status];
@@ -184,15 +196,17 @@ export function SoDetail(props: Props) {
           <div className="rounded-lg border">
             <Table>
               <TableHeader>
+                {(() => { const sp = { sortKey, sortDir, toggle }; return (
                 <TableRow>
-                  <TableHead>Product</TableHead>
-                  <TableHead className="text-right">Qty</TableHead>
-                  <TableHead className="text-right">Unit Price</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
+                  <TableHead><SortButton col="productName" label="Product"    {...sp} /></TableHead>
+                  <TableHead className="text-right"><SortButton col="quantity"   label="Qty"        {...sp} className="justify-end" /></TableHead>
+                  <TableHead className="text-right"><SortButton col="unitPrice"  label="Unit Price" {...sp} className="justify-end" /></TableHead>
+                  <TableHead className="text-right"><SortButton col="totalPrice" label="Total"      {...sp} className="justify-end" /></TableHead>
                 </TableRow>
+                ); })()}
               </TableHeader>
               <TableBody>
-                {items.map((item) => (
+                {sortedItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
                       <div className="font-medium">{item.productName}</div>

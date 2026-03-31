@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { startOfMonth, subMonths, format } from "date-fns";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
+import { requireMinRole } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, ShoppingCart, Receipt, DollarSign, CreditCard, Bell } from "lucide-react";
 import { RevenueChart } from "./_components/revenue-chart";
@@ -11,8 +10,8 @@ import { RecentActivity } from "./_components/recent-activity";
 export const metadata = { title: "Dashboard — Shanti Special Food Industry ERP" };
 
 export default async function DashboardPage() {
-  const { userId } = await auth();
-  if (!userId) redirect("/sign-in");
+  // Redirect no-role users → /pending; wrong role can't happen (all roles allowed)
+  await requireMinRole("employee");
 
   const now        = new Date();
   const monthStart = startOfMonth(now);

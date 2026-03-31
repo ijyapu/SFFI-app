@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -8,6 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertTriangle, XCircle, CheckCircle } from "lucide-react";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 
 type StockItem = {
   id: string;
@@ -37,24 +39,27 @@ export function StockLevelTable({ items, totalValue }: Props) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<"stock" | "value" | "name">("stock");
+  const { sortKey, sortDir, toggle } = useSortable("currentStock");
 
   const categories = [...new Set(items.map((i) => i.category.name))].sort();
 
-  const filtered = items
-    .filter((item) => {
-      const matchSearch =
-        item.name.toLowerCase().includes(search.toLowerCase()) ||
-        item.sku.toLowerCase().includes(search.toLowerCase());
-      const matchStatus = statusFilter === "all" || item.status === statusFilter;
-      const matchCat = categoryFilter === "all" || item.category.name === categoryFilter;
-      return matchSearch && matchStatus && matchCat;
-    })
-    .sort((a, b) => {
-      if (sortBy === "stock") return a.currentStock - b.currentStock;
-      if (sortBy === "value") return b.stockValue - a.stockValue;
-      return a.name.localeCompare(b.name);
+  const filtered = items.filter((item) => {
+    const matchSearch =
+      item.name.toLowerCase().includes(search.toLowerCase()) ||
+      item.sku.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === "all" || item.status === statusFilter;
+    const matchCat = categoryFilter === "all" || item.category.name === categoryFilter;
+    return matchSearch && matchStatus && matchCat;
+  });
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return filtered;
+    return [...filtered].sort((a, b) => {
+      const aVals: Record<string, string | number> = { name: a.name, category: a.category.name, currentStock: a.currentStock, reorderLevel: a.reorderLevel, stockValue: a.stockValue, status: a.status };
+      const bVals: Record<string, string | number> = { name: b.name, category: b.category.name, currentStock: b.currentStock, reorderLevel: b.reorderLevel, stockValue: b.stockValue, status: b.status };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
     });
+  }, [filtered, sortKey, sortDir]);
 
   const filteredValue = filtered.reduce((sum, i) => sum + i.stockValue, 0);
 
@@ -106,40 +111,32 @@ export function StockLevelTable({ items, totalValue }: Props) {
             ))}
           </SelectContent>
         </Select>
-        <Select value={sortBy} onValueChange={(v) => v && setSortBy(v as typeof sortBy)}>
-          <SelectTrigger className="w-36">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="stock">Sort: Stock ↑</SelectItem>
-            <SelectItem value="value">Sort: Value ↓</SelectItem>
-            <SelectItem value="name">Sort: Name</SelectItem>
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Table */}
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
+            {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead className="text-right">Current Stock</TableHead>
-              <TableHead className="text-right">Reorder At</TableHead>
-              <TableHead className="text-right">Stock Value</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead><SortButton col="name"         label="Product"       {...sp} /></TableHead>
+              <TableHead><SortButton col="category"     label="Category"      {...sp} /></TableHead>
+              <TableHead className="text-right"><SortButton col="currentStock" label="Current Stock" {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="reorderLevel" label="Reorder At"    {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-right"><SortButton col="stockValue"   label="Stock Value"   {...sp} className="justify-end" /></TableHead>
+              <TableHead><SortButton col="status"       label="Status"        {...sp} /></TableHead>
             </TableRow>
+            ); })()}
           </TableHeader>
           <TableBody>
-            {filtered.length === 0 && (
+            {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
                   No products match your filters.
                 </TableCell>
               </TableRow>
             )}
-            {filtered.map((item) => {
+            {sorted.map((item) => {
               const cfg = STATUS_CONFIG[item.status];
               const StatusIcon = cfg.icon;
               return (
@@ -187,7 +184,7 @@ export function StockLevelTable({ items, totalValue }: Props) {
       {/* Footer totals */}
       <div className="flex items-center justify-between text-sm">
         <span className="text-muted-foreground">
-          {filtered.length} of {items.length} products
+          {sorted.length} of {items.length} products
         </span>
         <div className="flex items-center gap-6 text-muted-foreground">
           <span>

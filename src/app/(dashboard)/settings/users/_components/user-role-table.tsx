@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useMemo, useTransition } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { setUserRole } from "../actions";
 import type { AppRole } from "@/types/globals";
+import { SortButton } from "@/components/ui/sort-icon";
+import { useSortable, compareValues } from "@/hooks/use-sortable";
 
 export interface UserRow {
   id: string;
@@ -91,7 +93,17 @@ function RoleSelect({
 }
 
 export function UserRoleTable({ users }: Props) {
+  const { sortKey, sortDir, toggle } = useSortable("fullName");
   const noAccessCount = users.filter((u) => !u.role).length;
+
+  const sorted = useMemo(() => {
+    if (!sortKey) return users;
+    return [...users].sort((a, b) => {
+      const aVals: Record<string, string | number> = { fullName: a.fullName ?? a.email, email: a.email, createdAt: a.createdAt, role: a.role ?? "" };
+      const bVals: Record<string, string | number> = { fullName: b.fullName ?? b.email, email: b.email, createdAt: b.createdAt, role: b.role ?? "" };
+      return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
+    });
+  }, [users, sortKey, sortDir]);
 
   return (
     <Card>
@@ -107,15 +119,17 @@ export function UserRoleTable({ users }: Props) {
       <CardContent className="p-0">
         <table className="w-full text-sm">
           <thead className="border-b border-border bg-muted/30">
+            {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">User</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell">Joined</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">Current role</th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="fullName"  label="User"         {...sp} /></th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden sm:table-cell"><SortButton col="createdAt" label="Joined" {...sp} /></th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="role"      label="Current role" {...sp} /></th>
               <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground">Change role</th>
             </tr>
+            ); })()}
           </thead>
           <tbody>
-            {users.map((user) => (
+            {sorted.map((user) => (
               <tr
                 key={user.id}
                 className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors"
