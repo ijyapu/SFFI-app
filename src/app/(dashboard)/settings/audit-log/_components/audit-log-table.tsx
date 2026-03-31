@@ -108,7 +108,7 @@ export function AuditLogTable({ entries, total, page, pageSize }: Props) {
               )}
               {entries.map((entry) => {
                 const isExpanded = expanded.has(entry.id);
-                const hasDiff    = entry.before || entry.after;
+                const hasDiff    = !!(entry.before || entry.after);
                 return (
                   <>
                     <tr

@@ -26,7 +26,7 @@ export default async function StockValuationPage() {
       costPrice:    cost,
       totalValue:   value,
       reorderLevel: Number(p.reorderLevel),
-      belowReorder: p.reorderLevel > 0 && stock <= Number(p.reorderLevel),
+      belowReorder: Number(p.reorderLevel) > 0 && stock <= Number(p.reorderLevel),
     };
 
     const existing = categoryMap.get(p.category.name);
