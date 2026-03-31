@@ -49,7 +49,7 @@ export default function SignInPage() {
             </div>
             <h1 className="text-4xl font-bold text-white leading-tight tracking-tight">
               Welcome to<br />
-              <span className="text-red-400">SHANTI SPECIAL FOOD INDUSTRY</span>
+              <span className="text-red-600">SHANTI SPECIAL FOOD INDUSTRY</span>
             </h1>
             <p className="text-slate-400 text-sm leading-relaxed">
               A secure, unified workspace for managing your entire
@@ -89,8 +89,8 @@ export default function SignInPage() {
             <Image src="/ssfi-logo.jpg" alt="SSFI" fill className="object-contain" />
           </div>
           <div>
-            <p className="font-bold text-gray-900 text-sm">Shanti Special Food Industry</p>
-            <p className="text-red-500 text-[9px] tracking-widest uppercase">Enterprise Portal</p>
+            <p className="font-bold text-red-600 text-sm">Shanti Special Food Industry</p>
+            <p className="text-grey-900 text-[9px] tracking-widest uppercase">Enterprise Portal</p>
           </div>
         </div>
 
@@ -99,7 +99,7 @@ export default function SignInPage() {
           {/* Heading */}
           <div className="mb-8">
             <h2 className="text-[1.6rem] font-bold text-gray-900 tracking-tight leading-snug">
-              Welcome to SFFI ERP
+              Welcome to <span className="text-red-600">SSFI ERP</span>
             </h2>
             <p className="text-gray-400 text-sm mt-2 leading-relaxed">
               Sign in with your Google account to access the ERP portal.
