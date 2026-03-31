@@ -117,7 +117,7 @@ export default async function ExpensesPage() {
       <ExpenseTable
         expenses={serialised}
         categories={categories}
-        currentUserId={userId}
+        currentUserId={userId ?? ""}
         canApprove={userCanApprove}
       />
     </div>
