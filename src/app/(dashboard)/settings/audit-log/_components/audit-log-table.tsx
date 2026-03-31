@@ -69,7 +69,7 @@ function DiffViewer({ before, after }: { before: unknown; after: unknown }) {
 
 export function AuditLogTable({ entries, total, page, pageSize }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const { sortKey, sortDir, toggle } = useSortable("createdAt");
+  const { sortKey, sortDir, toggle: sortToggle } = useSortable("createdAt");
 
   const sorted = useMemo(() => {
     if (!sortKey) return entries;
@@ -102,7 +102,7 @@ export function AuditLogTable({ entries, total, page, pageSize }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/30">
-              {(() => { const sp = { sortKey, sortDir, toggle }; return (
+              {(() => { const sp = { sortKey, sortDir, toggle: sortToggle }; return (
               <tr>
                 <th className="w-8" />
                 <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="createdAt"  label="When"   {...sp} /></th>

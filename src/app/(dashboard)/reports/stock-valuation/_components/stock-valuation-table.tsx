@@ -35,7 +35,7 @@ const Rs = (n: number) =>
 
 export function StockValuationTable({ categories, grandTotal, asOf }: Props) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const { sortKey, sortDir, toggle } = useSortable("name");
+  const { sortKey, sortDir, toggle: sortToggle } = useSortable("name");
 
   function sortProducts(products: StockRow[]) {
     if (!sortKey) return products;
@@ -96,7 +96,7 @@ export function StockValuationTable({ categories, grandTotal, asOf }: Props) {
               <CardContent className="p-0">
                 <table className="w-full text-sm">
                   <thead className="border-t border-border bg-muted/20">
-                    {(() => { const sp = { sortKey, sortDir, toggle }; return (
+                    {(() => { const sp = { sortKey, sortDir, toggle: sortToggle }; return (
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground"><SortButton col="name"         label="Product"    {...sp} /></th>
                       <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground"><SortButton col="currentStock" label="Stock"      {...sp} className="justify-end" /></th>
