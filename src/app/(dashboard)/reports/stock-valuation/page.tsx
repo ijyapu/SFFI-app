@@ -2,7 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
 import { StockValuationTable, type StockCategory } from "./_components/stock-valuation-table";
 
-export const metadata = { title: "Stock Valuation — Reports — Shanti Special Food Industry ERP" };
+export const metadata = {
+  title: "Stock Valuation — Reports — Shanti Special Food Industry ERP",
+};
 
 export default async function StockValuationPage() {
   const products = await prisma.product.findMany({
@@ -11,22 +13,24 @@ export default async function StockValuationPage() {
     orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
   });
 
-  // Group by category
   const categoryMap = new Map<string, StockCategory>();
+
   for (const p of products) {
     const stock = Number(p.currentStock);
-    const cost  = Number(p.costPrice);
+    const cost = Number(p.costPrice);
+    const reorderLevel = Number(p.reorderLevel ?? 0);
     const value = stock * cost;
+
     const row = {
-      id:           p.id,
-      name:         p.name,
-      sku:          p.sku,
-      unit:         p.unit.name,
+      id: p.id,
+      name: p.name,
+      sku: p.sku,
+      unit: p.unit.name,
       currentStock: stock,
-      costPrice:    cost,
-      totalValue:   value,
-      reorderLevel: Number(p.reorderLevel),
-      belowReorder: Number(p.reorderLevel) > 0 && stock <= Number(p.reorderLevel),
+      costPrice: cost,
+      totalValue: value,
+      reorderLevel,
+      belowReorder: reorderLevel > 0 && stock <= reorderLevel,
     };
 
     const existing = categoryMap.get(p.category.name);
@@ -35,7 +39,7 @@ export default async function StockValuationPage() {
       existing.subtotal += value;
     } else {
       categoryMap.set(p.category.name, {
-        name:     p.category.name,
+        name: p.category.name,
         products: [row],
         subtotal: value,
       });
@@ -43,7 +47,7 @@ export default async function StockValuationPage() {
   }
 
   const categories = Array.from(categoryMap.values());
-  const grandTotal  = categories.reduce((s, c) => s + c.subtotal, 0);
+  const grandTotal = categories.reduce((sum, category) => sum + category.subtotal, 0);
 
   return (
     <StockValuationTable
