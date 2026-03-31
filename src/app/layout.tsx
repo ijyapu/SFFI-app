@@ -22,10 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider
-      afterSignInUrl="/auth-callback"
-      afterSignUpUrl="/auth-callback"
-    >
+    <ClerkProvider>
       <html lang="en" className={`${geistSans.variable} h-full antialiased`}>
         <body className="min-h-full bg-background text-foreground">
           <TooltipProvider>{children}</TooltipProvider>
