@@ -122,7 +122,11 @@ function ProductCombobox({
         <div className="absolute z-50 top-full mt-1 w-full min-w-56 rounded-md border bg-popover shadow-md overflow-hidden">
           {matches.length === 0 ? (
             <div className="px-3 py-2 text-sm text-muted-foreground">
-              No match — name will be saved as-is
+              No product found — use the{" "}
+              <span className="inline-flex items-center gap-0.5 font-medium text-foreground">
+                <PackagePlus className="h-3.5 w-3.5" /> button
+              </span>{" "}
+              next to this field to add it to inventory first.
             </div>
           ) : (
             <ul className="max-h-52 overflow-y-auto">
@@ -232,7 +236,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
   // ── Inline product form ─────────────────────────────────────────────────────
   const productForm = useForm<NewProductValues>({
     resolver: zodResolver(newProductSchema),
-    defaultValues: { name: "", sku: "", categoryId: "", unitId: "", costPrice: 0 },
+    defaultValues: { name: "", categoryId: "", unitId: "" },
   });
 
   async function handleCreateProduct(values: NewProductValues) {
@@ -264,25 +268,27 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                 control={form.control}
                 name="supplierId"
                 render={({ field }) => (
-                  <FormItem>
+                  <FormItem className="col-span-full">
                     <FormLabel>Supplier *</FormLabel>
                     <div className="flex gap-1.5">
-                      <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
-                        <FormControl>
-                          <SelectTrigger className="flex-1">
-                            <SelectValue placeholder="Select supplier">
-                              {selectedSupplierName ?? undefined}
-                            </SelectValue>
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="min-w-72 max-h-64">
-                          {suppliers.map((s) => (
-                            <SelectItem key={s.id} value={s.id} label={s.name}>
-                              {s.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <div className="flex-1">
+                        <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select supplier">
+                                {selectedSupplierName ?? undefined}
+                              </SelectValue>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="min-w-72 max-h-64">
+                            {suppliers.map((s) => (
+                              <SelectItem key={s.id} value={s.id} label={s.name}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                       <Button type="button" variant="outline" size="icon" onClick={() => setSupplierOpen(true)} title="Add supplier">
                         <UserPlus className="h-4 w-4" />
                       </Button>
@@ -521,7 +527,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                           <FormControl>
                             <Input
                               className="h-8 text-sm" type="number" min="0.001" step="0.001"
-                              value={f.value}
+                              value={f.value === 0 ? "" : f.value}
                               onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
                             />
                           </FormControl>
@@ -540,7 +546,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                           <FormControl>
                             <Input
                               className="h-8 text-sm" type="number" min="0" step="0.01"
-                              value={f.value}
+                              value={f.value === 0 ? "" : f.value}
                               onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
                             />
                           </FormControl>
@@ -715,9 +721,6 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
               <FormField control={productForm.control} name="name" render={({ field }) => (
                 <FormItem><FormLabel>Product Name *</FormLabel><FormControl><Input {...field} placeholder="Product name" /></FormControl><FormMessage /></FormItem>
               )} />
-              <FormField control={productForm.control} name="sku" render={({ field }) => (
-                <FormItem><FormLabel>SKU *</FormLabel><FormControl><Input {...field} placeholder="e.g. PROD-001" /></FormControl><FormMessage /></FormItem>
-              )} />
               <div className="grid grid-cols-2 gap-3">
                 <FormField control={productForm.control} name="categoryId" render={({ field }) => (
                   <FormItem>
@@ -756,16 +759,6 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                   </FormItem>
                 )} />
               </div>
-              <FormField control={productForm.control} name="costPrice" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Cost Price (Rs)</FormLabel>
-                  <FormControl>
-                    <Input type="number" min="0" step="0.01" value={field.value}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setProductOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={productForm.formState.isSubmitting}>

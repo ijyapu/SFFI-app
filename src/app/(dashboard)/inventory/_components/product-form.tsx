@@ -160,7 +160,7 @@ export function ProductForm({ open, onClose, product, categories, units }: Props
                   <FormLabel>Cost Price (Rs)</FormLabel>
                   <FormControl>
                     <Input type="number" step="0.01" min="0"
-                      value={field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
+                      value={field.value === 0 ? "" : field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
@@ -173,7 +173,7 @@ export function ProductForm({ open, onClose, product, categories, units }: Props
                   <FormLabel>Selling Price (Rs)</FormLabel>
                   <FormControl>
                     <Input type="number" step="0.01" min="0"
-                      value={field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
+                      value={field.value === 0 ? "" : field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>
@@ -186,7 +186,7 @@ export function ProductForm({ open, onClose, product, categories, units }: Props
                   <FormLabel>Reorder Level</FormLabel>
                   <FormControl>
                     <Input type="number" step="0.001" min="0"
-                      value={field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
+                      value={field.value === 0 ? "" : field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                     />
                   </FormControl>

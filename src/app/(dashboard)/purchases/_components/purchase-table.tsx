@@ -169,10 +169,9 @@ export function PurchaseTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableHead col="invoiceNo"    label="Invoice No." />
                 <SortableHead col="supplierName" label="Supplier" />
+                <SortableHead col="invoiceNo"    label="Invoice No." />
                 <SortableHead col="date"         label="Date" />
-                <TableHead>Method</TableHead>
                 <TableHead className="text-right">Total (Rs)</TableHead>
                 <SortableHead col="amountPaid"   label="Paid (Rs)"         className="text-right" />
                 <SortableHead col="outstanding"  label="Outstanding (Rs)"  className="text-right" />
@@ -182,27 +181,17 @@ export function PurchaseTable({
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                     {search || activeSupplier ? "No purchases match your filters." : "No purchases recorded yet."}
                   </TableCell>
                 </TableRow>
               )}
               {filtered.map((p) => (
                 <TableRow key={p.id}>
-                  <TableCell className="font-mono font-medium">{p.invoiceNo}</TableCell>
                   <TableCell className="max-w-35 truncate">{p.supplierName}</TableCell>
+                  <TableCell className="font-mono font-medium">{p.invoiceNo}</TableCell>
                   <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                     {format(new Date(p.date), "dd MMM yyyy")}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant="secondary"
-                      className={p.paymentMethod === "CASH"
-                        ? "bg-green-100 text-green-700"
-                        : "bg-orange-100 text-orange-700"}
-                    >
-                      {p.paymentMethod}
-                    </Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     {p.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

@@ -90,10 +90,8 @@ export type NewSupplierValues = z.infer<typeof newSupplierSchema>;
 
 export const newProductSchema = z.object({
   name:       z.string().min(1, "Name is required"),
-  sku:        z.string().min(1, "SKU is required"),
   categoryId: z.string().min(1, "Select a category"),
   unitId:     z.string().min(1, "Select a unit"),
-  costPrice:  z.number().min(0, "Cost must be ≥ 0"),
 });
 
 export type NewProductValues = z.infer<typeof newProductSchema>;

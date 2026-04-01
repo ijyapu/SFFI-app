@@ -210,7 +210,7 @@ export function SoForm({ customers, products }: Props) {
                             type="number"
                             min="0.001"
                             step="0.001"
-                            value={f.value}
+                            value={f.value === 0 ? "" : f.value}
                             onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>
@@ -229,7 +229,7 @@ export function SoForm({ customers, products }: Props) {
                             type="number"
                             min="0"
                             step="0.01"
-                            value={f.value}
+                            value={f.value === 0 ? "" : f.value}
                             onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
                           />
                         </FormControl>

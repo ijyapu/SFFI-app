@@ -305,19 +305,28 @@ export async function recordPayment(poId: string, values: PaymentFormValues) {
 // ─── Quick Product Create (returns new product for inline form use) ───────
 
 export async function createProductInline(values: {
-  name: string; sku: string; categoryId: string; unitId: string; costPrice: number;
+  name: string; categoryId: string; unitId: string;
 }) {
   await requirePurchasesAccess();
   const data = newProductSchema.parse(values);
-  const existing = await prisma.product.findUnique({ where: { sku: data.sku } });
-  if (existing) throw new Error(`SKU "${data.sku}" is already taken`);
+
+  // Auto-generate SKU: first 3 letters of category name + highest existing number + 1
+  const category = await prisma.category.findUnique({ where: { id: data.categoryId }, select: { name: true } });
+  const prefix = (category?.name ?? "PRD").slice(0, 3).toUpperCase().replace(/[^A-Z]/g, "X");
+  const last = await prisma.product.findFirst({
+    where: { sku: { startsWith: prefix + "-" } },
+    orderBy: { sku: "desc" },
+  });
+  const next = last ? (parseInt(last.sku.split("-")[1] ?? "0") || 0) + 1 : 1;
+  const sku = `${prefix}-${String(next).padStart(3, "0")}`;
+
   const product = await prisma.product.create({
     data: {
       name:         data.name,
-      sku:          data.sku,
+      sku,
       categoryId:   data.categoryId,
       unitId:       data.unitId,
-      costPrice:    data.costPrice,
+      costPrice:    0,
       sellingPrice: 0,
     },
     select: { id: true, name: true, sku: true, costPrice: true, unit: { select: { name: true } } },

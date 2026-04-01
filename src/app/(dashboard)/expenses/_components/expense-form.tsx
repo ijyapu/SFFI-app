@@ -145,7 +145,7 @@ export function ExpenseForm({ open, onClose, expense, categories }: Props) {
                         type="number"
                         min="0.01"
                         step="0.01"
-                        value={field.value}
+                        value={field.value === 0 ? "" : field.value}
                         onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
