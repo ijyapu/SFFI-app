@@ -209,10 +209,10 @@ export function PoDetail(props: Props) {
                 {(() => { const sp = { sortKey, sortDir, toggle }; return (
                 <TableRow>
                   <TableHead><SortButton col="productName" label="Product"   {...sp} /></TableHead>
-                  <TableHead className="text-right"><SortButton col="quantity"    label="Ordered"   {...sp} className="justify-end" /></TableHead>
-                  <TableHead className="text-right"><SortButton col="receivedQty" label="Received"  {...sp} className="justify-end" /></TableHead>
-                  <TableHead className="text-right"><SortButton col="unitCost"    label="Unit Cost" {...sp} className="justify-end" /></TableHead>
-                  <TableHead className="text-right"><SortButton col="totalCost"   label="Total"     {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric><SortButton col="quantity"    label="Ordered"   {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric><SortButton col="receivedQty" label="Received"  {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric><SortButton col="unitCost"    label="Unit Cost" {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric><SortButton col="totalCost"   label="Total"     {...sp} className="justify-end" /></TableHead>
                 </TableRow>
                 ); })()}
               </TableHeader>
@@ -225,18 +225,18 @@ export function PoDetail(props: Props) {
                         <div className="font-medium">{item.productName}</div>
                         <div className="text-xs text-muted-foreground">{item.unitName}</div>
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell numeric>
                         {Number(item.quantity).toLocaleString(undefined, { maximumFractionDigits: 3 })}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell numeric>
                         <span className={fullyReceived ? "text-green-600 font-medium" : "text-amber-600"}>
                           {Number(item.receivedQty).toLocaleString(undefined, { maximumFractionDigits: 3 })}
                         </span>
                       </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
+                      <TableCell numeric className="text-muted-foreground">
                         Rs {Number(item.unitCost).toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell numeric className="font-medium">
                         Rs {Number(item.totalCost).toFixed(2)}
                       </TableCell>
                     </TableRow>

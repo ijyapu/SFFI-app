@@ -98,9 +98,9 @@ export function PurchaseTable({
     }
   }
 
-  function SortableHead({ col, label, className }: { col: SortKey; label: string; className?: string }) {
+  function SortableHead({ col, label, className, numeric }: { col: SortKey; label: string; className?: string; numeric?: boolean }) {
     return (
-      <TableHead className={`cursor-pointer select-none whitespace-nowrap ${className ?? ""}`} onClick={() => toggleSort(col)}>
+      <TableHead numeric={numeric} className={`cursor-pointer select-none whitespace-nowrap ${className ?? ""}`} onClick={() => toggleSort(col)}>
         {label}<SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />
       </TableHead>
     );
@@ -172,9 +172,9 @@ export function PurchaseTable({
                 <SortableHead col="supplierName" label="Supplier" />
                 <SortableHead col="invoiceNo"    label="Invoice No." />
                 <SortableHead col="date"         label="Date" />
-                <TableHead className="text-right">Total (Rs)</TableHead>
-                <SortableHead col="amountPaid"   label="Paid (Rs)"         className="text-right" />
-                <SortableHead col="outstanding"  label="Outstanding (Rs)"  className="text-right" />
+                <TableHead numeric>Total (Rs)</TableHead>
+                <SortableHead col="amountPaid"   label="Paid (Rs)"         numeric />
+                <SortableHead col="outstanding"  label="Outstanding (Rs)"  numeric />
                 <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
@@ -193,13 +193,13 @@ export function PurchaseTable({
                   <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                     {format(new Date(p.date), "dd MMM yyyy")}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     {p.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell numeric className="font-medium">
                     {p.amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     {p.outstanding > 0.005 ? (
                       <span className="text-orange-600 font-medium">
                         {p.outstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

@@ -138,9 +138,9 @@ export function ProductTable({ products, categories, units }: Props) {
               <TableHead><SortButton col="name"         label="Product"    {...sp} /></TableHead>
               <TableHead><SortButton col="category"     label="Category"   {...sp} /></TableHead>
               <TableHead>Unit</TableHead>
-              <TableHead className="text-right"><SortButton col="costPrice"    label="Cost (Rs)"  {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="sellingPrice" label="Price (Rs)" {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="currentStock" label="Stock"      {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="costPrice"    label="Cost (Rs)"  {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="sellingPrice" label="Price (Rs)" {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="currentStock" label="Stock"      {...sp} className="justify-end" /></TableHead>
               <TableHead className="w-20" />
             </TableRow>
             ); })()}
@@ -175,16 +175,16 @@ export function ProductTable({ products, categories, units }: Props) {
                     <Badge variant="secondary">{product.category.name}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{product.unit.name}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     {Number(product.costPrice).toFixed(2)}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     {Number(product.sellingPrice) > 0
                       ? Number(product.sellingPrice).toFixed(2)
                       : <span className="text-muted-foreground">—</span>
                     }
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     <div className="flex items-center justify-end gap-1.5">
                       {low && (
                         <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />

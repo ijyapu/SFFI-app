@@ -199,9 +199,9 @@ export function SoDetail(props: Props) {
                 {(() => { const sp = { sortKey, sortDir, toggle }; return (
                 <TableRow>
                   <TableHead><SortButton col="productName" label="Product"    {...sp} /></TableHead>
-                  <TableHead className="text-right"><SortButton col="quantity"   label="Qty"        {...sp} className="justify-end" /></TableHead>
-                  <TableHead className="text-right"><SortButton col="unitPrice"  label="Unit Price" {...sp} className="justify-end" /></TableHead>
-                  <TableHead className="text-right"><SortButton col="totalPrice" label="Total"      {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric><SortButton col="quantity"   label="Qty"        {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric><SortButton col="unitPrice"  label="Unit Price" {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric><SortButton col="totalPrice" label="Total"      {...sp} className="justify-end" /></TableHead>
                 </TableRow>
                 ); })()}
               </TableHeader>
@@ -212,13 +212,13 @@ export function SoDetail(props: Props) {
                       <div className="font-medium">{item.productName}</div>
                       <div className="text-xs text-muted-foreground">{item.unitName}</div>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell numeric>
                       {item.quantity.toLocaleString(undefined, { maximumFractionDigits: 3 })}
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
+                    <TableCell numeric className="text-muted-foreground">
                       Rs {item.unitPrice.toFixed(2)}
                     </TableCell>
-                    <TableCell className="text-right font-medium">
+                    <TableCell numeric className="font-medium">
                       Rs {item.totalPrice.toFixed(2)}
                     </TableCell>
                   </TableRow>

@@ -121,9 +121,9 @@ export function StockLevelTable({ items, totalValue }: Props) {
             <TableRow>
               <TableHead><SortButton col="name"         label="Product"       {...sp} /></TableHead>
               <TableHead><SortButton col="category"     label="Category"      {...sp} /></TableHead>
-              <TableHead className="text-right"><SortButton col="currentStock" label="Current Stock" {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="reorderLevel" label="Reorder At"    {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="stockValue"   label="Stock Value"   {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="currentStock" label="Current Stock" {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="reorderLevel" label="Reorder At"    {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="stockValue"   label="Stock Value"   {...sp} className="justify-end" /></TableHead>
               <TableHead><SortButton col="status"       label="Status"        {...sp} /></TableHead>
             </TableRow>
             ); })()}
@@ -148,19 +148,19 @@ export function StockLevelTable({ items, totalValue }: Props) {
                   <TableCell>
                     <Badge variant="secondary">{item.category.name}</Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     <div className={`font-medium ${item.status !== "ok" ? cfg.className : ""}`}>
                       {item.currentStock.toLocaleString(undefined, { maximumFractionDigits: 3 })}
                       <span className="text-xs text-muted-foreground ml-1">{item.unit.name}</span>
                     </div>
                     <StockBar item={item} />
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
+                  <TableCell numeric className="text-muted-foreground">
                     {item.reorderLevel > 0
                       ? `${item.reorderLevel.toLocaleString()} ${item.unit.name}`
                       : "—"}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     {item.stockValue > 0
                       ? `Rs ${item.stockValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                       : <span className="text-muted-foreground">—</span>

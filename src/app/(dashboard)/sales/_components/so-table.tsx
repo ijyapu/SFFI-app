@@ -102,8 +102,8 @@ export function SoTable({ orders }: { orders: SO[] }) {
               <TableHead><SortButton col="customerName" label="Customer"     {...sp} /></TableHead>
               <TableHead><SortButton col="orderDate"    label="Date"         {...sp} /></TableHead>
               <TableHead><SortButton col="status"       label="Status"       {...sp} /></TableHead>
-              <TableHead className="text-right"><SortButton col="totalAmount"  label="Total (Rs)"    {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="outstanding"  label="Outstanding"   {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="totalAmount"  label="Total (Rs)"    {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="outstanding"  label="Outstanding"   {...sp} className="justify-end" /></TableHead>
               <TableHead className="w-20" />
             </TableRow>
             ); })()}
@@ -131,10 +131,10 @@ export function SoTable({ orders }: { orders: SO[] }) {
                   <TableCell>
                     <Badge variant="secondary" className={cfg.className}>{cfg.label}</Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     {so.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     {outstanding > 0.001 ? (
                       <span className="text-destructive font-medium">
                         {outstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

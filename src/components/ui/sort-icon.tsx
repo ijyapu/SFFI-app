@@ -21,7 +21,7 @@ export function SortButton({
   return (
     <button
       onClick={() => toggle(col)}
-      className={`flex items-center gap-1 hover:text-foreground transition-colors whitespace-nowrap ${className}`}
+      className={`flex w-full items-center gap-1 hover:text-foreground transition-colors whitespace-nowrap ${className}`}
     >
       {label}
       <SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />

@@ -24,6 +24,7 @@ type DeductionEntry = {
   id: string;
   amount: number;
   givenBy: string | null;
+  givenAt: string | null;
   paymentMode: string;
   notes: string | null;
   photoUrl: string | null;
@@ -142,13 +143,13 @@ export function PayrollDetail({ id, month, year, status, notes, items }: Props) 
                 {(() => { const sp = { sortKey, sortDir, toggle }; return (
                 <TableRow className="bg-muted/40">
                   <TableHead className="w-48"><SortButton col="employeeName" label="Employee"       {...sp} /></TableHead>
-                  <TableHead className="text-right"><SortButton col="basicSalary"  label="Salary (Rs)"    {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric><SortButton col="basicSalary"  label="Salary (Rs)"    {...sp} className="justify-end" /></TableHead>
                   {hasCarryover && (
-                    <TableHead className="text-right text-blue-600"><SortButton col="carryoverIn" label="Carryover (Rs)" {...sp} className="justify-end" /></TableHead>
+                    <TableHead numeric className="text-blue-600"><SortButton col="carryoverIn" label="Carryover (Rs)" {...sp} className="justify-end" /></TableHead>
                   )}
-                  <TableHead className="text-right">Total Owed (Rs)</TableHead>
-                  <TableHead className="text-right"><SortButton col="totalPaid"    label="Paid (Rs)"      {...sp} className="justify-end" /></TableHead>
-                  <TableHead className="text-right"><SortButton col="remaining"    label="Remaining (Rs)" {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric>Total Owed (Rs)</TableHead>
+                  <TableHead numeric><SortButton col="totalPaid"    label="Paid (Rs)"      {...sp} className="justify-end" /></TableHead>
+                  <TableHead numeric><SortButton col="remaining"    label="Remaining (Rs)" {...sp} className="justify-end" /></TableHead>
                   <TableHead className="w-24" />
                 </TableRow>
                 ); })()}
@@ -169,25 +170,25 @@ export function PayrollDetail({ id, month, year, status, notes, items }: Props) 
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell numeric>
                         {fmt(item.basicSalary)}
                       </TableCell>
                       {hasCarryover && (
-                        <TableCell className="text-right tabular-nums text-blue-600">
+                        <TableCell numeric className="text-blue-600">
                           {item.carryoverIn > 0 ? `+${fmt(item.carryoverIn)}` : "—"}
                         </TableCell>
                       )}
-                      <TableCell className="text-right tabular-nums font-medium">
+                      <TableCell numeric className="font-medium">
                         {fmt(totalOwedItem)}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell numeric>
                         {item.totalPaid > 0 ? (
                           <span className="text-emerald-600 font-medium">{fmt(item.totalPaid)}</span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right tabular-nums">
+                      <TableCell numeric>
                         {fullyPaid ? (
                           <span className="text-muted-foreground text-xs">Fully paid</span>
                         ) : (

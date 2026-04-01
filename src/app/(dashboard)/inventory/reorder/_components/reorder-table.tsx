@@ -75,10 +75,10 @@ export function ReorderTable({ items }: { items: ReorderItem[] }) {
             <TableRow>
               <TableHead><SortButton col="name"         label="Product"        {...sp} /></TableHead>
               <TableHead><SortButton col="category"     label="Category"       {...sp} /></TableHead>
-              <TableHead className="text-right"><SortButton col="currentStock" label="Current Stock"  {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="reorderLevel" label="Reorder Level"  {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="shortfall"    label="Shortfall"      {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="suggestedQty" label="Suggested Order" {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="currentStock" label="Current Stock"  {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="reorderLevel" label="Reorder Level"  {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="shortfall"    label="Shortfall"      {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="suggestedQty" label="Suggested Order" {...sp} className="justify-end" /></TableHead>
               <TableHead><SortButton col="status"       label="Status"         {...sp} /></TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -104,19 +104,19 @@ export function ReorderTable({ items }: { items: ReorderItem[] }) {
                 <TableCell>
                   <Badge variant="secondary">{item.category.name}</Badge>
                 </TableCell>
-                <TableCell className="text-right">
+                <TableCell numeric>
                   <span className={item.status === "out" ? "text-destructive font-semibold" : "text-amber-600 font-medium"}>
                     {item.currentStock.toLocaleString(undefined, { maximumFractionDigits: 3 })}
                   </span>
                   <span className="text-xs text-muted-foreground ml-1">{item.unit.name}</span>
                 </TableCell>
-                <TableCell className="text-right text-muted-foreground">
+                <TableCell numeric className="text-muted-foreground">
                   {item.reorderLevel.toLocaleString()} {item.unit.name}
                 </TableCell>
-                <TableCell className="text-right text-destructive font-medium">
+                <TableCell numeric className="text-destructive font-medium">
                   {item.shortfall.toLocaleString(undefined, { maximumFractionDigits: 3 })} {item.unit.name}
                 </TableCell>
-                <TableCell className="text-right font-semibold">
+                <TableCell numeric className="font-semibold">
                   {item.suggestedQty.toLocaleString(undefined, { maximumFractionDigits: 3 })} {item.unit.name}
                 </TableCell>
                 <TableCell>

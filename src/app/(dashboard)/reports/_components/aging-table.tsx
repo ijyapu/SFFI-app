@@ -111,10 +111,10 @@ export function AgingTable({ rows, partyLabel, orderLabel, linkBase }: Props) {
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground"><SortButton col="partyName"   label={partyLabel}  {...sp} /></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden md:table-cell"><SortButton col="orderDate" label="Date" {...sp} /></th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground hidden md:table-cell"><SortButton col="dueDate"   label="Due"  {...sp} /></th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground"><SortButton col="totalAmount"  label="Total"       {...sp} className="justify-end" /></th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground"><SortButton col="amountPaid"   label="Paid"        {...sp} className="justify-end" /></th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground"><SortButton col="outstanding"  label="Outstanding" {...sp} className="justify-end" /></th>
-                  <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground"><SortButton col="ageDays"      label="Age"         {...sp} className="justify-end" /></th>
+                  <th className="px-4 py-3 text-right tabular-nums text-xs font-medium text-muted-foreground"><SortButton col="totalAmount"  label="Total"       {...sp} className="justify-end" /></th>
+                  <th className="px-4 py-3 text-right tabular-nums text-xs font-medium text-muted-foreground"><SortButton col="amountPaid"   label="Paid"        {...sp} className="justify-end" /></th>
+                  <th className="px-4 py-3 text-right tabular-nums text-xs font-medium text-muted-foreground"><SortButton col="outstanding"  label="Outstanding" {...sp} className="justify-end" /></th>
+                  <th className="px-4 py-3 text-right tabular-nums text-xs font-medium text-muted-foreground"><SortButton col="ageDays"      label="Age"         {...sp} className="justify-end" /></th>
                 </tr>
                 ); })()}
               </thead>
@@ -156,7 +156,7 @@ export function AgingTable({ rows, partyLabel, orderLabel, linkBase }: Props) {
                     <td className={`px-4 py-3 text-right tabular-nums font-medium ${BUCKET_COLOR[row.bucket]}`}>
                       {Rs(row.outstanding)}
                     </td>
-                    <td className={`px-4 py-3 text-right text-xs ${BUCKET_COLOR[row.bucket]}`}>
+                    <td className={`px-4 py-3 text-right tabular-nums text-xs ${BUCKET_COLOR[row.bucket]}`}>
                       {row.ageDays === 0 ? "today" : `${row.ageDays}d`}
                     </td>
                   </tr>

@@ -99,10 +99,10 @@ export function StockValuationTable({ categories, grandTotal, asOf }: Props) {
                     {(() => { const sp = { sortKey, sortDir, toggle: sortToggle }; return (
                     <tr>
                       <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground"><SortButton col="name"         label="Product"    {...sp} /></th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground"><SortButton col="currentStock" label="Stock"      {...sp} className="justify-end" /></th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground"><SortButton col="reorderLevel" label="Reorder"    {...sp} className="justify-end" /></th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground"><SortButton col="costPrice"    label="Cost Price" {...sp} className="justify-end" /></th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground"><SortButton col="totalValue"   label="Value"      {...sp} className="justify-end" /></th>
+                      <th className="px-4 py-2 text-right tabular-nums text-xs font-medium text-muted-foreground"><SortButton col="currentStock" label="Stock"      {...sp} className="justify-end" /></th>
+                      <th className="px-4 py-2 text-right tabular-nums text-xs font-medium text-muted-foreground"><SortButton col="reorderLevel" label="Reorder"    {...sp} className="justify-end" /></th>
+                      <th className="px-4 py-2 text-right tabular-nums text-xs font-medium text-muted-foreground"><SortButton col="costPrice"    label="Cost Price" {...sp} className="justify-end" /></th>
+                      <th className="px-4 py-2 text-right tabular-nums text-xs font-medium text-muted-foreground"><SortButton col="totalValue"   label="Value"      {...sp} className="justify-end" /></th>
                     </tr>
                     ); })()}
                   </thead>

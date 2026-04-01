@@ -156,7 +156,7 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
                 <TableHead><SortButton col="date"        label="Date"        {...sp} /></TableHead>
                 <TableHead><SortButton col="description" label="Description" {...sp} /></TableHead>
                 <TableHead><SortButton col="category"    label="Category"    {...sp} /></TableHead>
-                <TableHead className="text-right"><SortButton col="amount" label="Amount (Rs)" {...sp} className="justify-end" /></TableHead>
+                <TableHead numeric><SortButton col="amount" label="Amount (Rs)" {...sp} className="justify-end" /></TableHead>
                 <TableHead><SortButton col="status"      label="Status"      {...sp} /></TableHead>
                 <TableHead className="w-28" />
               </>); })()}
@@ -197,7 +197,7 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
                       {expense.categoryName}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell numeric className="font-medium">
                     {expense.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell>

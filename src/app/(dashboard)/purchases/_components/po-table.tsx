@@ -104,8 +104,8 @@ export function PoTable({ orders }: { orders: PO[] }) {
               <TableHead><SortButton col="supplierName" label="Supplier"    {...sp} /></TableHead>
               <TableHead><SortButton col="orderDate"    label="Date"        {...sp} /></TableHead>
               <TableHead><SortButton col="status"       label="Status"      {...sp} /></TableHead>
-              <TableHead className="text-right"><SortButton col="totalAmount"  label="Total (Rs)"   {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="outstanding"  label="Outstanding"  {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="totalAmount"  label="Total (Rs)"   {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="outstanding"  label="Outstanding"  {...sp} className="justify-end" /></TableHead>
               <TableHead className="w-20" />
             </TableRow>
             ); })()}
@@ -133,10 +133,10 @@ export function PoTable({ orders }: { orders: PO[] }) {
                   <TableCell>
                     <Badge variant="secondary" className={cfg.className}>{cfg.label}</Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     {po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell numeric>
                     {outstanding > 0.001 ? (
                       <span className="text-destructive font-medium">
                         {outstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
