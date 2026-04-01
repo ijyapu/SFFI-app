@@ -29,6 +29,7 @@ import { addPayrollDeduction, deletePayrollDeduction } from "../../../employees/
 const deductionSchema = z.object({
   amount:      z.number({ error: "Amount is required" }).positive("Must be greater than 0"),
   givenBy:     z.string().optional(),
+  givenAt:     z.string().min(1, "Date is required"),
   paymentMode: z.enum(["CASH", "ONLINE"]),
   notes:       z.string().optional(),
 });
@@ -39,6 +40,7 @@ type DeductionEntry = {
   id: string;
   amount: number;
   givenBy: string | null;
+  givenAt: string | null;
   paymentMode: string;
   notes: string | null;
   photoUrl: string | null;
@@ -72,6 +74,7 @@ export function DeductionDialog({
     defaultValues: {
       amount:      undefined,
       givenBy:     "",
+      givenAt:     format(new Date(), "yyyy-MM-dd"),
       paymentMode: "CASH",
       notes:       "",
     },
@@ -88,6 +91,7 @@ export function DeductionDialog({
         id:          crypto.randomUUID(),
         amount:      values.amount,
         givenBy:     values.givenBy || null,
+        givenAt:     values.givenAt,
         paymentMode: values.paymentMode,
         notes:       values.notes || null,
         photoUrl:    photoUrl,
@@ -97,7 +101,7 @@ export function DeductionDialog({
       setRemaining((prev: number) => prev - values.amount);
 
       toast.success("Payment deduction recorded");
-      form.reset({ amount: undefined, givenBy: "", paymentMode: "CASH", notes: "" });
+      form.reset({ amount: undefined, givenBy: "", givenAt: format(new Date(), "yyyy-MM-dd"), paymentMode: "CASH", notes: "" });
       setPhotoUrl(null);
       setShowForm(false);
     } catch (e) {
@@ -172,7 +176,7 @@ export function DeductionDialog({
                         {entry.paymentMode === "CASH" ? "Cash" : "Online"}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        {format(new Date(entry.createdAt), "dd MMM yyyy")}
+                        {format(new Date(entry.givenAt ?? entry.createdAt), "dd MMM yyyy")}
                       </span>
                     </div>
                     {entry.givenBy && (
@@ -238,7 +242,7 @@ export function DeductionDialog({
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
 
-                {/* Amount + Given by */}
+                {/* Amount + Date */}
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -262,18 +266,33 @@ export function DeductionDialog({
                   />
                   <FormField
                     control={form.control}
-                    name="givenBy"
+                    name="givenAt"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Given by</FormLabel>
+                        <FormLabel>Date taken *</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="Who handed the money" />
+                          <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
+
+                {/* Given by */}
+                <FormField
+                  control={form.control}
+                  name="givenBy"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Given by</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Who handed the money" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
                 {/* Payment mode */}
                 <FormField

@@ -40,6 +40,7 @@ export function PaymentForm({ poId, outstanding, open, onClose }: Props) {
     defaultValues: {
       amount:    outstanding,
       method:    "CASH",
+      paidAt:    new Date().toISOString().split("T")[0],
       reference: "",
       notes:     "",
     },
@@ -105,6 +106,17 @@ export function PaymentForm({ poId, outstanding, open, onClose }: Props) {
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="paidAt"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment Date *</FormLabel>
+                  <FormControl><Input type="date" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}

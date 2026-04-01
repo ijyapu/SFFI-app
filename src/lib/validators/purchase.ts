@@ -47,6 +47,7 @@ export type ReceiveGoodsValues = z.infer<typeof receiveGoodsSchema>;
 export const paymentSchema = z.object({
   amount:    z.number().min(0.01, "Amount must be > 0"),
   method:    z.enum(["CASH", "BANK_TRANSFER", "CHECK", "ESEWA", "KHALTI", "IME_PAY", "FONEPAY", "OTHER"]),
+  paidAt:    z.string().min(1, "Date is required"),
   reference: z.string().optional(),
   notes:     z.string().optional(),
 });

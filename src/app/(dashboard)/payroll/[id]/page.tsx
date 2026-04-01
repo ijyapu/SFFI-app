@@ -62,6 +62,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         id:          d.id,
         amount:      Number(d.amount),
         givenBy:     d.givenBy,
+        givenAt:     d.givenAt?.toISOString() ?? null,
         paymentMode: d.paymentMode,
         notes:       d.notes,
         photoUrl:    d.photoUrl,

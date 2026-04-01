@@ -75,9 +75,9 @@ export function PayrollList({ runs }: { runs: PayrollRun[] }) {
             <TableRow>
               <TableHead><SortButton col="period"        label="Period"          {...sp} /></TableHead>
               <TableHead><SortButton col="status"        label="Status"          {...sp} /></TableHead>
-              <TableHead className="text-right"><SortButton col="employeeCount" label="Employees"     {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="totalPayroll"  label="Total Owed (Rs)" {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right"><SortButton col="totalPaid"     label="Paid Out (Rs)" {...sp} className="justify-end" /></TableHead>
+              <TableHead className="text-center"><SortButton col="employeeCount" label="Employees"     {...sp} className="justify-center" /></TableHead>
+              <TableHead className="text-center"><SortButton col="totalPayroll"  label="Total Owed (Rs)" {...sp} className="justify-center" /></TableHead>
+              <TableHead className="text-center"><SortButton col="totalPaid"     label="Paid Out (Rs)" {...sp} className="justify-center" /></TableHead>
               <TableHead className="w-20" />
             </TableRow>
             ); })()}
@@ -107,13 +107,13 @@ export function PayrollList({ runs }: { runs: PayrollRun[] }) {
                       </Badge>
                     )}
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
+                  <TableCell className="text-center text-muted-foreground">
                     {run.employeeCount}
                   </TableCell>
-                  <TableCell className="text-right font-medium">
+                  <TableCell className="text-center font-medium">
                     {run.totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-center">
                     {run.totalPaid > 0 ? (
                       <span className="text-emerald-600 font-medium">
                         {run.totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

@@ -286,6 +286,7 @@ export async function recordPayment(poId: string, values: PaymentFormValues) {
         supplierId:      po.supplierId,
         amount:          data.amount,
         method:          data.method,
+        paidAt:          new Date(data.paidAt),
         reference:       data.reference || null,
         notes:           data.notes || null,
         createdBy:       userId,
