@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -76,7 +75,7 @@ export function SupplierForm({ open, onClose, supplier }: Props) {
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{supplier ? "Edit Supplier" : "New Supplier"}</DialogTitle>
+          <DialogTitle>{supplier ? "Edit Vendor" : "New Vendor"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -85,7 +84,7 @@ export function SupplierForm({ open, onClose, supplier }: Props) {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Supplier Name *</FormLabel>
+                  <FormLabel>Vendor Name *</FormLabel>
                   <FormControl><Input {...field} placeholder="e.g. Golden Grain Mills" /></FormControl>
                   <FormMessage />
                 </FormItem>

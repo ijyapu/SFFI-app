@@ -111,7 +111,7 @@ export function PurchaseTable({
       {/* ── Supplier Sidebar ── */}
       {supplierStats.length > 0 && (
         <div className="hidden md:flex w-44 shrink-0 flex-col gap-0.5">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2 pb-1">Suppliers</p>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide px-2 pb-1">Vendors</p>
           <button
             onClick={() => setActiveSupplier(null)}
             className={`flex items-center justify-between w-full text-left px-2 py-1.5 rounded-md text-sm transition-colors ${
@@ -150,7 +150,7 @@ export function PurchaseTable({
       <div className="flex-1 min-w-0 space-y-3">
         <div className="flex items-center gap-2">
           <Input
-            placeholder="Search by invoice no. or supplier..."
+            placeholder="Search by invoice no. or vendor..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-xs"
@@ -169,7 +169,7 @@ export function PurchaseTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableHead col="supplierName" label="Supplier" />
+                <SortableHead col="supplierName" label="Vendor" />
                 <SortableHead col="invoiceNo"    label="Invoice No." />
                 <SortableHead col="date"         label="Date" />
                 <TableHead numeric>Total (Rs)</TableHead>

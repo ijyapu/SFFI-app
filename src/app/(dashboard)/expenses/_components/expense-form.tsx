@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -106,7 +105,11 @@ export function ExpenseForm({ open, onClose, expense, categories }: Props) {
                   <FormLabel>Category *</FormLabel>
                   <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
                     <FormControl>
-                      <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category">
+                          {categories.find(c => c.id === field.value)?.name}
+                        </SelectValue>
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {categories.map((c) => (

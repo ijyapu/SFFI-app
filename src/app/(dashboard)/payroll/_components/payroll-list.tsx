@@ -35,6 +35,7 @@ type PayrollRun = {
   totalPaid: number;
   employeeCount: number;
   createdAt: string;
+  lastEditedBy: string | null;
 };
 
 export function PayrollList({ runs }: { runs: PayrollRun[] }) {
@@ -78,6 +79,7 @@ export function PayrollList({ runs }: { runs: PayrollRun[] }) {
               <TableHead numeric><SortButton col="employeeCount" label="Employees"     {...sp} className="justify-end" /></TableHead>
               <TableHead numeric><SortButton col="totalPayroll"  label="Total Owed (Rs)" {...sp} className="justify-end" /></TableHead>
               <TableHead numeric><SortButton col="totalPaid"     label="Paid Out (Rs)" {...sp} className="justify-end" /></TableHead>
+              <TableHead>Last Edited By</TableHead>
               <TableHead className="w-20" />
             </TableRow>
             ); })()}
@@ -85,7 +87,7 @@ export function PayrollList({ runs }: { runs: PayrollRun[] }) {
           <TableBody>
             {sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   No payroll runs yet. Create one to get started.
                 </TableCell>
               </TableRow>
@@ -121,6 +123,9 @@ export function PayrollList({ runs }: { runs: PayrollRun[] }) {
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
+                    {run.lastEditedBy ?? "—"}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">

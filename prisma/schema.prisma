@@ -19,6 +19,13 @@ enum StockMovementType {
   ADJUSTMENT_OUT // manual stock decrease (requires notes)
   RETURN_IN      // customer return → stock in
   RETURN_OUT     // supplier return → stock out
+  DAILY_IN       // daily log: produced
+  DAILY_OUT      // daily log: used / sold / waste / damaged
+}
+
+enum DailyLogStatus {
+  OPEN
+  CLOSED
 }
 
 enum PurchaseOrderStatus {
@@ -103,6 +110,7 @@ model Product {
   purchaseReturnItems PurchaseReturnItem[]
   salesReturnItems    SalesReturnItem[]
   purchaseLineItems   PurchaseLineItem[]
+  dailyLogItems       DailyLogItem[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -133,6 +141,51 @@ model StockMovement {
   @@index([referenceId])
   @@index([createdAt])
   @@index([type])
+}
+
+model DailyLog {
+  id        String         @id @default(cuid())
+  logDate   DateTime       @db.Date         // date-only, one log per day
+  status    DailyLogStatus @default(OPEN)
+  notes     String?
+  createdBy String
+  closedBy  String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  closedAt  DateTime?
+
+  items DailyLogItem[]
+
+  @@unique([logDate])
+  @@index([logDate])
+  @@index([status])
+}
+
+model DailyLogItem {
+  id         String   @id @default(cuid())
+  dailyLogId String
+  productId  String
+
+  openingQty  Decimal @default(0) @db.Decimal(10, 3) // snapshot of currentStock at log creation
+  producedQty Decimal @default(0) @db.Decimal(10, 3)
+  usedQty     Decimal @default(0) @db.Decimal(10, 3)
+  soldQty     Decimal @default(0) @db.Decimal(10, 3)
+  wasteQty    Decimal @default(0) @db.Decimal(10, 3)
+  damagedQty  Decimal @default(0) @db.Decimal(10, 3)
+  closingQty  Decimal @default(0) @db.Decimal(10, 3) // stored when day is closed
+  actualQty   Decimal? @db.Decimal(10, 3)            // physical count (optional)
+  varianceQty Decimal? @db.Decimal(10, 3)            // actualQty − closingQty
+  notes       String?
+
+  dailyLog DailyLog @relation(fields: [dailyLogId], references: [id])
+  product  Product  @relation(fields: [productId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([dailyLogId, productId])
+  @@index([dailyLogId])
+  @@index([productId])
 }
 
 // ─────────────────────────────────────────────
@@ -480,6 +533,7 @@ model PayrollRun {
   items PayrollItem[]
 
   createdBy String
+  updatedBy String? // Clerk userId of last person to modify this run
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

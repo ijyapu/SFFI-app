@@ -19,8 +19,8 @@ export default function SignInPage() {
       <div className="relative hidden lg:flex lg:w-1/2 flex-col bg-[#111318] px-14 py-12 overflow-hidden">
 
         {/* Background texture */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_rgba(220,38,38,0.08)_0%,_transparent_60%)]" />
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_rgba(220,38,38,0.05)_0%,_transparent_60%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(220,38,38,0.08)_0%,transparent_60%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(220,38,38,0.05)_0%,transparent_60%)]" />
         <div className="pointer-events-none absolute inset-0" style={{ backgroundImage: "radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
 
         {/* Top: brand */}
@@ -61,7 +61,7 @@ export default function SignInPage() {
           {/* Feature list */}
           <div className="grid grid-cols-2 gap-3">
             {FEATURES.map(({ icon: Icon, text }) => (
-              <div key={text} className="flex items-center gap-2.5 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 py-2.5">
+              <div key={text} className="flex items-center gap-2.5 rounded-lg bg-white/4 border border-white/6 px-3 py-2.5">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-red-500/10">
                   <Icon className="h-3 w-3 text-red-400" />
                 </div>
@@ -72,7 +72,7 @@ export default function SignInPage() {
         </div>
 
         {/* Bottom: security note */}
-        <div className="relative z-10 border-t border-white/[0.06] pt-5 flex items-center gap-2">
+        <div className="relative z-10 border-t border-white/6 pt-5 flex items-center gap-2">
           <Lock className="h-3.5 w-3.5 text-slate-600 shrink-0" />
           <p className="text-slate-600 text-xs">
             Authorized personnel only · Access requires administrator approval

@@ -77,7 +77,7 @@ export function PoTable({ orders }: { orders: PO[] }) {
     <div className="space-y-4">
       <div className="flex gap-2">
         <Input
-          placeholder="Search by PO number or supplier..."
+          placeholder="Search by PO number or vendor..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
@@ -101,7 +101,7 @@ export function PoTable({ orders }: { orders: PO[] }) {
             {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
               <TableHead><SortButton col="orderNumber"  label="PO Number"   {...sp} /></TableHead>
-              <TableHead><SortButton col="supplierName" label="Supplier"    {...sp} /></TableHead>
+              <TableHead><SortButton col="supplierName" label="Vendor"    {...sp} /></TableHead>
               <TableHead><SortButton col="orderDate"    label="Date"        {...sp} /></TableHead>
               <TableHead><SortButton col="status"       label="Status"      {...sp} /></TableHead>
               <TableHead numeric><SortButton col="totalAmount"  label="Total (Rs)"   {...sp} className="justify-end" /></TableHead>

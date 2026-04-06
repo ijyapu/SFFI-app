@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Pencil, Trash2, AlertTriangle, Plus, Tag } from "lucide-react";
 import {
@@ -20,6 +21,7 @@ import { SortButton } from "@/components/ui/sort-icon";
 import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { ProductForm } from "./product-form";
 import { CategoryDialog } from "./category-dialog";
+import { UnitDialog } from "./unit-dialog";
 import { deleteProduct } from "../actions";
 
 type Product = {
@@ -44,11 +46,13 @@ type Props = {
 };
 
 export function ProductTable({ products, categories, units }: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [formOpen, setFormOpen] = useState(false);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [unitDialogOpen, setUnitDialogOpen] = useState(false);
   const { sortKey, sortDir, toggle } = useSortable("name");
 
   const filtered = products.filter((p) => {
@@ -77,6 +81,7 @@ export function ProductTable({ products, categories, units }: Props) {
     try {
       await deleteProduct(id);
       toast.success(`"${name}" removed from inventory`);
+      router.refresh();
     } catch {
       toast.error("Failed to delete product");
     }
@@ -121,6 +126,9 @@ export function ProductTable({ products, categories, units }: Props) {
             <Tag className="h-4 w-4" />
             Categories
           </Button>
+          <Button variant="outline" onClick={() => setUnitDialogOpen(true)}>
+            Units
+          </Button>
           <Button onClick={() => { setEditProduct(null); setFormOpen(true); }}>
             <Plus className="h-4 w-4" />
             New Product
@@ -134,7 +142,6 @@ export function ProductTable({ products, categories, units }: Props) {
           <TableHeader>
             {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead><SortButton col="sku"          label="SKU"        {...sp} /></TableHead>
               <TableHead><SortButton col="name"         label="Product"    {...sp} /></TableHead>
               <TableHead><SortButton col="category"     label="Category"   {...sp} /></TableHead>
               <TableHead>Unit</TableHead>
@@ -148,8 +155,24 @@ export function ProductTable({ products, categories, units }: Props) {
           <TableBody>
             {sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-muted-foreground py-10">
-                  {search || categoryFilter !== "all" ? "No products match your filters." : "No products yet."}
+                <TableCell colSpan={7} className="py-16 text-center">
+                  {search || categoryFilter !== "all" ? (
+                    <p className="text-muted-foreground">No products match your filters.</p>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2">
+                      <p className="font-medium">No products yet</p>
+                      <p className="text-sm text-muted-foreground max-w-xs">
+                        Start by adding categories and units, then create your first product.
+                      </p>
+                      <Button
+                        className="mt-2"
+                        onClick={() => { setEditProduct(null); setFormOpen(true); }}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Add First Product
+                      </Button>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             )}
@@ -157,7 +180,6 @@ export function ProductTable({ products, categories, units }: Props) {
               const low = isLowStock(product);
               return (
                 <TableRow key={product.id}>
-                  <TableCell className="font-mono text-xs">{product.sku}</TableCell>
                   <TableCell>
                     <Link
                       href={`/inventory/products/${product.id}`}
@@ -165,6 +187,7 @@ export function ProductTable({ products, categories, units }: Props) {
                     >
                       {product.name}
                     </Link>
+                    <div className="font-mono text-xs text-muted-foreground">{product.sku}</div>
                     {product.description && (
                       <div className="text-xs text-muted-foreground truncate max-w-48">
                         {product.description}
@@ -257,12 +280,20 @@ export function ProductTable({ products, categories, units }: Props) {
         product={editProduct}
         categories={categories}
         units={units}
+        onOpenCategories={() => { setFormOpen(false); setCategoryDialogOpen(true); }}
+        onOpenUnits={() => { setFormOpen(false); setUnitDialogOpen(true); }}
       />
 
       <CategoryDialog
         open={categoryDialogOpen}
         onClose={() => setCategoryDialogOpen(false)}
         categories={categories}
+      />
+
+      <UnitDialog
+        open={unitDialogOpen}
+        onClose={() => setUnitDialogOpen(false)}
+        units={units}
       />
     </div>
   );

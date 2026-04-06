@@ -11,6 +11,7 @@ import {
   FileText,
   Settings,
   Truck,
+  ClipboardList,
   type LucideIcon,
 } from "lucide-react";
 import type { PermissionKey } from "@/lib/roles";
@@ -48,13 +49,19 @@ export const NAV_GROUPS: NavGroup[] = [
         permission: "inventory",
       },
       {
+        title: "Daily Log",
+        href: "/inventory/daily-log",
+        icon: ClipboardList,
+        permission: "inventory",
+      },
+      {
         title: "Purchases",
         href: "/purchases",
         icon: ShoppingCart,
         permission: "purchases",
       },
       {
-        title: "Suppliers",
+        title: "Vendors",
         href: "/purchases/suppliers",
         icon: Truck,
         permission: "purchases",

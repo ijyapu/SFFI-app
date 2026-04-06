@@ -39,9 +39,16 @@ const DECREASE_TYPES: StockMovementType[] = [
   StockMovementType.SALE,
   StockMovementType.ADJUSTMENT_OUT,
   StockMovementType.RETURN_OUT,
+  StockMovementType.DAILY_OUT,
 ];
 
 const ADJUSTMENT_TYPES: StockMovementType[] = [
+  StockMovementType.ADJUSTMENT_IN,
+  StockMovementType.ADJUSTMENT_OUT,
+];
+
+// Types that require notes
+const NOTES_REQUIRED_TYPES: StockMovementType[] = [
   StockMovementType.ADJUSTMENT_IN,
   StockMovementType.ADJUSTMENT_OUT,
 ];
@@ -55,7 +62,7 @@ export async function applyStockMovement(
   txClient?: TxClient
 ) {
   // Validate adjustment notes
-  if (ADJUSTMENT_TYPES.includes(params.type) && !params.notes?.trim()) {
+  if (NOTES_REQUIRED_TYPES.includes(params.type) && !params.notes?.trim()) {
     throw new Error("Notes are required for stock adjustments");
   }
 

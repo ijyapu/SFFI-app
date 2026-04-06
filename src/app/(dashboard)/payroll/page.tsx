@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
+import { clerkClient } from "@clerk/nextjs/server";
 import { PayrollList } from "./_components/payroll-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Lock, FileText, AlertCircle } from "lucide-react";
@@ -16,6 +17,18 @@ export default async function PayrollPage() {
     orderBy: [{ year: "desc" }, { month: "desc" }],
   });
 
+  // Resolve Clerk user names for createdBy / updatedBy
+  const userIds = [...new Set(runs.flatMap((r) => [r.createdBy, r.updatedBy].filter(Boolean) as string[]))];
+  let nameMap = new Map<string, string>();
+  if (userIds.length > 0) {
+    const clerk = await clerkClient();
+    const { data: clerkUsers } = await clerk.users.getUserList({ userId: userIds, limit: 100 });
+    nameMap = new Map(clerkUsers.map((u) => [
+      u.id,
+      [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || u.emailAddresses[0]?.emailAddress || "Unknown",
+    ]));
+  }
+
   const serialised = runs.map((run) => ({
     id:            run.id,
     month:         run.month,
@@ -27,6 +40,7 @@ export default async function PayrollPage() {
     totalRemaining: run.items.reduce((sum, i) => sum + Math.max(0, Number(i.netPay)), 0),
     employeeCount: run.items.length,
     createdAt:     run.createdAt.toISOString(),
+    lastEditedBy:  nameMap.get(run.updatedBy ?? "") || nameMap.get(run.createdBy) || null,
   }));
 
   const latestFinalized   = serialised.find((r) => r.status === "FINALIZED");

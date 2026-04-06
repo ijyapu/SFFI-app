@@ -39,6 +39,7 @@ type Expense = {
   status: keyof typeof STATUS_CONFIG;
   notes: string | null;
   submittedBy: string;
+  submittedByName: string;
   attachmentUrl: string | null;
 };
 
@@ -69,8 +70,8 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
     return [...filtered].sort((a, b) => {
-      const aVals: Record<string, string | number> = { date: a.date, description: a.description, category: a.categoryName, amount: a.amount, status: a.status };
-      const bVals: Record<string, string | number> = { date: b.date, description: b.description, category: b.categoryName, amount: b.amount, status: b.status };
+      const aVals: Record<string, string | number> = { date: a.date, description: a.description, category: a.categoryName, amount: a.amount, status: a.status, submittedBy: a.submittedByName };
+      const bVals: Record<string, string | number> = { date: b.date, description: b.description, category: b.categoryName, amount: b.amount, status: b.status, submittedBy: b.submittedByName };
       return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
     });
   }, [filtered, sortKey, sortDir]);
@@ -153,11 +154,12 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
           <TableHeader>
             <TableRow>
               {(() => { const sp = { sortKey, sortDir, toggle }; return (<>
-                <TableHead><SortButton col="date"        label="Date"        {...sp} /></TableHead>
-                <TableHead><SortButton col="description" label="Description" {...sp} /></TableHead>
-                <TableHead><SortButton col="category"    label="Category"    {...sp} /></TableHead>
+                <TableHead><SortButton col="date"        label="Date"         {...sp} /></TableHead>
+                <TableHead><SortButton col="description" label="Description"  {...sp} /></TableHead>
+                <TableHead><SortButton col="category"    label="Category"     {...sp} /></TableHead>
                 <TableHead numeric><SortButton col="amount" label="Amount (Rs)" {...sp} className="justify-end" /></TableHead>
-                <TableHead><SortButton col="status"      label="Status"      {...sp} /></TableHead>
+                <TableHead><SortButton col="status"      label="Status"       {...sp} /></TableHead>
+                <TableHead><SortButton col="submittedBy" label="Submitted By" {...sp} /></TableHead>
                 <TableHead className="w-28" />
               </>); })()}
             </TableRow>
@@ -165,7 +167,7 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
           <TableBody>
             {sorted.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                   {search || statusFilter !== "all" || categoryFilter !== "all"
                     ? "No expenses match your filters."
                     : "No expenses yet."}
@@ -202,6 +204,9 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={cfg.className}>{cfg.label}</Badge>
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                    {expense.submittedByName}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">

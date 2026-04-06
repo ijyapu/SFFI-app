@@ -62,14 +62,14 @@ export function SupplierTable({ suppliers }: { suppliers: Supplier[] }) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <Input
-          placeholder="Search suppliers..."
+          placeholder="Search vendors..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="w-64"
         />
         <Button onClick={() => { setEditSupplier(null); setFormOpen(true); }}>
           <Plus className="h-4 w-4" />
-          New Supplier
+          New Vendor
         </Button>
       </div>
 
@@ -78,7 +78,7 @@ export function SupplierTable({ suppliers }: { suppliers: Supplier[] }) {
           <TableHeader>
             {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
-              <TableHead><SortButton col="name"        label="Supplier" {...sp} /></TableHead>
+              <TableHead><SortButton col="name"        label="Vendor" {...sp} /></TableHead>
               <TableHead><SortButton col="contactName" label="Contact"  {...sp} /></TableHead>
               <TableHead>Email / Phone</TableHead>
               <TableHead className="text-right"><SortButton col="orders" label="Orders" {...sp} className="justify-end" /></TableHead>

@@ -86,12 +86,14 @@ export function AdjustmentForm({ products, isAdmin }: Props) {
                 <Select value={field.value} onValueChange={(v) => v && handleProductChange(v)}>
                   <FormControl>
                     <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a product..." />
+                      <SelectValue placeholder="Select a product...">
+                        {products.find(p => p.id === field.value)?.name}
+                      </SelectValue>
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {products.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
+                      <SelectItem key={p.id} value={p.id} label={p.name}>
                         <span className="font-mono text-xs mr-2 text-muted-foreground">{p.sku}</span>
                         {p.name}
                       </SelectItem>
@@ -123,11 +125,11 @@ export function AdjustmentForm({ products, isAdmin }: Props) {
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="ADJUSTMENT_IN">
+                    <SelectItem value="ADJUSTMENT_IN" label="Stock Increase">
                       <Badge variant="secondary" className="mr-2 bg-green-100 text-green-700">IN</Badge>
                       Stock Increase
                     </SelectItem>
-                    <SelectItem value="ADJUSTMENT_OUT">
+                    <SelectItem value="ADJUSTMENT_OUT" label="Stock Decrease">
                       <Badge variant="secondary" className="mr-2 bg-red-100 text-red-700">OUT</Badge>
                       Stock Decrease
                     </SelectItem>
@@ -199,7 +201,7 @@ export function AdjustmentForm({ products, isAdmin }: Props) {
                       className="h-4 w-4"
                     />
                   </FormControl>
-                  <FormLabel className="!mt-0 text-amber-600">
+                  <FormLabel className="mt-0! text-amber-600">
                     Allow negative stock (admin override)
                   </FormLabel>
                 </FormItem>

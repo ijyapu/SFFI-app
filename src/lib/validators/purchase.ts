@@ -90,9 +90,14 @@ export const newSupplierSchema = z.object({
 export type NewSupplierValues = z.infer<typeof newSupplierSchema>;
 
 export const newProductSchema = z.object({
-  name:       z.string().min(1, "Name is required"),
-  categoryId: z.string().min(1, "Select a category"),
-  unitId:     z.string().min(1, "Select a unit"),
+  name:         z.string().min(2, "Name must be at least 2 characters"),
+  sku:          z.string().min(1, "SKU is required").toUpperCase(),
+  categoryId:   z.string().min(1, "Select a category"),
+  unitId:       z.string().min(1, "Select a unit"),
+  costPrice:    z.number({ error: "Enter a valid number" }).min(0),
+  sellingPrice: z.number({ error: "Enter a valid number" }).min(0),
+  reorderLevel: z.number({ error: "Enter a valid number" }).min(0),
+  description:  z.string().optional(),
 });
 
 export type NewProductValues = z.infer<typeof newProductSchema>;

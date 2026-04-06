@@ -1,4 +1,3 @@
-"use client";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -97,7 +96,9 @@ export function PaymentForm({ poId, outstanding, open, onClose }: Props) {
                   <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue />
+                        <SelectValue>
+                          {METHOD_LABELS[field.value as keyof typeof METHOD_LABELS]}
+                        </SelectValue>
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>

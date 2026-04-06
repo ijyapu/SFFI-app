@@ -186,7 +186,7 @@ export function PoDetail(props: Props) {
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Supplier</span>
+                <span className="text-muted-foreground">Vendor</span>
                 <span className="font-medium">{supplierName}</span>
               </div>
               <div className="flex justify-between">

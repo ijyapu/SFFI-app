@@ -10,7 +10,7 @@ import {
   createPurchaseSchema, newSupplierSchema, newProductSchema,
   type SupplierFormValues, type CreatePoValues,
   type ReceiveGoodsValues, type PaymentFormValues,
-  type CreatePurchaseValues,
+  type CreatePurchaseValues, type NewProductValues,
 } from "@/lib/validators/purchase";
 
 async function requirePurchasesAccess() {
@@ -305,30 +305,23 @@ export async function recordPayment(poId: string, values: PaymentFormValues) {
 
 // ─── Quick Product Create (returns new product for inline form use) ───────
 
-export async function createProductInline(values: {
-  name: string; categoryId: string; unitId: string;
-}) {
+export async function createProductInline(values: NewProductValues) {
   await requirePurchasesAccess();
   const data = newProductSchema.parse(values);
 
-  // Auto-generate SKU: first 3 letters of category name + highest existing number + 1
-  const category = await prisma.category.findUnique({ where: { id: data.categoryId }, select: { name: true } });
-  const prefix = (category?.name ?? "PRD").slice(0, 3).toUpperCase().replace(/[^A-Z]/g, "X");
-  const last = await prisma.product.findFirst({
-    where: { sku: { startsWith: prefix + "-" } },
-    orderBy: { sku: "desc" },
-  });
-  const next = last ? (parseInt(last.sku.split("-")[1] ?? "0") || 0) + 1 : 1;
-  const sku = `${prefix}-${String(next).padStart(3, "0")}`;
+  const existing = await prisma.product.findUnique({ where: { sku: data.sku } });
+  if (existing) throw new Error(`SKU "${data.sku}" is already in use`);
 
   const product = await prisma.product.create({
     data: {
       name:         data.name,
-      sku,
+      sku:          data.sku,
       categoryId:   data.categoryId,
       unitId:       data.unitId,
-      costPrice:    0,
-      sellingPrice: 0,
+      costPrice:    data.costPrice,
+      sellingPrice: data.sellingPrice,
+      reorderLevel: data.reorderLevel,
+      description:  data.description ?? null,
     },
     select: { id: true, name: true, sku: true, costPrice: true, unit: { select: { name: true } } },
   });
@@ -390,11 +383,16 @@ export async function createPurchase(values: CreatePurchaseValues) {
           where: { name: { equals: item.productName, mode: "insensitive" }, deletedAt: null },
         });
         if (existing) return { ...item, productId: existing.id };
-        // Auto-create the product
+        // Auto-create the product with a proper SKU
+        const cat = await tx.category.findUnique({ where: { id: item.categoryId }, select: { name: true } });
+        const prefix = (cat?.name ?? "PRD").replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase() || "XXX";
+        const lastWithPrefix = await tx.product.findFirst({ where: { sku: { startsWith: prefix + "-" } }, orderBy: { sku: "desc" } });
+        const nextNum = lastWithPrefix ? (parseInt(lastWithPrefix.sku.split("-")[1] ?? "0") || 0) + 1 : 1;
+        const autoSku = `${prefix}-${String(nextNum).padStart(3, "0")}`;
         const created = await tx.product.create({
           data: {
             name:         item.productName,
-            sku:          `AUTO-${Date.now()}`,
+            sku:          autoSku,
             categoryId:   item.categoryId,
             unitId:       item.unitId,
             costPrice:    item.unitPrice,
@@ -514,10 +512,15 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
           where: { name: { equals: item.productName, mode: "insensitive" }, deletedAt: null },
         });
         if (existing) return { ...item, productId: existing.id };
+        const cat = await tx.category.findUnique({ where: { id: item.categoryId }, select: { name: true } });
+        const prefix = (cat?.name ?? "PRD").replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase() || "XXX";
+        const lastWithPrefix = await tx.product.findFirst({ where: { sku: { startsWith: prefix + "-" } }, orderBy: { sku: "desc" } });
+        const nextNum = lastWithPrefix ? (parseInt(lastWithPrefix.sku.split("-")[1] ?? "0") || 0) + 1 : 1;
+        const autoSku = `${prefix}-${String(nextNum).padStart(3, "0")}`;
         const created = await tx.product.create({
           data: {
             name:         item.productName,
-            sku:          `AUTO-${Date.now()}`,
+            sku:          autoSku,
             categoryId:   item.categoryId,
             unitId:       item.unitId,
             costPrice:    item.unitPrice,
@@ -584,17 +587,42 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
 }
 
 export async function deletePurchase(id: string) {
-  await requirePurchasesAccess();
+  const userId = await requirePurchasesAccess();
+
   const purchase = await prisma.purchase.findUnique({
     where: { id },
-    select: { invoiceNo: true },
+    select: {
+      invoiceNo: true,
+      items: { select: { productId: true, quantity: true, unitPrice: true } },
+    },
   });
   if (!purchase) throw new Error("Purchase not found");
 
-  await prisma.purchase.update({
-    where: { id },
-    data: { deletedAt: new Date() },
+  await prisma.$transaction(async (tx) => {
+    // Reverse stock for all linked products
+    for (const item of purchase.items) {
+      if (!item.productId) continue;
+      await applyStockMovement(
+        {
+          productId:     item.productId,
+          type:          StockMovementType.RETURN_OUT,
+          quantity:      Number(item.quantity),
+          unitCost:      Number(item.unitPrice),
+          notes:         `Purchase ${purchase.invoiceNo} deleted`,
+          referenceId:   id,
+          referenceType: "Purchase",
+          createdBy:     userId,
+        },
+        tx as Parameters<typeof applyStockMovement>[1]
+      );
+    }
+
+    await tx.purchase.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
   });
 
   revalidatePath("/purchases");
+  revalidatePath("/inventory");
 }

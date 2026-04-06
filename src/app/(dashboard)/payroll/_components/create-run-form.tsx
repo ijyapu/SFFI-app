@@ -1,4 +1,3 @@
-"use client";
 
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -71,7 +70,9 @@ export function CreateRunForm({ open, onClose }: Props) {
                       onValueChange={(v) => v && field.onChange(parseInt(v))}
                     >
                       <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue>{MONTHS[field.value - 1]}</SelectValue>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {MONTHS.map((m, i) => (
@@ -94,7 +95,9 @@ export function CreateRunForm({ open, onClose }: Props) {
                       onValueChange={(v) => v && field.onChange(parseInt(v))}
                     >
                       <FormControl>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectTrigger>
+                          <SelectValue>{field.value}</SelectValue>
+                        </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {years.map((y) => (

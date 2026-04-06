@@ -85,7 +85,11 @@ export function SoForm({ customers, products }: Props) {
                 <FormLabel>Customer *</FormLabel>
                 <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
                   <FormControl>
-                    <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select customer">
+                        {customers.find(c => c.id === field.value)?.name}
+                      </SelectValue>
+                    </SelectTrigger>
                   </FormControl>
                   <SelectContent>
                     {customers.map((c) => (
@@ -173,12 +177,14 @@ export function SoForm({ customers, products }: Props) {
                         >
                           <FormControl>
                             <SelectTrigger className="h-8 text-sm">
-                              <SelectValue placeholder="Select product" />
+                              <SelectValue placeholder="Select product">
+                                {products.find(p => p.id === f.value)?.name}
+                              </SelectValue>
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             {products.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
+                              <SelectItem key={p.id} value={p.id} label={p.name}>
                                 {p.name}
                                 <span className="ml-1 text-xs text-muted-foreground">
                                   ({p.currentStock.toLocaleString(undefined, { maximumFractionDigits: 3 })} {p.unit.name})

@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 
-export const metadata = { title: "Suppliers — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Vendors — Shanti Special Food Industry ERP" };
 
 export default async function SuppliersPage() {
   await requirePermission("purchases");
@@ -29,9 +29,9 @@ export default async function SuppliersPage() {
           <ArrowLeft className="h-4 w-4" />
         </Link>
         <div>
-          <h1 className="text-2xl font-semibold">Suppliers</h1>
+          <h1 className="text-2xl font-semibold">Vendors</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            {suppliers.length} active supplier{suppliers.length !== 1 ? "s" : ""}
+            {suppliers.length} active vendor{suppliers.length !== 1 ? "s" : ""}
           </p>
         </div>
       </div>

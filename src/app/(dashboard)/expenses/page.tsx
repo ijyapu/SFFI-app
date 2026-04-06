@@ -1,5 +1,5 @@
 import { requirePermission, getCurrentRole } from "@/lib/auth";
-import { auth } from "@clerk/nextjs/server";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { ExpenseTable } from "./_components/expense-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,17 +35,30 @@ export default async function ExpensesPage() {
   const pendingCount   = expenses.filter((e) => e.status === "SUBMITTED").length;
   const rejectedCount  = expenses.filter((e) => e.status === "REJECTED").length;
 
+  // Resolve submitter names from Clerk
+  const submitterIds = [...new Set(expenses.map((e) => e.submittedBy))];
+  let submitterNameMap = new Map<string, string>();
+  if (submitterIds.length > 0) {
+    const clerk = await clerkClient();
+    const { data: clerkUsers } = await clerk.users.getUserList({ userId: submitterIds, limit: 100 });
+    submitterNameMap = new Map(clerkUsers.map((u) => [
+      u.id,
+      [u.firstName, u.lastName].filter(Boolean).join(" ") || u.username || u.emailAddresses[0]?.emailAddress || "Unknown",
+    ]));
+  }
+
   const serialised = expenses.map((e) => ({
-    id:           e.id,
-    categoryId:   e.categoryId,
-    categoryName: e.category.name,
-    description:  e.description,
-    amount:       Number(e.amount),
-    date:         e.date.toISOString(),
-    status:       e.status,
-    notes:        e.notes,
-    submittedBy:   e.submittedBy,
-    attachmentUrl: e.attachmentUrl ?? null,
+    id:              e.id,
+    categoryId:      e.categoryId,
+    categoryName:    e.category.name,
+    description:     e.description,
+    amount:          Number(e.amount),
+    date:            e.date.toISOString(),
+    status:          e.status,
+    notes:           e.notes,
+    submittedBy:     e.submittedBy,
+    submittedByName: submitterNameMap.get(e.submittedBy) ?? "Unknown",
+    attachmentUrl:   e.attachmentUrl ?? null,
   }));
 
   return (

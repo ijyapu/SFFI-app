@@ -24,6 +24,7 @@ import {
   type CreatePurchaseValues, type NewSupplierValues, type NewProductValues,
 } from "@/lib/validators/purchase";
 import { createPurchase, updatePurchase, createSupplierInline, createProductInline } from "../../actions";
+import { getNextSkuPreview } from "@/app/(dashboard)/inventory/actions";
 
 type Supplier  = { id: string; name: string; contactName: string | null; phone: string | null };
 type Product   = { id: string; name: string; sku: string; costPrice: number; unit: string };
@@ -175,9 +176,8 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const watchItems         = form.watch("items");
-  const watchSupplierId    = form.watch("supplierId");
-  const watchPaymentMethod = form.watch("paymentMethod");
   const watchAmountPaid    = form.watch("amountPaid");
 
   const computedItems = watchItems.map((item) => {
@@ -227,31 +227,45 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
       form.setValue("supplierId", created.id);
       supplierForm.reset();
       setSupplierOpen(false);
-      toast.success(`Supplier "${created.name}" added`);
+      toast.success(`Vendor "${created.name}" added`);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to add supplier");
+      toast.error(e instanceof Error ? e.message : "Failed to add vendor");
     }
   }
 
   // ── Inline product form ─────────────────────────────────────────────────────
+  const skuTouched = useRef(false);
   const productForm = useForm<NewProductValues>({
     resolver: zodResolver(newProductSchema),
-    defaultValues: { name: "", categoryId: "", unitId: "" },
+    defaultValues: {
+      name: "", sku: "", categoryId: "", unitId: "",
+      costPrice: 0, sellingPrice: 0, reorderLevel: 0, description: "",
+    },
   });
+  const watchedCategoryId = productForm.watch("categoryId");
+
+  // Auto-generate SKU when category changes (only for new products, only if user hasn't typed one)
+  useEffect(() => {
+    if (skuTouched.current || !watchedCategoryId) return;
+    const cat = categories.find((c) => c.id === watchedCategoryId);
+    if (!cat) return;
+    getNextSkuPreview(cat.name).then((sku) => {
+      productForm.setValue("sku", sku, { shouldValidate: false });
+    }).catch(() => {});
+  }, [watchedCategoryId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleCreateProduct(values: NewProductValues) {
     try {
       const created = await createProductInline(values);
       setProducts((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
-      productForm.reset();
+      productForm.reset({ name: "", sku: "", categoryId: "", unitId: "", costPrice: 0, sellingPrice: 0, reorderLevel: 0, description: "" });
+      skuTouched.current = false;
       setProductOpen(false);
       toast.success(`Product "${created.name}" added`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to add product");
     }
   }
-
-  const selectedSupplierName = suppliers.find((s) => s.id === watchSupplierId)?.name;
 
   return (
     <>
@@ -269,14 +283,14 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                 name="supplierId"
                 render={({ field }) => (
                   <FormItem className="col-span-full">
-                    <FormLabel>Supplier *</FormLabel>
+                    <FormLabel>Vendor *</FormLabel>
                     <div className="flex gap-1.5">
                       <div className="flex-1">
                         <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
                           <FormControl>
                             <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select supplier">
-                                {selectedSupplierName ?? undefined}
+                              <SelectValue placeholder="Select vendor">
+                                {suppliers.find(s => s.id === field.value)?.name}
                               </SelectValue>
                             </SelectTrigger>
                           </FormControl>
@@ -289,7 +303,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                           </SelectContent>
                         </Select>
                       </div>
-                      <Button type="button" variant="outline" size="icon" onClick={() => setSupplierOpen(true)} title="Add supplier">
+                      <Button type="button" variant="outline" size="icon" onClick={() => setSupplierOpen(true)} title="Add vendor">
                         <UserPlus className="h-4 w-4" />
                       </Button>
                     </div>
@@ -464,7 +478,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                                   <Select value={cf.value ?? ""} onValueChange={(v) => cf.onChange(v)}>
                                     <SelectTrigger className="h-7 text-xs flex-1">
                                       <SelectValue placeholder="Category">
-                                        {categories.find(c => c.id === cf.value)?.name ?? undefined}
+                                        {categories.find(c => c.id === cf.value)?.name}
                                       </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent className="min-w-40">
@@ -482,7 +496,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                                   <Select value={uf.value ?? ""} onValueChange={(v) => uf.onChange(v)}>
                                     <SelectTrigger className="h-7 text-xs w-24">
                                       <SelectValue placeholder="Unit">
-                                        {units.find(u => u.id === uf.value)?.name ?? undefined}
+                                        {units.find(u => u.id === uf.value)?.name}
                                       </SelectValue>
                                     </SelectTrigger>
                                     <SelectContent className="min-w-24">
@@ -495,9 +509,23 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                               />
                             </div>
                           )}
-                          {isNewProduct && item?.categoryId && item?.unitId && (
-                            <p className="text-xs text-green-600 mt-0.5">Will be added to inventory</p>
-                          )}
+                          {/* Inventory sync status */}
+                          {item?.productId ? (
+                            <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+                              Inventory will update
+                            </p>
+                          ) : isNewProduct && item?.categoryId && item?.unitId ? (
+                            <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+                              Will create product &amp; update inventory
+                            </p>
+                          ) : isNewProduct ? (
+                            <p className="text-xs text-amber-600 mt-0.5 flex items-center gap-1">
+                              <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                              Select category &amp; unit to sync inventory
+                            </p>
+                          ) : null}
                           <FormMessage />
                         </FormItem>
                       )}
@@ -686,7 +714,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
       {/* ── New Supplier Dialog ── */}
       <Dialog open={supplierOpen} onOpenChange={(v) => !v && setSupplierOpen(false)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add New Supplier</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Add New Vendor</DialogTitle></DialogHeader>
           <Form {...supplierForm}>
             <form onSubmit={supplierForm.handleSubmit(handleCreateSupplier)} className="space-y-3">
               <FormField control={supplierForm.control} name="name" render={({ field }) => (
@@ -704,7 +732,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setSupplierOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={supplierForm.formState.isSubmitting}>
-                  {supplierForm.formState.isSubmitting ? "Adding..." : "Add Supplier"}
+                  {supplierForm.formState.isSubmitting ? "Adding..." : "Add Vendor"}
                 </Button>
               </DialogFooter>
             </form>
@@ -713,25 +741,37 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
       </Dialog>
 
       {/* ── New Product Dialog ── */}
-      <Dialog open={productOpen} onOpenChange={(v) => !v && setProductOpen(false)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add New Product</DialogTitle></DialogHeader>
+      <Dialog open={productOpen} onOpenChange={(v) => {
+        if (!v) { setProductOpen(false); skuTouched.current = false; productForm.reset({ name: "", sku: "", categoryId: "", unitId: "", costPrice: 0, sellingPrice: 0, reorderLevel: 0, description: "" }); }
+      }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader><DialogTitle>New Product</DialogTitle></DialogHeader>
           <Form {...productForm}>
-            <form onSubmit={productForm.handleSubmit(handleCreateProduct)} className="space-y-3">
+            <form onSubmit={productForm.handleSubmit(handleCreateProduct)} className="space-y-4">
+
+              {/* Product Name */}
               <FormField control={productForm.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Product Name *</FormLabel><FormControl><Input {...field} placeholder="Product name" /></FormControl><FormMessage /></FormItem>
+                <FormItem>
+                  <FormLabel>Product Name</FormLabel>
+                  <FormControl><Input {...field} placeholder="e.g. White Sandwich Bread" /></FormControl>
+                  <FormMessage />
+                </FormItem>
               )} />
+
+              {/* Category + SKU */}
               <div className="grid grid-cols-2 gap-3">
                 <FormField control={productForm.control} name="categoryId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Category *</FormLabel>
+                    <FormLabel>Category</FormLabel>
                     <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Category">
-                          {categories.find(c => c.id === field.value)?.name ?? undefined}
-                        </SelectValue></SelectTrigger>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select category">
+                            {categories.find(c => c.id === field.value)?.name}
+                          </SelectValue>
+                        </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="min-w-40">
+                      <SelectContent>
                         {categories.map((c) => (
                           <SelectItem key={c.id} value={c.id} label={c.name}>{c.name}</SelectItem>
                         ))}
@@ -740,16 +780,38 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                     <FormMessage />
                   </FormItem>
                 )} />
+                <FormField control={productForm.control} name="sku" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      SKU
+                      <span className="ml-1.5 text-xs font-normal text-muted-foreground">(auto-generated)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="Select a category first"
+                        onChange={(e) => { skuTouched.current = true; field.onChange(e); }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+
+              {/* Unit + Cost Price */}
+              <div className="grid grid-cols-2 gap-3">
                 <FormField control={productForm.control} name="unitId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Unit *</FormLabel>
+                    <FormLabel>Unit</FormLabel>
                     <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
                       <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Unit">
-                          {units.find(u => u.id === field.value)?.name ?? undefined}
-                        </SelectValue></SelectTrigger>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select unit">
+                            {units.find(u => u.id === field.value)?.name}
+                          </SelectValue>
+                        </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="min-w-32">
+                      <SelectContent>
                         {units.map((u) => (
                           <SelectItem key={u.id} value={u.id} label={u.name}>{u.name}</SelectItem>
                         ))}
@@ -758,11 +820,69 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                     <FormMessage />
                   </FormItem>
                 )} />
+                <FormField control={productForm.control} name="costPrice" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cost Price (Rs)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number" step="0.01" min="0" placeholder="0.00"
+                        value={field.value === 0 ? "" : field.value}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
               </div>
+
+              {/* Selling Price + Reorder Level */}
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={productForm.control} name="sellingPrice" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Selling Price (Rs)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number" step="0.01" min="0" placeholder="0.00"
+                        value={field.value === 0 ? "" : field.value}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={productForm.control} name="reorderLevel" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reorder Level</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number" step="0.001" min="0" placeholder="0"
+                        value={field.value === 0 ? "" : field.value}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+
+              {/* Description */}
+              <FormField control={productForm.control} name="description" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Description
+                    <span className="ml-1.5 text-xs font-normal text-muted-foreground">(optional)</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Textarea rows={2} placeholder="Short product description..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setProductOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={productForm.formState.isSubmitting}>
-                  {productForm.formState.isSubmitting ? "Adding..." : "Add Product"}
+                  {productForm.formState.isSubmitting ? "Creating..." : "Create Product"}
                 </Button>
               </DialogFooter>
             </form>

@@ -1,5 +1,3 @@
-"use client";
-
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,12 +32,12 @@ type Employee = {
 
 type Department = { id: string; name: string };
 
-type Props = {
+interface Props {
   open: boolean;
   onClose: () => void;
   employee: Employee | null;
   departments: Department[];
-};
+}
 
 export function EmployeeForm({ open, onClose, employee, departments }: Props) {
   const form = useForm<EmployeeFormValues>({
@@ -111,7 +109,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>First Name *</FormLabel>
-                    <FormControl><Input {...field} placeholder="Ram" /></FormControl>
+                    <FormControl><Input {...field} placeholder="John" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -122,7 +120,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Last Name *</FormLabel>
-                    <FormControl><Input {...field} placeholder="Shrestha" /></FormControl>
+                    <FormControl><Input {...field} placeholder="Doe" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -193,9 +191,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
                       <FormControl>
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select department">
-                            {field.value
-                              ? departments.find((d) => d.id === field.value)?.name
-                              : undefined}
+                            {departments.find(d => d.id === field.value)?.name}
                           </SelectValue>
                         </SelectTrigger>
                       </FormControl>

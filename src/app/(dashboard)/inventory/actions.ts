@@ -1,15 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { productSchema, categorySchema } from "@/lib/validators/product";
 import type { ProductFormValues, CategoryFormValues } from "@/lib/validators/product";
 
 async function requireInventoryAccess() {
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
   if (!userId) throw new Error("Unauthenticated");
-  const role = sessionClaims?.publicMetadata?.role as string | undefined;
+  const user = await currentUser();
+  const role = user?.publicMetadata?.role as string | undefined;
   if (!role || !["admin", "manager", "accountant"].includes(role)) {
     throw new Error("Unauthorized");
   }
@@ -19,6 +20,16 @@ async function requireInventoryAccess() {
 // ─────────────────────────────────────────────
 // PRODUCTS
 // ─────────────────────────────────────────────
+
+export async function getNextSkuPreview(categoryName: string): Promise<string> {
+  const prefix = categoryName.replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase() || "XXX";
+  const last = await prisma.product.findFirst({
+    where: { sku: { startsWith: prefix + "-" }, deletedAt: null },
+    orderBy: { sku: "desc" },
+  });
+  const next = last ? (parseInt(last.sku.split("-")[1] ?? "0") || 0) + 1 : 1;
+  return `${prefix}-${String(next).padStart(3, "0")}`;
+}
 
 export async function createProduct(values: ProductFormValues) {
   await requireInventoryAccess();
@@ -105,5 +116,33 @@ export async function deleteCategory(id: string) {
     data: { deletedAt: new Date() },
   });
 
+  revalidatePath("/inventory");
+}
+
+// ─────────────────────────────────────────────
+// UNITS
+// ─────────────────────────────────────────────
+
+export async function createUnit(name: string) {
+  await requireInventoryAccess();
+  const trimmed = name.trim();
+  if (!trimmed) throw new Error("Unit name is required");
+
+  const existing = await prisma.unit.findFirst({ where: { name: trimmed } });
+  if (existing) throw new Error(`Unit "${trimmed}" already exists`);
+
+  await prisma.unit.create({ data: { name: trimmed } });
+  revalidatePath("/inventory");
+}
+
+export async function deleteUnit(id: string) {
+  await requireInventoryAccess();
+
+  const productCount = await prisma.product.count({ where: { unitId: id, deletedAt: null } });
+  if (productCount > 0) {
+    throw new Error(`Cannot delete — ${productCount} product(s) still use this unit`);
+  }
+
+  await prisma.unit.delete({ where: { id } });
   revalidatePath("/inventory");
 }

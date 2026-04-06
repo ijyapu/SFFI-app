@@ -1,6 +1,6 @@
-"use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { productSchema, type ProductFormValues } from "@/lib/validators/product";
-import { createProduct, updateProduct } from "../actions";
+import { createProduct, updateProduct, getNextSkuPreview } from "../actions";
+import { AlertTriangle } from "lucide-react";
 
 type Product = {
   id: string;
@@ -35,10 +36,14 @@ type Props = {
   product?: Product | null;
   categories: { id: string; name: string }[];
   units: { id: string; name: string }[];
+  onOpenCategories?: () => void;
+  onOpenUnits?: () => void;
 };
 
-export function ProductForm({ open, onClose, product, categories, units }: Props) {
+export function ProductForm({ open, onClose, product, categories, units, onOpenCategories, onOpenUnits }: Props) {
   const isEdit = !!product;
+  const skuTouched = useRef(false);
+  const router = useRouter();
 
   const form = useForm<ProductFormValues>({
     resolver: zodResolver(productSchema),
@@ -55,7 +60,9 @@ export function ProductForm({ open, onClose, product, categories, units }: Props
   });
 
   useEffect(() => {
+    if (!open) return;
     if (product) {
+      skuTouched.current = true;
       form.reset({
         name: product.name,
         sku: product.sku,
@@ -67,12 +74,24 @@ export function ProductForm({ open, onClose, product, categories, units }: Props
         reorderLevel: Number(product.reorderLevel),
       });
     } else {
+      skuTouched.current = false;
       form.reset({
         name: "", sku: "", description: "", categoryId: "",
         unitId: "", costPrice: 0, sellingPrice: 0, reorderLevel: 0,
       });
     }
-  }, [product, form]);
+  }, [open, product, form]);
+
+  const watchedCategoryId = form.watch("categoryId");
+  useEffect(() => {
+    if (isEdit || skuTouched.current || !watchedCategoryId) return;
+    const cat = categories.find((c) => c.id === watchedCategoryId);
+    if (!cat) return;
+    getNextSkuPreview(cat.name).then((sku) => {
+      form.setValue("sku", sku, { shouldValidate: false });
+    }).catch(() => {/* ignore */});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedCategoryId]);
 
   async function onSubmit(values: ProductFormValues) {
     try {
@@ -84,6 +103,7 @@ export function ProductForm({ open, onClose, product, categories, units }: Props
         toast.success("Product created");
       }
       onClose();
+      router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Something went wrong");
     }
@@ -96,6 +116,38 @@ export function ProductForm({ open, onClose, product, categories, units }: Props
           <DialogTitle>{isEdit ? "Edit Product" : "New Product"}</DialogTitle>
         </DialogHeader>
 
+        {/* Setup warnings */}
+        {(categories.length === 0 || units.length === 0) && (
+          <div className="space-y-2">
+            {categories.length === 0 && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  No categories yet.{" "}
+                  {onOpenCategories && (
+                    <button type="button" onClick={onOpenCategories} className="underline font-medium">
+                      Add a category first
+                    </button>
+                  )}
+                </span>
+              </div>
+            )}
+            {units.length === 0 && (
+              <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  No units of measure yet.{" "}
+                  {onOpenUnits && (
+                    <button type="button" onClick={onOpenUnits} className="underline font-medium">
+                      Add a unit first
+                    </button>
+                  )}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -107,26 +159,16 @@ export function ProductForm({ open, onClose, product, categories, units }: Props
                 </FormItem>
               )} />
 
-              <FormField control={form.control} name="sku" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>SKU</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="e.g. FG-001"
-                      {...field}
-                      onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
-
               <FormField control={form.control} name="categoryId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Category</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select category">
+                          {categories.find(c => c.id === field.value)?.name}
+                        </SelectValue>
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {categories.map((c) => (
@@ -138,12 +180,33 @@ export function ProductForm({ open, onClose, product, categories, units }: Props
                 </FormItem>
               )} />
 
+              <FormField control={form.control} name="sku" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>SKU {!isEdit && <span className="text-muted-foreground font-normal text-xs">(auto-generated)</span>}</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Select a category first"
+                      {...field}
+                      onChange={(e) => {
+                        skuTouched.current = true;
+                        field.onChange(e.target.value.toUpperCase());
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
               <FormField control={form.control} name="unitId" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Unit</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select unit">
+                          {units.find(u => u.id === field.value)?.name}
+                        </SelectValue>
+                      </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                       {units.map((u) => (
