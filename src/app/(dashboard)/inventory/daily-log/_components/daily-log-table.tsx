@@ -363,10 +363,9 @@ export function DailyLogTable({ items, isOpen }: Props) {
                           />
                         )}
                         {!row._saving && !row._dirty && hasVariance && (
-                          <AlertTriangle
-                            className="h-3.5 w-3.5 text-amber-500"
-                            title={`Variance: ${fmt(variance!)} ${row.unitName}`}
-                          />
+                          <span title={`Variance: ${fmt(variance!)} ${row.unitName}`}>
+                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                          </span>
                         )}
                       </TableCell>
                     </TableRow>
