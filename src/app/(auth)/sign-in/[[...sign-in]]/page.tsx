@@ -13,7 +13,7 @@ const FEATURES = [
 
 export default function SignInPage() {
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <div className="h-screen flex flex-col lg:flex-row overflow-hidden">
 
       {/* ── LEFT: Branding panel ── */}
       <div className="relative hidden lg:flex lg:w-1/2 flex-col bg-[#111318] px-14 py-12 overflow-hidden">
@@ -81,28 +81,28 @@ export default function SignInPage() {
       </div>
 
       {/* ── RIGHT: Auth panel ── */}
-      <div className="flex flex-1 flex-col items-center justify-center bg-white px-8 py-14">
+      <div className="flex flex-1 flex-col items-center justify-center bg-white px-8 py-6">
 
         {/* Mobile brand */}
-        <div className="flex lg:hidden items-center gap-3 mb-10">
+        <div className="flex lg:hidden items-center gap-3 mb-6">
           <div className="relative h-9 w-9 rounded-md overflow-hidden">
             <Image src="/ssfi-logo.jpg" alt="SSFI" fill className="object-contain" />
           </div>
           <div>
             <p className="font-bold text-red-600 text-sm">Shanti Special Food Industry</p>
-            <p className="text-grey-900 text-[9px] tracking-widest uppercase">Enterprise Portal</p>
+            <p className="text-gray-400 text-[9px] tracking-widest uppercase">Enterprise Portal</p>
           </div>
         </div>
 
         <div className="w-full max-w-sm">
 
           {/* Heading */}
-          <div className="mb-8">
-            <h2 className="text-[1.6rem] font-bold text-gray-900 tracking-tight leading-snug">
+          <div className="mb-5">
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight leading-snug">
               Welcome to <span className="text-red-600">SSFI ERP</span>
             </h2>
-            <p className="text-gray-400 text-sm mt-2 leading-relaxed">
-              Sign in with your Google account to access the ERP portal.
+            <p className="text-gray-400 text-sm mt-1.5">
+              Sign in with your Google account to access the portal.
             </p>
           </div>
 
@@ -129,14 +129,14 @@ export default function SignInPage() {
           />
 
           {/* Divider */}
-          <div className="mt-5 flex items-center gap-3">
+          <div className="mt-4 flex items-center gap-3">
             <div className="flex-1 h-px bg-gray-100" />
             <span className="text-[11px] text-gray-400 tracking-widest uppercase">Access</span>
             <div className="flex-1 h-px bg-gray-100" />
           </div>
 
           {/* Approval note */}
-          <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3.5">
+          <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
             <p className="text-xs text-gray-500 leading-relaxed">
               <span className="font-semibold text-gray-700">New users require admin approval</span> before
               accessing the portal. Your account will be reviewed after sign-in.
@@ -144,7 +144,7 @@ export default function SignInPage() {
           </div>
 
           {/* Contact */}
-          <div className="mt-5 text-center">
+          <div className="mt-4 text-center">
             <p className="text-xs text-gray-400">Need access? Contact your administrator</p>
             <a
               href="mailto:shrestha.bikas23@gmail.com"
@@ -155,7 +155,7 @@ export default function SignInPage() {
           </div>
 
           {/* Footer */}
-          <div className="mt-10 flex items-center justify-center gap-1.5">
+          <div className="mt-6 flex items-center justify-center gap-1.5">
             <ShieldCheck className="h-3 w-3 text-gray-300" />
             <p className="text-xs text-gray-300">
               Secure, role-based access · Shanti Special Food Industry Pvt. Ltd.
