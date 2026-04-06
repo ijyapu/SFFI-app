@@ -1,114 +1,136 @@
 import Link from "next/link";
 import { startOfMonth, subMonths, format } from "date-fns";
 import { prisma } from "@/lib/prisma";
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = prisma as any;
 import { requireMinRole } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, ShoppingCart, Receipt, DollarSign, CreditCard, Bell } from "lucide-react";
+import {
+  TrendingUp, TrendingDown, ShoppingCart, Receipt,
+  DollarSign, CreditCard, Bell, Package, ArrowUpRight,
+  AlertCircle, CheckCircle2, Clock, Minus,
+} from "lucide-react";
 import { RevenueChart } from "./_components/revenue-chart";
 import { RecentActivity } from "./_components/recent-activity";
 
-export const metadata = { title: "Dashboard — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Dashboard — SSFI ERP" };
+
+function fmt(n: number) {
+  return `Rs ${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function pctChange(current: number, previous: number) {
+  if (previous === 0) return null;
+  return ((current - previous) / previous) * 100;
+}
 
 export default async function DashboardPage() {
-  // Redirect no-role users → /pending; wrong role can't happen (all roles allowed)
   await requireMinRole("employee");
 
-  const now        = new Date();
-  const monthStart = startOfMonth(now);
+  const now          = new Date();
+  const monthStart   = startOfMonth(now);
+  const lastMonthStart = startOfMonth(subMonths(now, 1));
 
   const [
     monthSales,
+    lastMonthSales,
     monthPurchases,
+    lastMonthPurchases,
     openPOs,
     pendingExpenses,
+    pendingPayroll,
     lowStockProducts,
     receivables,
     payables,
     recentSalesOrders,
     recentPurchaseOrders,
-    inventoryValue,
+    inventoryProducts,
+    todayLog,
   ] = await Promise.all([
-    // This month's confirmed sales revenue
     prisma.salesOrder.aggregate({
       where: { status: { not: "CANCELLED" }, orderDate: { gte: monthStart }, deletedAt: null },
       _sum: { totalAmount: true },
     }),
-
-    // This month's confirmed purchase spending (received goods)
-    prisma.purchaseOrder.aggregate({
-      where: {
-        status: { in: ["RECEIVED", "PARTIALLY_RECEIVED"] },
-        orderDate: { gte: monthStart },
-        deletedAt: null,
-      },
+    prisma.salesOrder.aggregate({
+      where: { status: { not: "CANCELLED" }, orderDate: { gte: lastMonthStart, lt: monthStart }, deletedAt: null },
       _sum: { totalAmount: true },
     }),
-
-    // Open / active purchase orders
+    prisma.purchaseOrder.aggregate({
+      where: { status: { in: ["RECEIVED", "PARTIALLY_RECEIVED"] }, orderDate: { gte: monthStart }, deletedAt: null },
+      _sum: { totalAmount: true },
+    }),
+    prisma.purchaseOrder.aggregate({
+      where: { status: { in: ["RECEIVED", "PARTIALLY_RECEIVED"] }, orderDate: { gte: lastMonthStart, lt: monthStart }, deletedAt: null },
+      _sum: { totalAmount: true },
+    }),
     prisma.purchaseOrder.count({
       where: { status: { in: ["CONFIRMED", "PARTIALLY_RECEIVED"] }, deletedAt: null },
     }),
-
-    // Pending expense approvals
-    prisma.expense.count({
-      where: { status: "SUBMITTED", deletedAt: null },
-    }),
-
-    // Products at or below reorder level
+    prisma.expense.count({ where: { status: "SUBMITTED", deletedAt: null } }),
+    prisma.payrollRun.count({ where: { status: "DRAFT" } }),
     prisma.product.findMany({
       where: { deletedAt: null, reorderLevel: { gt: 0 } },
       select: { currentStock: true, reorderLevel: true },
     }),
-
-    // Total outstanding receivables (sales)
     prisma.salesOrder.aggregate({
       where: { status: { notIn: ["CANCELLED", "DRAFT"] }, deletedAt: null },
       _sum: { totalAmount: true, amountPaid: true },
     }),
-
-    // Total outstanding payables (purchases)
     prisma.purchaseOrder.aggregate({
       where: { status: { notIn: ["CANCELLED", "DRAFT"] }, deletedAt: null },
       _sum: { totalAmount: true, amountPaid: true },
     }),
-
-    // Recent 5 sales orders
     prisma.salesOrder.findMany({
       where: { deletedAt: null },
       include: { customer: true },
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 6,
     }),
-
-    // Recent 5 purchase orders
     prisma.purchaseOrder.findMany({
       where: { deletedAt: null },
       include: { supplier: true },
       orderBy: { createdAt: "desc" },
-      take: 5,
+      take: 6,
     }),
-
-    // Total inventory value
     prisma.product.findMany({
       where: { deletedAt: null },
       select: { currentStock: true, costPrice: true },
     }),
+    db.dailyLog.findFirst({
+      where: {
+        logDate: {
+          gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          lt:  new Date(new Date().setHours(23, 59, 59, 999)),
+        },
+      },
+      select: { status: true },
+    }),
   ]);
 
   // Derived stats
+  const revenue      = Number(monthSales._sum.totalAmount ?? 0);
+  const lastRevenue  = Number(lastMonthSales._sum.totalAmount ?? 0);
+  const purchases    = Number(monthPurchases._sum.totalAmount ?? 0);
+  const lastPurchases = Number(lastMonthPurchases._sum.totalAmount ?? 0);
+  const grossProfit  = revenue - purchases;
+  const revPct       = pctChange(revenue, lastRevenue);
+  const purPct       = pctChange(purchases, lastPurchases);
+
+  const totalReceivables = Number(receivables._sum.totalAmount ?? 0) - Number(receivables._sum.amountPaid ?? 0);
+  const totalPayables    = Number(payables._sum.totalAmount ?? 0)    - Number(payables._sum.amountPaid ?? 0);
+  const netPosition      = totalReceivables - totalPayables;
+
+  const inventoryValue = inventoryProducts.reduce(
+    (sum, p) => sum + Number(p.currentStock) * Number(p.costPrice), 0
+  );
+
   const lowStockCount = lowStockProducts.filter(
     (p) => Number(p.currentStock) <= Number(p.reorderLevel)
   ).length;
 
-  const totalReceivables =
-    Number(receivables._sum.totalAmount ?? 0) - Number(receivables._sum.amountPaid ?? 0);
-  const totalPayables =
-    Number(payables._sum.totalAmount ?? 0) - Number(payables._sum.amountPaid ?? 0);
-  const totalInventoryValue = inventoryValue.reduce(
-    (sum, p) => sum + Number(p.currentStock) * Number(p.costPrice), 0
-  );
+  const totalAlerts = lowStockCount + pendingExpenses + pendingPayroll + openPOs;
 
-  // Build last-6-months chart data
+  // Chart data — last 6 months
   const chartData = Array.from({ length: 6 }, (_, i) => {
     const d = subMonths(now, 5 - i);
     return { month: format(d, "MMM"), year: d.getFullYear(), monthNum: d.getMonth() + 1, revenue: 0, purchases: 0 };
@@ -116,186 +138,291 @@ export default async function DashboardPage() {
 
   const [sixMonthSales, sixMonthPurchases] = await Promise.all([
     prisma.salesOrder.findMany({
-      where: {
-        status: { not: "CANCELLED" },
-        orderDate: { gte: subMonths(monthStart, 5) },
-        deletedAt: null,
-      },
+      where: { status: { not: "CANCELLED" }, orderDate: { gte: subMonths(monthStart, 5) }, deletedAt: null },
       select: { orderDate: true, totalAmount: true },
     }),
     prisma.purchaseOrder.findMany({
-      where: {
-        status: { in: ["RECEIVED", "PARTIALLY_RECEIVED"] },
-        orderDate: { gte: subMonths(monthStart, 5) },
-        deletedAt: null,
-      },
+      where: { status: { in: ["RECEIVED", "PARTIALLY_RECEIVED"] }, orderDate: { gte: subMonths(monthStart, 5) }, deletedAt: null },
       select: { orderDate: true, totalAmount: true },
     }),
   ]);
 
   for (const so of sixMonthSales) {
-    const m = so.orderDate.getMonth() + 1;
-    const y = so.orderDate.getFullYear();
-    const point = chartData.find((d) => d.monthNum === m && d.year === y);
-    if (point) point.revenue += Number(so.totalAmount);
+    const pt = chartData.find((d) => d.monthNum === so.orderDate.getMonth() + 1 && d.year === so.orderDate.getFullYear());
+    if (pt) pt.revenue += Number(so.totalAmount);
   }
   for (const po of sixMonthPurchases) {
-    const m = po.orderDate.getMonth() + 1;
-    const y = po.orderDate.getFullYear();
-    const point = chartData.find((d) => d.monthNum === m && d.year === y);
-    if (point) point.purchases += Number(po.totalAmount);
+    const pt = chartData.find((d) => d.monthNum === po.orderDate.getMonth() + 1 && d.year === po.orderDate.getFullYear());
+    if (pt) pt.purchases += Number(po.totalAmount);
   }
 
-  const serialisedChart = chartData.map(({ month, revenue, purchases }) => ({
-    month, revenue, purchases,
-  }));
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
+    <div className="space-y-6 pb-8">
+
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {format(now, "EEEE, d MMMM yyyy")} · Shanti Special Food Industry Pvt. Ltd.
+          <h1 className="text-xl font-semibold tracking-tight">Shanti Special Food Industry</h1>
+          <h1 className="text-xl font-semibold tracking-tight">Overview</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">
+            {format(now, "EEEE, d MMMM yyyy")}
           </p>
         </div>
-        <Link
-          href="/profit-loss"
-          className="inline-flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-sm font-medium shadow-sm hover:bg-muted transition-colors"
-        >
-          <TrendingUp className="h-4 w-4" />
-          Profit &amp; Loss
-        </Link>
+        <div className="flex items-center gap-2">
+          {totalAlerts > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 text-destructive px-3 py-1 text-xs font-medium">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {totalAlerts} action{totalAlerts !== 1 ? "s" : ""} needed
+            </span>
+          )}
+          <Link
+            href="/profit-loss"
+            className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-muted transition-colors"
+          >
+            <TrendingUp className="h-4 w-4" />
+            P&amp;L Report
+          </Link>
+        </div>
       </div>
 
-      {/* KPI cards — row 1 */}
+      {/* ── Financial KPIs ── */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Revenue This Month</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+        {/* Revenue */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Revenue — {format(now, "MMM")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              Rs {Number(monthSales._sum.totalAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">{format(now, "MMMM yyyy")}</p>
+            <p className="text-2xl font-bold tabular-nums">{fmt(revenue)}</p>
+            {revPct !== null && (
+              <p className={`text-xs mt-1 flex items-center gap-1 ${revPct >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                {revPct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                {Math.abs(revPct).toFixed(1)}% vs last month
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Purchases This Month</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+        {/* Purchases */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Purchases — {format(now, "MMM")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">
-              Rs {Number(monthPurchases._sum.totalAmount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Received goods</p>
+            <p className="text-2xl font-bold tabular-nums">{fmt(purchases)}</p>
+            {purPct !== null && (
+              <p className={`text-xs mt-1 flex items-center gap-1 ${purPct <= 0 ? "text-emerald-600" : "text-amber-600"}`}>
+                {purPct <= 0 ? <TrendingDown className="h-3 w-3" /> : <TrendingUp className="h-3 w-3" />}
+                {Math.abs(purPct).toFixed(1)}% vs last month
+              </p>
+            )}
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Receivables</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
+        {/* Gross Profit */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Gross Profit — {format(now, "MMM")}
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${totalReceivables > 0 ? "text-amber-600" : ""}`}>
-              Rs {totalReceivables.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            <p className={`text-2xl font-bold tabular-nums ${grossProfit < 0 ? "text-destructive" : ""}`}>
+              {fmt(grossProfit)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Uncollected from customers</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {revenue > 0 ? `${((grossProfit / revenue) * 100).toFixed(1)}% margin` : "No revenue yet"}
+            </p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Payables</CardTitle>
-            <CreditCard className="h-4 w-4 text-muted-foreground" />
+        {/* Inventory Value */}
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Inventory Value
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${totalPayables > 0 ? "text-destructive" : ""}`}>
-              Rs {totalPayables.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Owed to suppliers</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* KPI cards — row 2 */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Inventory Value</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              Rs {totalInventoryValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
+            <p className="text-2xl font-bold tabular-nums">{fmt(inventoryValue)}</p>
             <p className="text-xs text-muted-foreground mt-1">At cost price</p>
           </CardContent>
         </Card>
+      </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Open Purchase Orders</CardTitle>
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
+      {/* ── Cash Position ── */}
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Receivables</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${openPOs > 0 ? "text-blue-600" : ""}`}>{openPOs}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              <Link href="/purchases" className="hover:underline">Awaiting delivery →</Link>
+            <p className={`text-2xl font-bold tabular-nums ${totalReceivables > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+              {fmt(totalReceivables)}
             </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-xs text-muted-foreground">Owed by customers</p>
+              {totalReceivables > 0 && (
+                <Link href="/sales" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                  View <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Stock Alerts</CardTitle>
-            <Bell className="h-4 w-4 text-muted-foreground" />
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Payables</CardTitle>
+              <CreditCard className="h-4 w-4 text-muted-foreground" />
+            </div>
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${lowStockCount > 0 ? "text-amber-600" : ""}`}>
-              {lowStockCount}
+            <p className={`text-2xl font-bold tabular-nums ${totalPayables > 0 ? "text-destructive" : "text-emerald-600"}`}>
+              {fmt(totalPayables)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {lowStockCount > 0
-                ? <Link href="/inventory/reorder" className="hover:underline text-amber-600">View reorder alerts →</Link>
-                : "All stock levels healthy"}
-            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-xs text-muted-foreground">Owed to suppliers</p>
+              {totalPayables > 0 && (
+                <Link href="/purchases" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+                  View <ArrowUpRight className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Expenses</CardTitle>
-            <Receipt className="h-4 w-4 text-muted-foreground" />
+        <Card className={`border-0 shadow-sm ${netPosition >= 0 ? "bg-emerald-50 dark:bg-emerald-950/20" : "bg-red-50 dark:bg-red-950/20"}`}>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Net Position</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className={`text-2xl font-bold ${pendingExpenses > 0 ? "text-amber-600" : ""}`}>
-              {pendingExpenses}
+            <p className={`text-2xl font-bold tabular-nums ${netPosition >= 0 ? "text-emerald-700" : "text-destructive"}`}>
+              {netPosition >= 0 ? "+" : ""}{fmt(netPosition)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {pendingExpenses > 0
-                ? <Link href="/expenses" className="hover:underline">Awaiting approval →</Link>
-                : "All expenses reviewed"}
-            </p>
+            <p className="text-xs text-muted-foreground mt-1">Receivables minus payables</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Revenue chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Revenue vs Purchases — Last 6 Months</CardTitle>
+      {/* ── Operational Alerts ── */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <Link href="/inventory/reorder">
+          <Card className={`border-0 shadow-sm transition-colors hover:bg-muted/40 cursor-pointer ${lowStockCount > 0 ? "border-l-2 border-l-amber-500" : ""}`}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Low Stock</CardTitle>
+                <Bell className={`h-4 w-4 ${lowStockCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className={`text-2xl font-bold ${lowStockCount > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                {lowStockCount}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {lowStockCount > 0 ? "Items below reorder level" : "All levels healthy"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/purchases">
+          <Card className={`border-0 shadow-sm transition-colors hover:bg-muted/40 cursor-pointer ${openPOs > 0 ? "border-l-2 border-l-blue-500" : ""}`}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Open POs</CardTitle>
+                <ShoppingCart className={`h-4 w-4 ${openPOs > 0 ? "text-blue-500" : "text-muted-foreground"}`} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className={`text-2xl font-bold ${openPOs > 0 ? "text-blue-600" : ""}`}>{openPOs}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {openPOs > 0 ? "Awaiting delivery" : "No pending orders"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/expenses">
+          <Card className={`border-0 shadow-sm transition-colors hover:bg-muted/40 cursor-pointer ${pendingExpenses > 0 ? "border-l-2 border-l-amber-500" : ""}`}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pending Expenses</CardTitle>
+                <Receipt className={`h-4 w-4 ${pendingExpenses > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className={`text-2xl font-bold ${pendingExpenses > 0 ? "text-amber-600" : "text-emerald-600"}`}>
+                {pendingExpenses}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {pendingExpenses > 0 ? "Awaiting approval" : "All reviewed"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+
+        <Link href="/inventory/daily-log">
+          <Card className={`border-0 shadow-sm transition-colors hover:bg-muted/40 cursor-pointer`}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Daily Log</CardTitle>
+                <Package className="h-4 w-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              {!todayLog ? (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <Clock className="h-5 w-5 text-amber-500" />
+                    <p className="text-sm font-semibold text-amber-600">Not started</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Today&apos;s log pending</p>
+                </>
+              ) : todayLog.status === "OPEN" ? (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <Minus className="h-5 w-5 text-blue-500" />
+                    <p className="text-sm font-semibold text-blue-600">In progress</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Open — not yet closed</p>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1.5">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    <p className="text-sm font-semibold text-emerald-600">Closed</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Today&apos;s log complete</p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+
+      {/* ── Chart ── */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold">Revenue vs Purchases</CardTitle>
+            <span className="text-xs text-muted-foreground">Last 6 months</span>
+          </div>
         </CardHeader>
         <CardContent>
-          <RevenueChart data={serialisedChart} />
+          <RevenueChart data={chartData.map(({ month, revenue, purchases }) => ({ month, revenue, purchases }))} />
         </CardContent>
       </Card>
 
-      {/* Recent activity */}
+      {/* ── Recent Activity ── */}
       <RecentActivity
         recentSales={recentSalesOrders.map((so) => ({
           id:           so.id,

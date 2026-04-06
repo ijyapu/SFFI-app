@@ -2,133 +2,130 @@
 
 import Link from "next/link";
 import { format } from "date-fns";
-import { ShoppingCart, TrendingUp } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { ArrowUpRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-const SO_STATUS = {
-  DRAFT:          { label: "Draft",     className: "bg-gray-100 text-gray-700" },
-  CONFIRMED:      { label: "Confirmed", className: "bg-blue-100 text-blue-700" },
-  PARTIALLY_PAID: { label: "Partial",   className: "bg-amber-100 text-amber-700" },
-  PAID:           { label: "Paid",      className: "bg-green-100 text-green-700" },
-  CANCELLED:      { label: "Cancelled", className: "bg-red-100 text-red-700" },
-} as const;
+const SO_BADGE: Record<string, { label: string; cls: string }> = {
+  DRAFT:          { label: "Draft",     cls: "bg-gray-100 text-gray-600" },
+  CONFIRMED:      { label: "Confirmed", cls: "bg-blue-50 text-blue-700" },
+  PARTIALLY_PAID: { label: "Partial",   cls: "bg-amber-50 text-amber-700" },
+  PAID:           { label: "Paid",      cls: "bg-emerald-50 text-emerald-700" },
+  CANCELLED:      { label: "Cancelled", cls: "bg-red-50 text-red-600" },
+};
 
-const PO_STATUS = {
-  DRAFT:              { label: "Draft",    className: "bg-gray-100 text-gray-700" },
-  CONFIRMED:          { label: "Confirmed",className: "bg-blue-100 text-blue-700" },
-  PARTIALLY_RECEIVED: { label: "Partial",  className: "bg-amber-100 text-amber-700" },
-  RECEIVED:           { label: "Received", className: "bg-green-100 text-green-700" },
-  CANCELLED:          { label: "Cancelled",className: "bg-red-100 text-red-700" },
-} as const;
+const PO_BADGE: Record<string, { label: string; cls: string }> = {
+  DRAFT:              { label: "Draft",     cls: "bg-gray-100 text-gray-600" },
+  CONFIRMED:          { label: "Confirmed", cls: "bg-blue-50 text-blue-700" },
+  PARTIALLY_RECEIVED: { label: "Partial",   cls: "bg-amber-50 text-amber-700" },
+  RECEIVED:           { label: "Received",  cls: "bg-emerald-50 text-emerald-700" },
+  CANCELLED:          { label: "Cancelled", cls: "bg-red-50 text-red-600" },
+};
 
 type RecentSO = {
-  id: string;
-  orderNumber: string;
-  customerName: string;
-  totalAmount: number;
-  status: keyof typeof SO_STATUS;
-  orderDate: string;
+  id: string; orderNumber: string; customerName: string;
+  totalAmount: number; status: string; orderDate: string;
 };
-
 type RecentPO = {
-  id: string;
-  orderNumber: string;
-  supplierName: string;
-  totalAmount: number;
-  status: keyof typeof PO_STATUS;
-  orderDate: string;
+  id: string; orderNumber: string; supplierName: string;
+  totalAmount: number; status: string; orderDate: string;
 };
 
-export function RecentActivity({
-  recentSales,
-  recentPurchases,
-}: {
-  recentSales: RecentSO[];
-  recentPurchases: RecentPO[];
-}) {
-  return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-      {/* Recent Sales */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-medium text-sm flex items-center gap-1.5">
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            Recent Sales
-          </h3>
-          <Link href="/sales" className="text-xs text-primary hover:underline">View all</Link>
-        </div>
-        {recentSales.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No sales orders yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {recentSales.map((so) => {
-              const cfg = SO_STATUS[so.status];
-              return (
-                <Link
-                  key={so.id}
-                  href={`/sales/${so.id}`}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 hover:bg-muted/40 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-muted-foreground">{so.orderNumber}</span>
-                      <Badge variant="secondary" className={`${cfg.className} text-xs`}>{cfg.label}</Badge>
-                    </div>
-                    <div className="text-sm font-medium truncate">{so.customerName}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(new Date(so.orderDate), "dd MMM yyyy")}
-                    </div>
-                  </div>
-                  <div className="text-sm font-semibold shrink-0 ml-4">
-                    Rs {so.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
+function fmt(n: number) {
+  return `Rs ${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
-      {/* Recent Purchases */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="font-medium text-sm flex items-center gap-1.5">
-            <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-            Recent Purchases
-          </h3>
-          <Link href="/purchases" className="text-xs text-primary hover:underline">View all</Link>
-        </div>
-        {recentPurchases.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">No purchase orders yet.</p>
-        ) : (
-          <div className="space-y-2">
-            {recentPurchases.map((po) => {
-              const cfg = PO_STATUS[po.status];
-              return (
-                <Link
-                  key={po.id}
-                  href={`/purchases/${po.id}`}
-                  className="flex items-center justify-between rounded-lg border px-3 py-2.5 hover:bg-muted/40 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-muted-foreground">{po.orderNumber}</span>
-                      <Badge variant="secondary" className={`${cfg.className} text-xs`}>{cfg.label}</Badge>
-                    </div>
-                    <div className="text-sm font-medium truncate">{po.supplierName}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {format(new Date(po.orderDate), "dd MMM yyyy")}
-                    </div>
-                  </div>
-                  <div className="text-sm font-semibold shrink-0 ml-4">
-                    Rs {po.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </div>
-                </Link>
-              );
-            })}
+export function RecentActivity({ recentSales, recentPurchases }: { recentSales: RecentSO[]; recentPurchases: RecentPO[] }) {
+  return (
+    <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+
+      {/* Sales */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold">Recent Sales</CardTitle>
+            <Link href="/sales" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+              View all <ArrowUpRight className="h-3 w-3" />
+            </Link>
           </div>
-        )}
-      </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {recentSales.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No sales orders yet.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {recentSales.map((so) => {
+                const badge = SO_BADGE[so.status] ?? { label: so.status, cls: "bg-gray-100 text-gray-600" };
+                return (
+                  <Link
+                    key={so.id}
+                    href={`/sales/${so.id}`}
+                    className="flex items-center justify-between py-2.5 gap-4 hover:bg-muted/30 -mx-2 px-2 rounded transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground font-mono">{so.orderNumber}</span>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${badge.cls}`}>
+                          {badge.label}
+                        </span>
+                      </div>
+                      <div className="text-sm font-medium truncate mt-0.5">{so.customerName}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-semibold tabular-nums">{fmt(so.totalAmount)}</div>
+                      <div className="text-xs text-muted-foreground">{format(new Date(so.orderDate), "dd MMM")}</div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Purchases */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm font-semibold">Recent Purchases</CardTitle>
+            <Link href="/purchases" className="text-xs text-primary hover:underline flex items-center gap-0.5">
+              View all <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {recentPurchases.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No purchase orders yet.</p>
+          ) : (
+            <div className="divide-y divide-border">
+              {recentPurchases.map((po) => {
+                const badge = PO_BADGE[po.status] ?? { label: po.status, cls: "bg-gray-100 text-gray-600" };
+                return (
+                  <Link
+                    key={po.id}
+                    href={`/purchases/${po.id}`}
+                    className="flex items-center justify-between py-2.5 gap-4 hover:bg-muted/30 -mx-2 px-2 rounded transition-colors"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground font-mono">{po.orderNumber}</span>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${badge.cls}`}>
+                          {badge.label}
+                        </span>
+                      </div>
+                      <div className="text-sm font-medium truncate mt-0.5">{po.supplierName}</div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-sm font-semibold tabular-nums">{fmt(po.totalAmount)}</div>
+                      <div className="text-xs text-muted-foreground">{format(new Date(po.orderDate), "dd MMM")}</div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
     </div>
   );
 }
