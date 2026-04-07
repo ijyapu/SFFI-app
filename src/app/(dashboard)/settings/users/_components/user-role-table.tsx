@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { setUserRole } from "../actions";
 import type { AppRole } from "@/types/globals";
@@ -87,7 +88,7 @@ function RoleSelect({
           </option>
         ))}
       </select>
-      {error && <p className="text-xs text-destructive max-w-[200px] text-right">{error}</p>}
+      {error && <p className="text-xs text-destructive max-w-50 text-right">{error}</p>}
     </div>
   );
 }
@@ -149,7 +150,7 @@ export function UserRoleTable({ users }: Props) {
                   </div>
                 </td>
                 <td className="px-4 py-3 text-muted-foreground text-xs hidden sm:table-cell whitespace-nowrap">
-                  {format(new Date(user.createdAt), "d MMM yyyy")}
+                  <DateDisplay date={user.createdAt} fmt="d MMM yyyy" />
                 </td>
                 <td className="px-4 py-3">
                   {user.role ? (

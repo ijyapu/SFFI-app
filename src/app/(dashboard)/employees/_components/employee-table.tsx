@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import Link from "next/link";
 import { Pencil, Trash2, Plus, Building2, UserX } from "lucide-react";
 import {
@@ -195,7 +196,7 @@ export function EmployeeTable({ employees, departments }: Props) {
                     {emp.basicSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {format(new Date(emp.startDate), "dd MMM yyyy")}
+                    <DateDisplay date={emp.startDate} />
                   </TableCell>
                   <TableCell>
                     {isActive ? (

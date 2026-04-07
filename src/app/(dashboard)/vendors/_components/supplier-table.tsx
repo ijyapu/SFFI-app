@@ -16,7 +16,7 @@ import {
 import { SortButton } from "@/components/ui/sort-icon";
 import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { SupplierForm } from "./supplier-form";
-import { deleteSupplier } from "../../actions";
+import { deleteSupplier } from "../../purchases/actions";
 
 type Supplier = {
   id: string;
@@ -26,6 +26,7 @@ type Supplier = {
   phone: string | null;
   address: string | null;
   pan: string | null;
+  openingBalance: number;
   _count: { purchases: number };
 };
 

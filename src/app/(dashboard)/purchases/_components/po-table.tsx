@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import { toast } from "sonner";
 import { ExternalLink, Trash2 } from "lucide-react";
 import {
@@ -128,7 +129,7 @@ export function PoTable({ orders }: { orders: PO[] }) {
                   <TableCell className="font-mono font-medium">{po.orderNumber}</TableCell>
                   <TableCell>{po.supplierName}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {format(new Date(po.orderDate), "dd MMM yyyy")}
+                    <DateDisplay date={po.orderDate} />
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={cfg.className}>{cfg.label}</Badge>

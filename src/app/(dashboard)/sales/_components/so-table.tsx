@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import { toast } from "sonner";
 import { ExternalLink, Trash2 } from "lucide-react";
 import {
@@ -126,7 +127,7 @@ export function SoTable({ orders }: { orders: SO[] }) {
                   <TableCell className="font-mono font-medium">{so.orderNumber}</TableCell>
                   <TableCell>{so.customerName}</TableCell>
                   <TableCell className="text-muted-foreground text-sm">
-                    {format(new Date(so.orderDate), "dd MMM yyyy")}
+                    <DateDisplay date={so.orderDate} />
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={cfg.className}>{cfg.label}</Badge>

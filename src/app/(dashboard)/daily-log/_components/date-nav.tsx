@@ -19,7 +19,7 @@ export function DateNav({ dateStr, todayStr }: Props) {
 
   function go(days: number) {
     const next = offsetDate(dateStr, days);
-    router.push(`/inventory/daily-log?date=${next}`);
+    router.push(`/daily-log?date=${next}`);
   }
 
   return (
@@ -33,7 +33,7 @@ export function DateNav({ dateStr, todayStr }: Props) {
         value={dateStr}
         max={todayStr}
         onChange={(e) => {
-          if (e.target.value) router.push(`/inventory/daily-log?date=${e.target.value}`);
+          if (e.target.value) router.push(`/daily-log?date=${e.target.value}`);
         }}
         className="h-8 rounded-md border border-input bg-background px-2 text-sm tabular-nums cursor-pointer"
       />
@@ -43,7 +43,7 @@ export function DateNav({ dateStr, todayStr }: Props) {
       </Button>
 
       {!isToday && (
-        <Button variant="outline" size="sm" onClick={() => router.push("/inventory/daily-log")}>
+        <Button variant="outline" size="sm" onClick={() => router.push("/daily-log")}>
           Today
         </Button>
       )}

@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import { toast } from "sonner";
-import { ChevronUp, ChevronDown, ChevronsUpDown, Trash2, Building2, Pencil } from "lucide-react";
+import { ChevronUp, ChevronDown, ChevronsUpDown, Trash2, Building2, Pencil, Printer } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -24,15 +25,12 @@ type Purchase = {
   supplierId: string;
   supplierName: string;
   date: string;
-  paymentMethod: string;
   totalCost: number;
-  amountPaid: number;
-  outstanding: number;
 };
 
 type Supplier = { id: string; name: string };
 
-type SortKey = "invoiceNo" | "supplierName" | "date" | "amountPaid" | "outstanding";
+type SortKey = "invoiceNo" | "supplierName" | "date" | "totalCost";
 type SortDir = "asc" | "desc";
 
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
@@ -65,8 +63,8 @@ export function PurchaseTable({
       const rows = purchases.filter((p) => p.supplierId === s.id);
       return {
         ...s,
-        count:       rows.length,
-        outstanding: rows.reduce((sum, p) => sum + p.outstanding, 0),
+        count: rows.length,
+        total: rows.reduce((sum, p) => sum + p.totalCost, 0),
       };
     }).filter((s) => s.count > 0),
   [purchases, suppliers]);
@@ -83,8 +81,7 @@ export function PurchaseTable({
       if      (sortKey === "invoiceNo")    cmp = a.invoiceNo.localeCompare(b.invoiceNo);
       else if (sortKey === "supplierName") cmp = a.supplierName.localeCompare(b.supplierName);
       else if (sortKey === "date")         cmp = new Date(a.date).getTime() - new Date(b.date).getTime();
-      else if (sortKey === "amountPaid")   cmp = a.amountPaid - b.amountPaid;
-      else if (sortKey === "outstanding")  cmp = a.outstanding - b.outstanding;
+      else if (sortKey === "totalCost")    cmp = a.totalCost - b.totalCost;
       return sortDir === "asc" ? cmp : -cmp;
     });
   }, [purchases, search, activeSupplier, sortKey, sortDir]);
@@ -135,11 +132,9 @@ export function PurchaseTable({
               </div>
               <div className="flex justify-between text-xs mt-0.5 pl-4.5">
                 <span>{s.count} invoice{s.count !== 1 ? "s" : ""}</span>
-                {s.outstanding > 0.005 && (
-                  <span className="text-orange-500 font-medium">
-                    Rs {s.outstanding.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                  </span>
-                )}
+                <span className="text-muted-foreground">
+                  Rs {s.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                </span>
               </div>
             </button>
           ))}
@@ -173,15 +168,13 @@ export function PurchaseTable({
                 <SortableHead col="invoiceNo"    label="Invoice No." />
                 <SortableHead col="date"         label="Date" />
                 <TableHead numeric>Total (Rs)</TableHead>
-                <SortableHead col="amountPaid"   label="Paid (Rs)"         numeric />
-                <SortableHead col="outstanding"  label="Outstanding (Rs)"  numeric />
                 <TableHead className="w-20" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                  <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
                     {search || activeSupplier ? "No purchases match your filters." : "No purchases recorded yet."}
                   </TableCell>
                 </TableRow>
@@ -191,25 +184,18 @@ export function PurchaseTable({
                   <TableCell className="max-w-35 truncate">{p.supplierName}</TableCell>
                   <TableCell className="font-mono font-medium">{p.invoiceNo}</TableCell>
                   <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
-                    {format(new Date(p.date), "dd MMM yyyy")}
+                    <DateDisplay date={p.date} />
                   </TableCell>
                   <TableCell numeric>
                     {p.totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
-                  <TableCell numeric className="font-medium">
-                    {p.amountPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </TableCell>
-                  <TableCell numeric>
-                    {p.outstanding > 0.005 ? (
-                      <span className="text-orange-600 font-medium">
-                        {p.outstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    ) : (
-                      <span className="text-green-600 text-sm">Paid</span>
-                    )}
-                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1">
+                    <Link href={`/purchases/${p.id}/print`} target="_blank">
+                      <Button variant="ghost" size="icon-sm" title="Print Invoice">
+                        <Printer className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
                     <Link href={`/purchases/${p.id}/edit`}>
                       <Button variant="ghost" size="icon-sm">
                         <Pencil className="h-3.5 w-3.5" />

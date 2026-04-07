@@ -163,32 +163,30 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
   const form = useForm<CreatePurchaseValues>({
     resolver: zodResolver(createPurchaseSchema),
     defaultValues: {
-      invoiceNo:     initialValues?.invoiceNo     ?? "",
-      supplierId:    initialValues?.supplierId    ?? "",
-      date:          initialValues?.date          ?? new Date().toISOString().split("T")[0],
-      paymentMethod: initialValues?.paymentMethod ?? "CASH",
-      amountPaid:    initialValues?.amountPaid    ?? 0,
-      notes:         initialValues?.notes         ?? "",
-      invoiceUrl:    initialValues?.invoiceUrl    ?? "",
-      items:         initialValues?.items         ?? [{ productId: "", productName: "", categoryId: "", unitId: "", description: "", quantity: 1, unitPrice: 0, vatPct: 0 }],
+      invoiceNo:  initialValues?.invoiceNo  ?? "",
+      supplierId: initialValues?.supplierId ?? "",
+      date:       initialValues?.date       ?? new Date().toISOString().split("T")[0],
+      notes:      initialValues?.notes      ?? "",
+      invoiceUrl: initialValues?.invoiceUrl ?? "",
+      items:      initialValues?.items      ?? [{ productId: "", productName: "", categoryId: "", unitId: "", description: "", quantity: 1, unitPrice: 0, vatPct: 0, excisePct: 0 }],
     },
   });
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: "items" });
 
   // eslint-disable-next-line react-hooks/incompatible-library
-  const watchItems         = form.watch("items");
-  const watchAmountPaid    = form.watch("amountPaid");
+  const watchItems = form.watch("items");
 
   const computedItems = watchItems.map((item) => {
-    const gross = (item.quantity || 0) * (item.unitPrice || 0);
-    const vat   = gross * ((item.vatPct || 0) / 100);
-    return { gross, vat, total: gross + vat };
+    const gross       = (item.quantity || 0) * (item.unitPrice || 0);
+    const vat         = gross * ((item.vatPct || 0) / 100);
+    const excise      = gross * ((item.excisePct || 0) / 100);
+    return { gross, vat, excise, total: gross + vat + excise };
   });
   const subtotal    = computedItems.reduce((s, i) => s + i.gross, 0);
   const vatTotal    = computedItems.reduce((s, i) => s + i.vat, 0);
-  const totalCost   = subtotal + vatTotal;
-  const outstanding = Math.max(0, totalCost - (watchAmountPaid || 0));
+  const exciseTotal = computedItems.reduce((s, i) => s + i.excise, 0);
+  const totalCost   = subtotal + vatTotal + exciseTotal;
 
   function handleProductSelect(index: number, product: Product) {
     form.setValue(`items.${index}.productId`,   product.id);
@@ -343,63 +341,6 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
               />
             </div>
 
-            {/* Payment method + Amount paid */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="paymentMethod"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment Method *</FormLabel>
-                    <div className="flex gap-2">
-                      {(["CASH", "CREDIT"] as const).map((m) => (
-                        <button
-                          key={m}
-                          type="button"
-                          onClick={() => field.onChange(m)}
-                          className={`flex-1 rounded-md border px-4 py-2 text-sm font-medium transition-colors ${
-                            field.value === m
-                              ? m === "CASH"
-                                ? "bg-green-600 text-white border-green-600"
-                                : "bg-orange-500 text-white border-orange-500"
-                              : "bg-background hover:bg-muted"
-                          }`}
-                        >
-                          {m === "CASH" ? "Cash" : "Credit"}
-                        </button>
-                      ))}
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="amountPaid"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Amount Paid (Rs) *</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number" min="0" step="0.01"
-                        value={field.value === 0 ? "" : field.value}
-                        placeholder="0.00"
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                      />
-                    </FormControl>
-                    <div className="flex justify-between text-xs mt-1">
-                      <span className="text-muted-foreground">Total: Rs {totalCost.toFixed(2)}</span>
-                      {outstanding > 0.005
-                        ? <span className="text-orange-600 font-medium">Balance: Rs {outstanding.toFixed(2)}</span>
-                        : totalCost > 0 ? <span className="text-green-600 font-medium">Fully paid</span> : null
-                      }
-                    </div>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
           </div>
 
           {/* ── Line Items ── */}
@@ -408,7 +349,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
               <h3 className="font-medium text-sm text-muted-foreground uppercase tracking-wide">Items</h3>
               <Button
                 type="button" variant="outline" size="sm"
-                onClick={() => append({ productId: "", productName: "", categoryId: "", unitId: "", description: "", quantity: 1, unitPrice: 0, vatPct: 0 })}
+                onClick={() => append({ productId: "", productName: "", categoryId: "", unitId: "", description: "", quantity: 1, unitPrice: 0, vatPct: 0, excisePct: 0 })}
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Item
@@ -416,26 +357,27 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
             </div>
 
             {/* Desktop header */}
-            <div className="hidden lg:grid lg:grid-cols-[2fr_1.5fr_70px_110px_90px_90px_90px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40 rounded-md">
+            <div className="hidden lg:grid lg:grid-cols-[2fr_1.5fr_70px_110px_90px_90px_90px_90px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40 rounded-md">
               <span>Product</span>
               <span>Description</span>
               <span>Qty</span>
               <span>Unit Price (Rs)</span>
               <span>Gross</span>
-              <span>VAT</span>
+              <span>VAT 13%</span>
+              <span>Excise 5%</span>
               <span className="text-right">Total</span>
               <span />
             </div>
 
             <div className="divide-y rounded-md border">
               {fields.map((field, index) => {
-                const { gross, vat, total } = computedItems[index] ?? { gross: 0, vat: 0, total: 0 };
+                const { gross, total } = computedItems[index] ?? { gross: 0, total: 0 };
                 const item = watchItems[index];
 
                 const isNewProduct = !item?.productId && !!item?.productName;
 
                 return (
-                  <div key={field.id} className="p-3 space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[2fr_1.5fr_70px_110px_90px_90px_90px_32px] lg:gap-2 lg:items-start">
+                  <div key={field.id} className="p-3 space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[2fr_1.5fr_70px_110px_90px_90px_90px_90px_32px] lg:gap-2 lg:items-start">
 
                     {/* Product combobox + optional category/unit for new products */}
                     <FormField
@@ -591,26 +533,56 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                       </div>
                     </div>
 
-                    {/* VAT toggle */}
+                    {/* VAT 13% toggle */}
                     <FormField
                       control={form.control}
                       name={`items.${index}.vatPct`}
-                      render={({ field: f }) => (
-                        <FormItem className="space-y-0">
-                          <FormLabel className="lg:hidden text-xs">VAT</FormLabel>
-                          <button
-                            type="button"
-                            onClick={() => f.onChange(f.value === 0 ? 13 : 0)}
-                            className={`h-8 w-full rounded-md border px-2 text-xs font-medium transition-colors ${
-                              f.value > 0
-                                ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300"
-                                : "bg-muted/30 text-muted-foreground border-input hover:bg-muted"
-                            }`}
-                          >
-                            {f.value > 0 ? `13% = ${vat.toFixed(2)}` : "No VAT"}
-                          </button>
-                        </FormItem>
-                      )}
+                      render={({ field: f }) => {
+                        const { vat } = computedItems[index] ?? { vat: 0 };
+                        return (
+                          <FormItem className="space-y-0">
+                            <FormLabel className="lg:hidden text-xs">VAT 13%</FormLabel>
+                            <button
+                              type="button"
+                              title="Toggle VAT 13%"
+                              onClick={() => f.onChange(f.value === 0 ? 13 : 0)}
+                              className={`h-8 w-full rounded-md border px-2 text-xs font-medium transition-colors ${
+                                f.value > 0
+                                  ? "bg-blue-50 text-blue-700 border-blue-300 dark:bg-blue-950 dark:text-blue-300"
+                                  : "bg-muted/30 text-muted-foreground border-input hover:bg-muted"
+                              }`}
+                            >
+                              {f.value > 0 ? `+${vat.toFixed(2)}` : "—"}
+                            </button>
+                          </FormItem>
+                        );
+                      }}
+                    />
+
+                    {/* Excise 5% toggle */}
+                    <FormField
+                      control={form.control}
+                      name={`items.${index}.excisePct`}
+                      render={({ field: f }) => {
+                        const { excise } = computedItems[index] ?? { excise: 0 };
+                        return (
+                          <FormItem className="space-y-0">
+                            <FormLabel className="lg:hidden text-xs">Excise 5%</FormLabel>
+                            <button
+                              type="button"
+                              title="Toggle Excise Duty 5%"
+                              onClick={() => f.onChange(f.value === 0 ? 5 : 0)}
+                              className={`h-8 w-full rounded-md border px-2 text-xs font-medium transition-colors ${
+                                f.value > 0
+                                  ? "bg-purple-50 text-purple-700 border-purple-300 dark:bg-purple-950 dark:text-purple-300"
+                                  : "bg-muted/30 text-muted-foreground border-input hover:bg-muted"
+                              }`}
+                            >
+                              {f.value > 0 ? `+${excise.toFixed(2)}` : "—"}
+                            </button>
+                          </FormItem>
+                        );
+                      }}
                     />
 
                     {/* Line Total (read-only) */}
@@ -655,25 +627,16 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                   <span>Rs {vatTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               )}
+              {exciseTotal > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Excise Duty (5%)</span>
+                  <span>Rs {exciseTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              )}
               <div className="flex justify-between font-semibold text-base border-t pt-1.5 mt-1.5">
                 <span>Total Cost</span>
                 <span>Rs {totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex justify-between text-green-700">
-                <span>Amount Paid</span>
-                <span>Rs {(watchAmountPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              {outstanding > 0.005 ? (
-                <div className="flex justify-between text-orange-600 font-medium border-t pt-1.5">
-                  <span>Outstanding Balance</span>
-                  <span>Rs {outstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-              ) : totalCost > 0 ? (
-                <div className="flex justify-between text-green-600 font-medium border-t pt-1.5">
-                  <span>Outstanding Balance</span>
-                  <span>Fully Paid</span>
-                </div>
-              ) : null}
             </div>
           </div>
 

@@ -49,7 +49,7 @@ export default async function DailyLogHistoryPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <Link
-              href="/inventory/daily-log"
+              href="/daily-log"
               className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
             >
               <ArrowLeft className="h-4 w-4" />
@@ -62,7 +62,7 @@ export default async function DailyLogHistoryPage() {
         </div>
 
         <Link
-          href="/inventory/daily-log"
+          href="/daily-log"
           className={cn(buttonVariants({ variant: "outline" }))}
         >
           <BookOpen className="h-4 w-4" />
@@ -119,7 +119,7 @@ export default async function DailyLogHistoryPage() {
                   {/* Date */}
                   <TableCell>
                     <Link
-                      href={`/inventory/daily-log?date=${log.logDate}`}
+                      href={`/daily-log?date=${log.logDate}`}
                       className="font-medium text-sm hover:underline flex items-center gap-1"
                     >
                       {formatDate(log.logDate)}
@@ -215,7 +215,7 @@ export default async function DailyLogHistoryPage() {
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Link
-                        href={`/inventory/daily-log?date=${log.logDate}`}
+                        href={`/daily-log?date=${log.logDate}`}
                         className={cn(buttonVariants({ variant: "ghost", size: "sm" }))}
                       >
                         View

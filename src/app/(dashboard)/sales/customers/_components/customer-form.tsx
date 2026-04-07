@@ -22,6 +22,7 @@ type Customer = {
   phone: string | null;
   address: string | null;
   pan: string | null;
+  openingBalance: number;
 };
 
 type Props = {
@@ -33,7 +34,7 @@ type Props = {
 export function CustomerForm({ open, onClose, customer }: Props) {
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerSchema),
-    defaultValues: { name: "", email: "", phone: "", address: "", pan: "" },
+    defaultValues: { name: "", email: "", phone: "", address: "", pan: "", openingBalance: 0 },
   });
 
   useEffect(() => {
@@ -41,13 +42,14 @@ export function CustomerForm({ open, onClose, customer }: Props) {
       form.reset(
         customer
           ? {
-              name:    customer.name,
-              email:   customer.email ?? "",
-              phone:   customer.phone ?? "",
-              address: customer.address ?? "",
-              pan:     customer.pan ?? "",
+              name:           customer.name,
+              email:          customer.email ?? "",
+              phone:          customer.phone ?? "",
+              address:        customer.address ?? "",
+              pan:            customer.pan ?? "",
+              openingBalance: customer.openingBalance ?? 0,
             }
-          : { name: "", email: "", phone: "", address: "", pan: "" }
+          : { name: "", email: "", phone: "", address: "", pan: "", openingBalance: 0 }
       );
     }
   }, [open, customer, form]);
@@ -137,6 +139,26 @@ export function CustomerForm({ open, onClose, customer }: Props) {
                   <FormLabel>PAN Number</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="e.g. 123456789" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="openingBalance"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Opening Balance (Rs)</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      min={0}
+                      step="0.01"
+                      placeholder="0.00"
+                      value={field.value === 0 ? "" : field.value}
+                      onChange={(e) => field.onChange(e.target.value === "" ? 0 : parseFloat(e.target.value))}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

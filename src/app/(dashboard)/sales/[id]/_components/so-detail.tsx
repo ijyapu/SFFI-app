@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import {
   CheckCircle, XCircle, CreditCard, RotateCcw, Loader2,
 } from "lucide-react";
@@ -123,11 +124,11 @@ export function SoDetail(props: Props) {
             {cfg.label}
           </Badge>
           <span className="text-muted-foreground text-sm">
-            {format(new Date(orderDate), "dd MMM yyyy")}
+            <DateDisplay date={orderDate} />
           </span>
           {dueDate && (
-            <span className="text-muted-foreground text-sm">
-              · Due {format(new Date(dueDate), "dd MMM yyyy")}
+            <span className="text-muted-foreground text-sm flex items-center gap-1">
+              · Due <DateDisplay date={dueDate} />
             </span>
           )}
         </div>
@@ -276,7 +277,7 @@ export function SoDetail(props: Props) {
                       <span className="text-muted-foreground">{METHOD_LABELS[p.method] ?? p.method}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {format(new Date(p.paidAt), "dd MMM yyyy")}
+                      <DateDisplay date={p.paidAt} />
                       {p.reference && ` · ${p.reference}`}
                     </div>
                   </div>

@@ -14,7 +14,9 @@ export default async function SuppliersPage() {
   const suppliers = await prisma.supplier.findMany({
     where: { deletedAt: null },
     orderBy: { name: "asc" },
-    include: {
+    select: {
+      id: true, name: true, contactName: true, email: true,
+      phone: true, address: true, pan: true, openingBalance: true,
       _count: { select: { purchases: true } },
     },
   });
@@ -36,7 +38,7 @@ export default async function SuppliersPage() {
         </div>
       </div>
 
-      <SupplierTable suppliers={suppliers} />
+      <SupplierTable suppliers={suppliers.map(s => ({ ...s, openingBalance: Number(s.openingBalance) }))} />
     </div>
   );
 }

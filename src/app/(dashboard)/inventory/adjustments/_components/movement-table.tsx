@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -115,7 +116,7 @@ export function MovementTable({ movements }: Props) {
               return (
                 <TableRow key={m.id}>
                   <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                    {format(new Date(m.createdAt), "dd MMM yyyy HH:mm")}
+                    <DateDisplay date={m.createdAt} fmt="dd MMM yyyy HH:mm" />
                   </TableCell>
                   <TableCell>
                     <div className="font-medium text-sm">{m.product.name}</div>

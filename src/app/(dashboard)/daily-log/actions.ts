@@ -3,7 +3,6 @@
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { applyStockMovement } from "@/lib/stock";
 import { StockMovementType } from "@prisma/client";
 
 async function requireDailyLogAccess() {
@@ -151,7 +150,36 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
   const existing = await prisma.dailyLog.findUnique({ where: { logDate } });
   if (existing) throw new Error("A log already exists for this date");
 
-  // Snapshot current stock for all active products
+  // Prevent starting a new log if any previous log is still open
+  // (opening quantities would be wrong — stock movements only apply on close)
+  const openLog = await prisma.dailyLog.findFirst({
+    where: { status: "OPEN", logDate: { lt: logDate } },
+    select: { logDate: true },
+    orderBy: { logDate: "desc" },
+  });
+  if (openLog) {
+    const d = openLog.logDate.toISOString().slice(0, 10);
+    throw new Error(
+      `Close the daily log for ${d} first. Opening quantities carry over from the previous closed log.`
+    );
+  }
+
+  // Use previous closed log's closing quantities as opening quantities.
+  // This creates an explicit, traceable chain: Day N closing → Day N+1 opening.
+  // Falls back to currentStock for products not in the previous log (e.g. newly added).
+  const prevLog = await prisma.dailyLog.findFirst({
+    where: { status: "CLOSED", logDate: { lt: logDate } },
+    orderBy: { logDate: "desc" },
+    include: {
+      items: { select: { productId: true, closingQty: true } },
+    },
+  });
+
+  const prevClosingMap = new Map<string, number>(
+    prevLog?.items.map((i) => [i.productId, Number(i.closingQty)]) ?? []
+  );
+
+  // Get all active products (for currentStock fallback on new products)
   const products = await prisma.product.findMany({
     where: { deletedAt: null },
     select: { id: true, currentStock: true },
@@ -166,13 +194,15 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
       items: {
         create: products.map((p) => ({
           productId: p.id,
-          openingQty: p.currentStock,
+          openingQty: prevClosingMap.has(p.id)
+            ? prevClosingMap.get(p.id)!
+            : Number(p.currentStock),
         })),
       },
     },
   });
 
-  revalidatePath("/inventory/daily-log");
+  revalidatePath("/daily-log");
   return { id: log.id };
 }
 
@@ -259,85 +289,112 @@ export async function closeDailyLog(logId: string): Promise<void> {
       .map((s) => [s.productId!, Number(s._sum.quantity ?? 0)])
   );
 
-  await prisma.$transaction(async (tx) => {
-    for (const item of log.items) {
-      const opening = Number(item.openingQty);
-      const purchased = purchaseMap.get(item.productId) ?? 0;
-      const produced = Number(item.producedQty);
-      const used = Number(item.usedQty);
-      const sold = Number(item.soldQty);
-      const waste = Number(item.wasteQty);
-      const damaged = Number(item.damagedQty);
-
-      const closing = opening + purchased + produced - used - sold - waste - damaged;
-      const actual = item.actualQty != null ? Number(item.actualQty) : null;
-      const variance = actual != null ? actual - closing : null;
-
-      // Apply stock movements (purchases already applied — never re-apply here)
-      // isAdminOverride: true because the daily log is trusted staff input;
-      // negative closing is a discrepancy to investigate, not a hard blocker.
-      const ref = { referenceId: log.id, referenceType: "DailyLog", isAdminOverride: true as const };
-      const dateLabel = logDate.toISOString().slice(0, 10);
-      const txClient = tx as Parameters<typeof applyStockMovement>[1];
-
-      // Apply DAILY_IN first so produced stock is available before deductions
-      if (produced > 0) {
-        await applyStockMovement(
-          { productId: item.productId, type: StockMovementType.DAILY_IN,  quantity: produced, notes: `Daily log ${dateLabel} — produced`, createdBy: userId, ...ref },
-          txClient
-        );
-      }
-
-      // Then apply all DAILY_OUT movements
-      if (used > 0) {
-        await applyStockMovement(
-          { productId: item.productId, type: StockMovementType.DAILY_OUT, quantity: used,     notes: `Daily log ${dateLabel} — used`,     createdBy: userId, ...ref },
-          txClient
-        );
-      }
-      if (sold > 0) {
-        await applyStockMovement(
-          { productId: item.productId, type: StockMovementType.DAILY_OUT, quantity: sold,     notes: `Daily log ${dateLabel} — sold`,     createdBy: userId, ...ref },
-          txClient
-        );
-      }
-      if (waste > 0) {
-        await applyStockMovement(
-          { productId: item.productId, type: StockMovementType.DAILY_OUT, quantity: waste,    notes: `Daily log ${dateLabel} — waste`,    createdBy: userId, ...ref },
-          txClient
-        );
-      }
-      if (damaged > 0) {
-        await applyStockMovement(
-          { productId: item.productId, type: StockMovementType.DAILY_OUT, quantity: damaged,  notes: `Daily log ${dateLabel} — damaged`,  createdBy: userId, ...ref },
-          txClient
-        );
-      }
-
-      // Store final calculated values on the item
-      await tx.dailyLogItem.update({
-        where: { id: item.id },
-        data: {
-          closingQty: closing,
-          actualQty: actual,
-          varianceQty: variance,
-        },
-      });
-    }
-
-    // Mark log as closed
-    await tx.dailyLog.update({
-      where: { id: log.id },
-      data: {
-        status: "CLOSED",
-        closedBy: userId,
-        closedAt: new Date(),
-      },
-    });
+  // Pre-load current stock for all products in this log (1 query instead of N×M)
+  const productIds = log.items.map((i) => i.productId);
+  const stockSnapshot = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    select: { id: true, currentStock: true },
   });
+  // Mutable in-memory stock map — updated as we process each movement
+  const stockMap = new Map(stockSnapshot.map((p) => [p.id, Number(p.currentStock)]));
 
-  revalidatePath("/inventory/daily-log");
-  revalidatePath("/inventory/daily-log/history");
+  const dateLabel = logDate.toISOString().slice(0, 10);
+  const ref = { referenceId: log.id, referenceType: "DailyLog" };
+
+  // Build all stock movement records and final values in-memory
+  type PendingMovement = {
+    productId: string;
+    type: StockMovementType;
+    quantity: number;
+    quantityBefore: number;
+    quantityAfter: number;
+    notes: string;
+  };
+
+  const pendingMovements: PendingMovement[] = [];
+  const itemUpdates: Array<{ id: string; closingQty: number; actualQty: number | null; varianceQty: number | null }> = [];
+
+  for (const item of log.items) {
+    const opening   = Number(item.openingQty);
+    const purchased = purchaseMap.get(item.productId) ?? 0;
+    const produced  = Number(item.producedQty);
+    const used      = Number(item.usedQty);
+    const sold      = Number(item.soldQty);
+    const waste     = Number(item.wasteQty);
+    const damaged   = Number(item.damagedQty);
+
+    const closing  = opening + purchased + produced - used - sold - waste - damaged;
+    const actual   = item.actualQty != null ? Number(item.actualQty) : null;
+    const variance = actual != null ? actual - closing : null;
+
+    // Track running stock in-memory; DAILY_IN first, then DAILY_OUT
+    const pid = item.productId;
+    const addMovement = (type: StockMovementType, qty: number, label: string) => {
+      if (qty <= 0) return;
+      const before = stockMap.get(pid) ?? 0;
+      const isOut  = type === StockMovementType.DAILY_OUT;
+      const after  = isOut ? before - qty : before + qty;
+      stockMap.set(pid, after);
+      pendingMovements.push({ productId: pid, type, quantity: qty, quantityBefore: before, quantityAfter: after, notes: `Daily log ${dateLabel} — ${label}` });
+    };
+
+    addMovement(StockMovementType.DAILY_IN,  produced, "produced");
+    addMovement(StockMovementType.DAILY_OUT, used,     "used");
+    addMovement(StockMovementType.DAILY_OUT, sold,     "sold");
+    addMovement(StockMovementType.DAILY_OUT, waste,    "waste");
+    addMovement(StockMovementType.DAILY_OUT, damaged,  "damaged");
+
+    itemUpdates.push({ id: item.id, closingQty: closing, actualQty: actual, varianceQty: variance });
+  }
+
+  // Single transaction: batch-insert movements, update products + items + log header
+  await prisma.$transaction(
+    async (tx) => {
+      // Batch-create all stock movements at once
+      if (pendingMovements.length > 0) {
+        await tx.stockMovement.createMany({
+          data: pendingMovements.map((m) => ({
+            productId:      m.productId,
+            type:           m.type,
+            quantity:       m.quantity,
+            quantityBefore: m.quantityBefore,
+            quantityAfter:  m.quantityAfter,
+            notes:          m.notes,
+            referenceId:    ref.referenceId,
+            referenceType:  ref.referenceType,
+            isAdminOverride: true,
+            createdBy:      userId,
+          })),
+        });
+      }
+
+      // Update each product's currentStock (one update per product, not per movement)
+      for (const [productId, newStock] of stockMap.entries()) {
+        await tx.product.update({
+          where: { id: productId },
+          data: { currentStock: newStock },
+        });
+      }
+
+      // Update daily log items
+      for (const upd of itemUpdates) {
+        await tx.dailyLogItem.update({
+          where: { id: upd.id },
+          data: { closingQty: upd.closingQty, actualQty: upd.actualQty, varianceQty: upd.varianceQty },
+        });
+      }
+
+      // Mark log as closed
+      await tx.dailyLog.update({
+        where: { id: log.id },
+        data: { status: "CLOSED", closedBy: userId, closedAt: new Date() },
+      });
+    },
+    { timeout: 30000 }  // 30s safety ceiling for large catalogs
+  );
+
+  revalidatePath("/daily-log");
+  revalidatePath("/daily-log/history");
   revalidatePath("/inventory");
   revalidatePath("/inventory/stock-levels");
 }
@@ -357,66 +414,111 @@ export async function reopenDailyLog(logId: string): Promise<void> {
   if (!log) throw new Error("Log not found");
   if (log.status !== "CLOSED") throw new Error("Log is not closed");
 
-  // Reverse all DAILY_IN / DAILY_OUT movements that reference this log
+  const dateLabel = log.logDate.toISOString().slice(0, 10);
+
+  // Load forward movements to reverse
   const movements = await prisma.stockMovement.findMany({
     where: {
       referenceId: logId,
       referenceType: "DailyLog",
       type: { in: [StockMovementType.DAILY_IN, StockMovementType.DAILY_OUT] },
     },
-    select: { id: true, productId: true, type: true, quantity: true },
+    select: { productId: true, type: true, quantity: true },
   });
 
-  await prisma.$transaction(async (tx) => {
-    const txClient = tx as Parameters<typeof applyStockMovement>[1];
+  // Pre-load current stock for affected products
+  const productIds = [...new Set(movements.map((m) => m.productId))];
+  const stockSnapshot = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    select: { id: true, currentStock: true },
+  });
+  const stockMap = new Map(stockSnapshot.map((p) => [p.id, Number(p.currentStock)]));
 
-    for (const mv of movements) {
-      // Reverse: DAILY_IN → DAILY_OUT, DAILY_OUT → DAILY_IN
-      const reverseType =
-        mv.type === StockMovementType.DAILY_IN
-          ? StockMovementType.DAILY_OUT
-          : StockMovementType.DAILY_IN;
+  // Build reversal movement records in-memory
+  type PendingMovement = {
+    productId: string;
+    type: StockMovementType;
+    quantity: number;
+    quantityBefore: number;
+    quantityAfter: number;
+    notes: string;
+  };
+  const pendingMovements: PendingMovement[] = [];
 
-      await applyStockMovement(
-        {
-          productId: mv.productId,
-          type: reverseType,
-          quantity: Number(mv.quantity),
-          notes: `Reopen: reversal of daily log ${log.logDate.toISOString().slice(0, 10)}`,
-          createdBy: userId,
-          referenceId: logId,
-          referenceType: "DailyLog",
-          isAdminOverride: true,
+  for (const mv of movements) {
+    const reverseType =
+      mv.type === StockMovementType.DAILY_IN
+        ? StockMovementType.DAILY_OUT
+        : StockMovementType.DAILY_IN;
+    const qty    = Number(mv.quantity);
+    const before = stockMap.get(mv.productId) ?? 0;
+    const after  = reverseType === StockMovementType.DAILY_OUT ? before - qty : before + qty;
+    stockMap.set(mv.productId, after);
+    pendingMovements.push({
+      productId: mv.productId,
+      type:      reverseType,
+      quantity:  qty,
+      quantityBefore: before,
+      quantityAfter:  after,
+      notes: `Reopen: reversal of daily log ${dateLabel}`,
+    });
+  }
+
+  await prisma.$transaction(
+    async (tx) => {
+      // Batch-insert all reversal movements
+      if (pendingMovements.length > 0) {
+        await tx.stockMovement.createMany({
+          data: pendingMovements.map((m) => ({
+            productId:       m.productId,
+            type:            m.type,
+            quantity:        m.quantity,
+            quantityBefore:  m.quantityBefore,
+            quantityAfter:   m.quantityAfter,
+            notes:           m.notes,
+            referenceId:     logId,
+            referenceType:   "DailyLog",
+            isAdminOverride: true,
+            createdBy:       userId,
+          })),
+        });
+      }
+
+      // Update each product's currentStock once
+      for (const [productId, newStock] of stockMap.entries()) {
+        await tx.product.update({
+          where: { id: productId },
+          data:  { currentStock: newStock },
+        });
+      }
+
+      // Reset all item activity fields so staff can re-enter
+      await tx.dailyLogItem.updateMany({
+        where: { dailyLogId: logId },
+        data: {
+          producedQty: 0,
+          usedQty: 0,
+          soldQty: 0,
+          wasteQty: 0,
+          damagedQty: 0,
+          closingQty: 0,
+          actualQty: null,
+          varianceQty: null,
+          notes: null,
         },
-        txClient
-      );
-    }
+      });
 
-    // Reset all item activity fields so staff can re-enter
-    await tx.dailyLogItem.updateMany({
-      where: { dailyLogId: logId },
-      data: {
-        producedQty: 0,
-        usedQty: 0,
-        soldQty: 0,
-        wasteQty: 0,
-        damagedQty: 0,
-        closingQty: 0,
-        actualQty: null,
-        varianceQty: null,
-        notes: null,
-      },
-    });
+      // Unlock log
+      await tx.dailyLog.update({
+        where: { id: logId },
+        data: { status: "OPEN", closedBy: null, closedAt: null },
+      });
+    },
+    { timeout: 30000 }
+  );
 
-    // Unlock log
-    await tx.dailyLog.update({
-      where: { id: logId },
-      data: { status: "OPEN", closedBy: null, closedAt: null },
-    });
-  });
-
-  revalidatePath("/inventory/daily-log");
-  revalidatePath("/inventory/daily-log/history");
+  revalidatePath("/daily-log");
+  revalidatePath("/daily-log/history");
   revalidatePath("/inventory");
   revalidatePath("/inventory/stock-levels");
 }

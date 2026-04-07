@@ -12,6 +12,8 @@ import {
   Settings,
   Truck,
   ClipboardList,
+  BookOpen,
+  BookMarked,
   type LucideIcon,
 } from "lucide-react";
 import type { PermissionKey } from "@/lib/roles";
@@ -50,7 +52,7 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       {
         title: "Daily Log",
-        href: "/inventory/daily-log",
+        href: "/daily-log",
         icon: ClipboardList,
         permission: "inventory",
       },
@@ -62,14 +64,26 @@ export const NAV_GROUPS: NavGroup[] = [
       },
       {
         title: "Vendors",
-        href: "/purchases/suppliers",
+        href: "/vendors",
         icon: Truck,
+        permission: "purchases",
+      },
+      {
+        title: "Vendor Ledger",
+        href: "/vendors/ledger",
+        icon: BookOpen,
         permission: "purchases",
       },
       {
         title: "Sales",
         href: "/sales",
         icon: TrendingUp,
+        permission: "sales",
+      },
+      {
+        title: "Customer Ledger",
+        href: "/customers/ledger",
+        icon: BookMarked,
         permission: "sales",
       },
     ],

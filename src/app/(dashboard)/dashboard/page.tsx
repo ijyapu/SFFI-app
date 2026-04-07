@@ -1,8 +1,6 @@
 import Link from "next/link";
 import { startOfMonth, subMonths, format } from "date-fns";
 import { prisma } from "@/lib/prisma";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const db = prisma as any;
 import { requireMinRole } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -12,6 +10,7 @@ import {
 } from "lucide-react";
 import { RevenueChart } from "./_components/revenue-chart";
 import { RecentActivity } from "./_components/recent-activity";
+import { toNepaliDateString } from "@/lib/nepali-date";
 
 export const metadata = { title: "Dashboard — SSFI ERP" };
 
@@ -96,7 +95,7 @@ export default async function DashboardPage() {
       where: { deletedAt: null },
       select: { currentStock: true, costPrice: true },
     }),
-    db.dailyLog.findFirst({
+    prisma.dailyLog.findFirst({
       where: {
         logDate: {
           gte: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -166,6 +165,9 @@ export default async function DashboardPage() {
           <h1 className="text-xl font-semibold tracking-tight">Overview</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             {format(now, "EEEE, d MMMM yyyy")}
+          </p>
+          <p className="text-muted-foreground/70 text-xs mt-0.5">
+            {toNepaliDateString(now)}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -370,7 +372,7 @@ export default async function DashboardPage() {
           </Card>
         </Link>
 
-        <Link href="/inventory/daily-log">
+        <Link href="/daily-log">
           <Card className={`border-0 shadow-sm transition-colors hover:bg-muted/40 cursor-pointer`}>
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">

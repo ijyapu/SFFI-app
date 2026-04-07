@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supplierSchema, type SupplierFormValues } from "@/lib/validators/purchase";
-import { createSupplier, updateSupplier } from "../../actions";
+import { createSupplier, updateSupplier } from "../../purchases/actions";
 
 type Supplier = {
   id: string;
@@ -23,6 +23,7 @@ type Supplier = {
   phone: string | null;
   address: string | null;
   pan: string | null;
+  openingBalance: number;
 };
 
 type Props = {
@@ -35,7 +36,7 @@ export function SupplierForm({ open, onClose, supplier }: Props) {
   const form = useForm<SupplierFormValues>({
     resolver: zodResolver(supplierSchema),
     defaultValues: {
-      name: "", contactName: "", email: "", phone: "", address: "", pan: "",
+      name: "", contactName: "", email: "", phone: "", address: "", pan: "", openingBalance: 0,
     },
   });
 
@@ -44,14 +45,15 @@ export function SupplierForm({ open, onClose, supplier }: Props) {
       form.reset(
         supplier
           ? {
-              name:        supplier.name,
-              contactName: supplier.contactName ?? "",
-              email:       supplier.email ?? "",
-              phone:       supplier.phone ?? "",
-              address:     supplier.address ?? "",
-              pan:         supplier.pan ?? "",
+              name:           supplier.name,
+              contactName:    supplier.contactName ?? "",
+              email:          supplier.email ?? "",
+              phone:          supplier.phone ?? "",
+              address:        supplier.address ?? "",
+              pan:            supplier.pan ?? "",
+              openingBalance: supplier.openingBalance,
             }
-          : { name: "", contactName: "", email: "", phone: "", address: "", pan: "" }
+          : { name: "", contactName: "", email: "", phone: "", address: "", pan: "", openingBalance: 0 }
       );
     }
   }, [open, supplier, form]);
@@ -138,19 +140,40 @@ export function SupplierForm({ open, onClose, supplier }: Props) {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="pan"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>PAN Number</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="e.g. 123456789" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-3">
+              <FormField
+                control={form.control}
+                name="pan"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>PAN Number</FormLabel>
+                    <FormControl><Input {...field} placeholder="e.g. 123456789" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="openingBalance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Opening Balance (Rs)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number" min="0" step="0.01"
+                        value={field.value === 0 ? "" : field.value}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground -mt-2">
+              Opening balance = amount owed to this vendor before using this system.
+            </p>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
               <Button type="submit" disabled={form.formState.isSubmitting}>

@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import { PackageCheck, CreditCard, CheckCircle, XCircle, Loader2 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -129,11 +130,11 @@ export function PoDetail(props: Props) {
             {cfg.label}
           </Badge>
           <span className="text-muted-foreground text-sm">
-            {format(new Date(orderDate), "dd MMM yyyy")}
+            <DateDisplay date={orderDate} />
           </span>
           {expectedDate && (
-            <span className="text-muted-foreground text-sm">
-              · Expected {format(new Date(expectedDate), "dd MMM yyyy")}
+            <span className="text-muted-foreground text-sm flex items-center gap-1">
+              · Expected <DateDisplay date={expectedDate} />
             </span>
           )}
         </div>
@@ -297,7 +298,7 @@ export function PoDetail(props: Props) {
                       <span className="text-muted-foreground">{METHOD_LABELS[p.method] ?? p.method}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {format(new Date(p.paidAt), "dd MMM yyyy")}
+                      <DateDisplay date={p.paidAt} />
                       {p.reference && ` · ${p.reference}`}
                     </div>
                   </div>

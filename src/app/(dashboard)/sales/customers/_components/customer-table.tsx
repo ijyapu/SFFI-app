@@ -25,6 +25,7 @@ type Customer = {
   phone: string | null;
   address: string | null;
   pan: string | null;
+  openingBalance: number;
   _count: { salesOrders: number };
 };
 

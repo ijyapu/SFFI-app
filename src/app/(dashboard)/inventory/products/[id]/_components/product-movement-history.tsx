@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -92,7 +93,7 @@ export function ProductMovementHistory({
               return (
                 <TableRow key={m.id}>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                    {format(new Date(m.createdAt), "dd MMM yyyy, HH:mm")}
+                    <DateDisplay date={m.createdAt} fmt="dd MMM yyyy, HH:mm" />
                   </TableCell>
                   <TableCell>
                     <Badge variant="secondary" className={cfg.color}>

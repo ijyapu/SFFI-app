@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import { Plus, Pencil, Trash2, CheckCircle, XCircle, Tag } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -183,7 +184,7 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
               return (
                 <TableRow key={expense.id}>
                   <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                    {format(new Date(expense.date), "dd MMM yyyy")}
+                    <DateDisplay date={expense.date} />
                   </TableCell>
                   <TableCell>
                     <div className="font-medium">{expense.description}</div>

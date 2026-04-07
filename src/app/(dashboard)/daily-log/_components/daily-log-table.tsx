@@ -147,7 +147,13 @@ export function DailyLogTable({ items, isOpen }: Props) {
         disabled={!isOpen}
         placeholder="—"
         defaultValue={val === 0 ? "" : val}
+        onChange={(e) => {
+          // Update state immediately so closing recalculates live as you type
+          const parsed = parseFloat(e.target.value) || 0;
+          updateField(row.id, field, parsed);
+        }}
         onBlur={(e) => {
+          // Ensure final value is saved (handles paste / autocomplete edge cases)
           const parsed = parseFloat(e.target.value) || 0;
           updateField(row.id, field, parsed);
         }}
@@ -313,6 +319,10 @@ export function DailyLogTable({ items, isOpen }: Props) {
                           disabled={!isOpen}
                           placeholder="—"
                           defaultValue={row.actualQty == null || row.actualQty === 0 ? "" : row.actualQty}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            updateField(row.id, "actualQty", v === "" ? null : parseFloat(v) || 0);
+                          }}
                           onBlur={(e) => {
                             const v = e.target.value;
                             updateField(row.id, "actualQty", v === "" ? null : parseFloat(v) || 0);

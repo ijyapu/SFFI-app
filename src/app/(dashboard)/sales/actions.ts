@@ -46,11 +46,12 @@ export async function createCustomer(values: CustomerFormValues) {
   const data = customerSchema.parse(values);
   await prisma.customer.create({
     data: {
-      name:    data.name,
-      email:   data.email || null,
-      phone:   data.phone || null,
-      address: data.address || null,
-      pan:     data.pan || null,
+      name:           data.name,
+      email:          data.email || null,
+      phone:          data.phone || null,
+      address:        data.address || null,
+      pan:            data.pan || null,
+      openingBalance: data.openingBalance ?? 0,
     },
   });
   revalidatePath("/sales/customers");
@@ -62,11 +63,12 @@ export async function updateCustomer(id: string, values: CustomerFormValues) {
   await prisma.customer.update({
     where: { id },
     data: {
-      name:    data.name,
-      email:   data.email || null,
-      phone:   data.phone || null,
-      address: data.address || null,
-      pan:     data.pan || null,
+      name:           data.name,
+      email:          data.email || null,
+      phone:          data.phone || null,
+      address:        data.address || null,
+      pan:            data.pan || null,
+      openingBalance: data.openingBalance ?? 0,
     },
   });
   revalidatePath("/sales/customers");

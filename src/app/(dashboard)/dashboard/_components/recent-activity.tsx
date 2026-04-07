@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { format } from "date-fns";
 import { ArrowUpRight } from "lucide-react";
+import { DateDisplay } from "@/components/ui/date-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const SO_BADGE: Record<string, { label: string; cls: string }> = {
@@ -72,7 +73,7 @@ export function RecentActivity({ recentSales, recentPurchases }: { recentSales: 
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-semibold tabular-nums">{fmt(so.totalAmount)}</div>
-                      <div className="text-xs text-muted-foreground">{format(new Date(so.orderDate), "dd MMM")}</div>
+                      <div className="text-xs text-muted-foreground"><DateDisplay date={so.orderDate} fmt="dd MMM" nepali="day-month" /></div>
                     </div>
                   </Link>
                 );
@@ -116,7 +117,7 @@ export function RecentActivity({ recentSales, recentPurchases }: { recentSales: 
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-semibold tabular-nums">{fmt(po.totalAmount)}</div>
-                      <div className="text-xs text-muted-foreground">{format(new Date(po.orderDate), "dd MMM")}</div>
+                      <div className="text-xs text-muted-foreground"><DateDisplay date={po.orderDate} fmt="dd MMM" nepali="day-month" /></div>
                     </div>
                   </Link>
                 );

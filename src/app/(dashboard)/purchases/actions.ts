@@ -40,15 +40,16 @@ export async function createSupplier(values: SupplierFormValues) {
   const data = supplierSchema.parse(values);
   await prisma.supplier.create({
     data: {
-      name:        data.name,
-      contactName: data.contactName || null,
-      email:       data.email || null,
-      phone:       data.phone || null,
-      address:     data.address || null,
-      pan:         data.pan || null,
+      name:           data.name,
+      contactName:    data.contactName || null,
+      email:          data.email || null,
+      phone:          data.phone || null,
+      address:        data.address || null,
+      pan:            data.pan || null,
+      openingBalance: data.openingBalance ?? 0,
     },
   });
-  revalidatePath("/purchases/suppliers");
+  revalidatePath("/vendors");
 }
 
 export async function updateSupplier(id: string, values: SupplierFormValues) {
@@ -57,15 +58,16 @@ export async function updateSupplier(id: string, values: SupplierFormValues) {
   await prisma.supplier.update({
     where: { id },
     data: {
-      name:        data.name,
-      contactName: data.contactName || null,
-      email:       data.email || null,
-      phone:       data.phone || null,
-      address:     data.address || null,
-      pan:         data.pan || null,
+      name:           data.name,
+      contactName:    data.contactName || null,
+      email:          data.email || null,
+      phone:          data.phone || null,
+      address:        data.address || null,
+      pan:            data.pan || null,
+      openingBalance: data.openingBalance ?? 0,
     },
   });
-  revalidatePath("/purchases/suppliers");
+  revalidatePath("/vendors");
   revalidatePath("/purchases");
 }
 
@@ -75,7 +77,7 @@ export async function deleteSupplier(id: string) {
     where: { id },
     data: { deletedAt: new Date() },
   });
-  revalidatePath("/purchases/suppliers");
+  revalidatePath("/vendors");
 }
 
 // ─── Purchase Orders ──────────────────────────
@@ -358,19 +360,17 @@ export async function createPurchase(values: CreatePurchaseValues) {
 
   // Compute per-item amounts
   const computedItems = data.items.map((item) => {
-    const grossAmount = item.quantity * item.unitPrice;
-    const vatAmount   = grossAmount * (item.vatPct / 100);
-    const lineTotal   = grossAmount + vatAmount;
-    return { ...item, grossAmount, vatAmount, lineTotal };
+    const grossAmount   = item.quantity * item.unitPrice;
+    const vatAmount     = grossAmount * (item.vatPct / 100);
+    const exciseAmount  = grossAmount * (item.excisePct / 100);
+    const lineTotal     = grossAmount + vatAmount + exciseAmount;
+    return { ...item, grossAmount, vatAmount, exciseAmount, lineTotal };
   });
 
-  const subtotal  = computedItems.reduce((s, i) => s + i.grossAmount, 0);
-  const vatTotal  = computedItems.reduce((s, i) => s + i.vatAmount, 0);
-  const totalCost = subtotal + vatTotal;
-
-  if (data.amountPaid > totalCost + 0.005) {
-    throw new Error("Amount paid cannot exceed total cost");
-  }
+  const subtotal    = computedItems.reduce((s, i) => s + i.grossAmount, 0);
+  const vatTotal    = computedItems.reduce((s, i) => s + i.vatAmount, 0);
+  const exciseTotal = computedItems.reduce((s, i) => s + i.exciseAmount, 0);
+  const totalCost   = subtotal + vatTotal + exciseTotal;
 
   await prisma.$transaction(async (tx) => {
     // Resolve productIds — auto-create products for free-text items that have a category
@@ -408,11 +408,11 @@ export async function createPurchase(values: CreatePurchaseValues) {
         invoiceNo:     data.invoiceNo,
         supplierId:    data.supplierId,
         date:          new Date(data.date),
-        paymentMethod: data.paymentMethod,
+        paymentMethod: "CREDIT",
         subtotal,
         vatTotal,
         totalCost,
-        amountPaid:    data.amountPaid,
+        amountPaid:    0,
         notes:         data.notes || null,
         invoiceUrl:    data.invoiceUrl || null,
         createdBy:     userId,
@@ -425,10 +425,12 @@ export async function createPurchase(values: CreatePurchaseValues) {
             description: i.description || null,
             quantity:    i.quantity,
             unitPrice:   i.unitPrice,
-            grossAmount: i.grossAmount,
-            vatPct:      i.vatPct,
-            vatAmount:   i.vatAmount,
-            lineTotal:   i.lineTotal,
+            grossAmount:  i.grossAmount,
+            vatPct:       i.vatPct,
+            vatAmount:    i.vatAmount,
+            excisePct:    i.excisePct,
+            exciseAmount: i.exciseAmount,
+            lineTotal:    i.lineTotal,
           })),
         },
       },
@@ -462,19 +464,17 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
   const data   = createPurchaseSchema.parse(values);
 
   const computedItems = data.items.map((item) => {
-    const grossAmount = item.quantity * item.unitPrice;
-    const vatAmount   = grossAmount * (item.vatPct / 100);
-    const lineTotal   = grossAmount + vatAmount;
-    return { ...item, grossAmount, vatAmount, lineTotal };
+    const grossAmount  = item.quantity * item.unitPrice;
+    const vatAmount    = grossAmount * (item.vatPct / 100);
+    const exciseAmount = grossAmount * (item.excisePct / 100);
+    const lineTotal    = grossAmount + vatAmount + exciseAmount;
+    return { ...item, grossAmount, vatAmount, exciseAmount, lineTotal };
   });
 
-  const subtotal  = computedItems.reduce((s, i) => s + i.grossAmount, 0);
-  const vatTotal  = computedItems.reduce((s, i) => s + i.vatAmount, 0);
-  const totalCost = subtotal + vatTotal;
-
-  if (data.amountPaid > totalCost + 0.005) {
-    throw new Error("Amount paid cannot exceed total cost");
-  }
+  const subtotal    = computedItems.reduce((s, i) => s + i.grossAmount, 0);
+  const vatTotal    = computedItems.reduce((s, i) => s + i.vatAmount, 0);
+  const exciseTotal = computedItems.reduce((s, i) => s + i.exciseAmount, 0);
+  const totalCost   = subtotal + vatTotal + exciseTotal;
 
   await prisma.$transaction(async (tx) => {
     // Reverse old stock movements for items that had a productId
@@ -538,11 +538,11 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
         invoiceNo:     data.invoiceNo,
         supplierId:    data.supplierId,
         date:          new Date(data.date),
-        paymentMethod: data.paymentMethod,
+        paymentMethod: "CREDIT",
         subtotal,
         vatTotal,
         totalCost,
-        amountPaid:    data.amountPaid,
+        amountPaid:    0,
         notes:         data.notes || null,
         invoiceUrl:    data.invoiceUrl || null,
         items: {
@@ -554,10 +554,12 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
             description: i.description || null,
             quantity:    i.quantity,
             unitPrice:   i.unitPrice,
-            grossAmount: i.grossAmount,
-            vatPct:      i.vatPct,
-            vatAmount:   i.vatAmount,
-            lineTotal:   i.lineTotal,
+            grossAmount:  i.grossAmount,
+            vatPct:       i.vatPct,
+            vatAmount:    i.vatAmount,
+            excisePct:    i.excisePct,
+            exciseAmount: i.exciseAmount,
+            lineTotal:    i.lineTotal,
           })),
         },
       },

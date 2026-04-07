@@ -57,6 +57,7 @@ export default async function EditPurchasePage({
       quantity:    Number(i.quantity),
       unitPrice:   Number(i.unitPrice),
       vatPct:      Number(i.vatPct),
+      excisePct:   Number(i.excisePct ?? 0),
     })),
   };
 

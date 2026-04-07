@@ -11,11 +11,16 @@ export const metadata = { title: "Customers — Shanti Special Food Industry ERP
 export default async function CustomersPage() {
   await requirePermission("sales");
 
-  const customers = await prisma.customer.findMany({
+  const raw = await prisma.customer.findMany({
     where: { deletedAt: null },
     orderBy: { name: "asc" },
     include: { _count: { select: { salesOrders: true } } },
   });
+
+  const customers = raw.map((c) => ({
+    ...c,
+    openingBalance: Number(c.openingBalance),
+  }));
 
   return (
     <div className="space-y-6">

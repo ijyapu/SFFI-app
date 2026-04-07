@@ -1,12 +1,13 @@
 import { z } from "zod";
 
 export const supplierSchema = z.object({
-  name:        z.string().min(1, "Name is required"),
-  contactName: z.string().optional(),
-  email:       z.string().email("Invalid email").optional().or(z.literal("")),
-  phone:       z.string().optional(),
-  address:     z.string().optional(),
-  pan:         z.string().optional(),
+  name:           z.string().min(1, "Name is required"),
+  contactName:    z.string().optional(),
+  email:          z.string().email("Invalid email").optional().or(z.literal("")),
+  phone:          z.string().optional(),
+  address:        z.string().optional(),
+  pan:            z.string().optional(),
+  openingBalance: z.number().min(0).optional(),
 });
 
 export type SupplierFormValues = z.infer<typeof supplierSchema>;
@@ -65,17 +66,16 @@ export const purchaseItemSchema = z.object({
   quantity:    z.number().min(0.001, "Quantity must be > 0"),
   unitPrice:   z.number().min(0, "Price must be ≥ 0"),
   vatPct:      z.number().min(0).max(100),
+  excisePct:   z.number().min(0).max(100),
 });
 
 export const createPurchaseSchema = z.object({
-  invoiceNo:     z.string().min(1, "Invoice number is required"),
-  supplierId:    z.string().min(1, "Select a supplier"),
-  date:          z.string().min(1, "Date is required"),
-  paymentMethod: z.enum(["CASH", "CREDIT"]),
-  amountPaid:    z.number().min(0, "Amount paid must be ≥ 0"),
-  notes:         z.string().optional(),
-  invoiceUrl:    z.string().optional(),
-  items:         z.array(purchaseItemSchema).min(1, "Add at least one item"),
+  invoiceNo:  z.string().min(1, "Invoice number is required"),
+  supplierId: z.string().min(1, "Select a supplier"),
+  date:       z.string().min(1, "Date is required"),
+  notes:      z.string().optional(),
+  invoiceUrl: z.string().optional(),
+  items:      z.array(purchaseItemSchema).min(1, "Add at least one item"),
 });
 
 export type CreatePurchaseValues = z.infer<typeof createPurchaseSchema>;

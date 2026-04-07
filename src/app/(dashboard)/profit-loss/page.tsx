@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { DateRangePicker } from "./_components/date-range-picker";
@@ -117,8 +118,8 @@ export default async function ProfitLossPage({
 
   const periodLabel =
     fromStr === toStr
-      ? format(fromDate, "d MMMM yyyy")
-      : `${format(fromDate, "d MMM yyyy")} — ${format(toDate, "d MMM yyyy")}`;
+      ? `${format(fromDate, "d MMMM yyyy")} (${toNepaliDateString(fromDate)})`
+      : `${format(fromDate, "d MMM yyyy")} — ${format(toDate, "d MMM yyyy")} · ${toNepaliDateString(fromDate)} — ${toNepaliDateString(toDate)}`;
 
   return (
     <div className="space-y-6">

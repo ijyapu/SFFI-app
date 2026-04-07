@@ -91,7 +91,7 @@ export default async function DailyLogPage({ searchParams }: Props) {
         {/* Controls */}
         <div className="flex items-center gap-3 flex-wrap">
           <Link
-            href="/inventory/daily-log/history"
+            href="/daily-log/history"
             className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
           >
             <History className="h-4 w-4" />

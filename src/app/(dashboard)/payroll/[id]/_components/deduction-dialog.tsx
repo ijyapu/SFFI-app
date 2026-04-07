@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { z } from "zod/v4";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import { Trash2, Plus, Banknote, Wifi, ImageIcon } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -176,7 +177,7 @@ export function DeductionDialog({
                         {entry.paymentMode === "CASH" ? "Cash" : "Online"}
                       </Badge>
                       <span className="text-xs text-muted-foreground">
-                        {format(new Date(entry.givenAt ?? entry.createdAt), "dd MMM yyyy")}
+                        <DateDisplay date={entry.givenAt ?? entry.createdAt} />
                       </span>
                     </div>
                     {entry.givenBy && (

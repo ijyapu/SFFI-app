@@ -199,11 +199,13 @@ model Supplier {
   email       String?
   phone       String?
   address     String?
-  pan         String? // PAN number (Permanent Account Number)
+  pan            String?  // PAN number (Permanent Account Number)
+  openingBalance Decimal  @default(0) @db.Decimal(10, 2) // amount owed to vendor before system use
 
-  purchaseOrders PurchaseOrder[]
-  payments       SupplierPayment[]
-  purchases      Purchase[]
+  purchaseOrders  PurchaseOrder[]
+  payments        SupplierPayment[]
+  purchases       Purchase[]
+  vendorPayments  VendorPayment[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -303,6 +305,42 @@ model SupplierPayment {
   @@index([supplierId])
 }
 
+/// Standalone vendor payment — not tied to a specific invoice or PO.
+/// Used to record credit settlement payments (partial or full).
+model VendorPayment {
+  id         String        @id @default(cuid())
+  supplierId String
+  amount     Decimal       @db.Decimal(10, 2)
+  method     PaymentMethod
+  reference  String?       // cheque no, bank ref, etc.
+  notes      String?
+  receiptUrl String?       // photo of payment receipt
+  paidAt     DateTime      @default(now())
+
+  supplier    Supplier                   @relation(fields: [supplierId], references: [id])
+  allocations VendorPaymentAllocation[]
+
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([supplierId])
+  @@index([paidAt])
+}
+
+/// Links a VendorPayment to a specific Purchase invoice (for allocation tracking).
+model VendorPaymentAllocation {
+  id              String  @id @default(cuid())
+  vendorPaymentId String
+  purchaseId      String
+  amount          Decimal @db.Decimal(10, 2)
+
+  vendorPayment VendorPayment @relation(fields: [vendorPaymentId], references: [id], onDelete: Cascade)
+  purchase      Purchase      @relation(fields: [purchaseId],      references: [id])
+
+  @@index([vendorPaymentId])
+  @@index([purchaseId])
+}
+
 model Purchase {
   id            String   @id @default(cuid())
   invoiceNo     String   @unique
@@ -316,8 +354,9 @@ model Purchase {
   notes         String?
   invoiceUrl    String?
 
-  supplier  Supplier          @relation(fields: [supplierId], references: [id])
-  items     PurchaseLineItem[]
+  supplier            Supplier                   @relation(fields: [supplierId], references: [id])
+  items               PurchaseLineItem[]
+  vendorPaymentAllocs VendorPaymentAllocation[]
 
   createdBy String
   createdAt DateTime  @default(now())
@@ -339,9 +378,11 @@ model PurchaseLineItem {
   quantity    Decimal @db.Decimal(10, 3)
   unitPrice   Decimal @db.Decimal(10, 2)
   grossAmount Decimal @db.Decimal(10, 2)
-  vatPct      Decimal @default(0) @db.Decimal(5, 2)
-  vatAmount   Decimal @default(0) @db.Decimal(10, 2)
-  lineTotal   Decimal @db.Decimal(10, 2)
+  vatPct       Decimal @default(0) @db.Decimal(5, 2)
+  vatAmount    Decimal @default(0) @db.Decimal(10, 2)
+  excisePct    Decimal @default(0) @db.Decimal(5, 2)
+  exciseAmount Decimal @default(0) @db.Decimal(10, 2)
+  lineTotal    Decimal @db.Decimal(10, 2)
 
   purchase Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
   product  Product?  @relation(fields: [productId], references: [id])
@@ -355,12 +396,13 @@ model PurchaseLineItem {
 // ─────────────────────────────────────────────
 
 model Customer {
-  id      String  @id @default(cuid())
-  name    String
-  email   String?
-  phone   String?
-  address String?
-  pan     String? // PAN number (Permanent Account Number)
+  id             String  @id @default(cuid())
+  name           String
+  email          String?
+  phone          String?
+  address        String?
+  pan            String? // PAN number (Permanent Account Number)
+  openingBalance Decimal @default(0) @db.Decimal(10, 2) // amount customer owed before system use
 
   salesOrders SalesOrder[]
   payments    CustomerPayment[]

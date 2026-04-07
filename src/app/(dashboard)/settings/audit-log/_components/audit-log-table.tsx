@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
+import { DateDisplay } from "@/components/ui/date-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { SortButton } from "@/components/ui/sort-icon";
@@ -143,9 +144,9 @@ export function AuditLogTable({ entries, total, page, pageSize }: Props) {
                         )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-muted-foreground text-xs">
-                        {format(new Date(entry.createdAt), "d MMM yyyy, HH:mm")}
+                        <DateDisplay date={entry.createdAt} fmt="d MMM yyyy, HH:mm" />
                       </td>
-                      <td className="px-4 py-3 text-xs truncate max-w-[180px]" title={entry.userId}>
+                      <td className="px-4 py-3 text-xs truncate max-w-45" title={entry.userId}>
                         {entry.userLabel}
                       </td>
                       <td className="px-4 py-3">

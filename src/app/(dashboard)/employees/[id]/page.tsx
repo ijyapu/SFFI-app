@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Building2, Phone, Mail, Calendar } from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { EmployeeDetail } from "./_components/employee-detail";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -109,7 +110,7 @@ export default async function EmployeeDetailPage({
         </span>
         <span className="flex items-center gap-1.5">
           <Calendar className="h-3.5 w-3.5" />
-          Joined {format(employee.startDate, "d MMM yyyy")}
+          Joined {format(employee.startDate, "d MMM yyyy")} ({toNepaliDateString(new Date(employee.startDate))})
         </span>
       </div>
 
