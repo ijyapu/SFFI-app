@@ -1,9 +1,10 @@
+import { COMPANY } from "@/lib/company";
 import Image from "next/image";
 import Link from "next/link";
 import { SignUp } from "@clerk/nextjs";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
 
-export const metadata = { title: "Create Account — Shanti ERP" };
+export const metadata = { title: "Create Account" };
 
 export default function SignUpPage() {
   return (
@@ -18,7 +19,7 @@ export default function SignUpPage() {
             <Image src="/ssfi-logo.jpg" alt="SSFI" fill className="object-contain" priority />
           </div>
           <div>
-            <p className="text-white font-bold text-base tracking-wide">Shanti ERP</p>
+            <p className="text-white font-bold text-base tracking-wide">{COMPANY.nameShort} ERP</p>
             <p className="text-red-400/80 text-xs tracking-widest uppercase">Enterprise Portal</p>
           </div>
         </div>
@@ -31,7 +32,7 @@ export default function SignUpPage() {
           </div>
           <div className="space-y-3">
             <h1 className="text-3xl font-bold text-white leading-snug tracking-tight">
-              Joining Shanti ERP
+              Joining {COMPANY.nameShort} ERP
             </h1>
             <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
               Create your account. Once registered, an administrator will review and
@@ -76,7 +77,7 @@ export default function SignUpPage() {
             <Image src="/ssfi-logo.jpg" alt="SSFI" fill className="object-contain" />
           </div>
           <div>
-            <p className="font-bold text-gray-900 text-sm">Shanti ERP</p>
+            <p className="font-bold text-gray-900 text-sm">{COMPANY.nameShort} ERP</p>
             <p className="text-red-500 text-xs tracking-widest uppercase">Enterprise Portal</p>
           </div>
         </div>

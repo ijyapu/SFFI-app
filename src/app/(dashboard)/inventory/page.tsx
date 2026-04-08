@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { SlidersHorizontal, BarChart2, Bell } from "lucide-react";
 
-export const metadata = { title: "Inventory — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Inventory" };
 
 export default async function InventoryPage() {
   await requirePermission("inventory");

@@ -5,7 +5,7 @@ import { ExpenseTable } from "./_components/expense-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Receipt, CheckCircle, Clock, XCircle } from "lucide-react";
 
-export const metadata = { title: "Expenses — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Expenses" };
 
 export default async function ExpensesPage() {
   await requirePermission("expenses");

@@ -11,8 +11,9 @@ import {
 import { RevenueChart } from "./_components/revenue-chart";
 import { RecentActivity } from "./_components/recent-activity";
 import { toNepaliDateString } from "@/lib/nepali-date";
+import { COMPANY } from "@/lib/company";
 
-export const metadata = { title: "Dashboard — SSFI ERP" };
+export const metadata = { title: "Dashboard" };
 
 function fmt(n: number) {
   return `Rs ${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -161,7 +162,7 @@ export default async function DashboardPage() {
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight">Shanti Special Food Industry</h1>
+          <h1 className="text-xl font-semibold tracking-tight">{COMPANY.name}</h1>
           <h1 className="text-xl font-semibold tracking-tight">Overview</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
             {format(now, "EEEE, d MMMM yyyy")}

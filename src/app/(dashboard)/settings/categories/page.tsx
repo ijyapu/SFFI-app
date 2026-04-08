@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { SettingsCrudTable } from "../_components/settings-crud-table";
 import { createCategory, renameCategory, deleteCategory } from "./actions";
 
-export const metadata = { title: "Categories — Settings — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Categories — Settings" };
 
 export default async function CategoriesPage() {
   const categories = await prisma.category.findMany({

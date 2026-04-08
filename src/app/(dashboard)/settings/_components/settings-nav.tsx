@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const SUB_NAV = [
+  { label: "Company",             href: "/settings/company" },
   { label: "Users & Roles",       href: "/settings/users" },
   { label: "Categories",          href: "/settings/categories" },
   { label: "Units",               href: "/settings/units" },

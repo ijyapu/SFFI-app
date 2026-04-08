@@ -7,7 +7,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, SlidersHorizontal } from "lucide-react";
 
-export const metadata = { title: "Stock Levels — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Stock Levels" };
 
 function getStatus(currentStock: number, reorderLevel: number): "ok" | "low" | "out" {
   if (currentStock <= 0) return "out";

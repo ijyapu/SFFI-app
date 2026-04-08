@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 import { AuditLogTable, type AuditEntry } from "./_components/audit-log-table";
 
-export const metadata = { title: "Audit Log — Settings — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Audit Log — Settings" };
 
 const PAGE_SIZE = 30;
 

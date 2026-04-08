@@ -22,6 +22,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { NAV_GROUPS } from "@/components/layout/nav-config";
 import { useRole } from "@/hooks/use-role";
+import { COMPANY } from "@/lib/company";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -40,11 +41,11 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" render={<Link href="/dashboard" />}>
               <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg overflow-hidden bg-white border border-border">
-                <Image src="/ssfi-logo.jpg" alt="SSFI" width={32} height={32} className="object-contain" />
+                <Image src="/ssfi-logo.jpg" alt={COMPANY.nameShort} width={32} height={32} className="object-contain" />
               </div>
               <div className="flex flex-col leading-none">
-                <span className="font-semibold text-sm">SSFI ERP</span>
-                <span className="text-[10px] text-muted-foreground leading-tight">Shanti Special Food Industry</span>
+                <span className="font-semibold text-sm">{COMPANY.nameShort} ERP</span>
+                <span className="text-[10px] text-muted-foreground leading-tight">{COMPANY.name}</span>
                 <span className="text-xs text-muted-foreground">
                   {role ? (
                     <span className="capitalize">{role}</span>

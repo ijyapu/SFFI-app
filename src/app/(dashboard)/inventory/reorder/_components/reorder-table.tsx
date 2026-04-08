@@ -142,7 +142,7 @@ export function ReorderTable({ items }: { items: ReorderItem[] }) {
 
       {/* Print-only footer */}
       <div className="hidden print:block text-xs text-muted-foreground mt-4 border-t pt-2">
-        Shanti Special Food Industry ERP · Reorder List · Generated {new Date().toLocaleDateString()}
+        SSFI ERP · Reorder List · Generated {new Date().toLocaleDateString()}
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 import { requirePermission } from "@/lib/auth";
 import { ReportsNav } from "./_components/reports-nav";
 
-export const metadata = { title: "Reports — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Reports" };
 
 export default async function ReportsLayout({ children }: { children: React.ReactNode }) {
   await requirePermission("reports");

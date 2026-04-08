@@ -3,6 +3,7 @@ import { Geist } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "sonner";
+import { COMPANY } from "@/lib/company";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -11,8 +12,11 @@ const geistSans = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "Shanti Special Food Industry ERP",
-  description: "Enterprise Resource Planning for SSFI",
+  title: {
+    default:  `${COMPANY.name} ERP`,
+    template: `%s — ${COMPANY.name} ERP`,
+  },
+  description: `Enterprise Resource Planning for ${COMPANY.name}`,
   icons: { icon: "/ssfi-logo.jpg" },
 };
 

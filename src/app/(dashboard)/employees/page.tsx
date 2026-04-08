@@ -4,7 +4,7 @@ import { EmployeeTable } from "./_components/employee-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, DollarSign, Building2 } from "lucide-react";
 
-export const metadata = { title: "Employees — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Employees" };
 
 export default async function EmployeesPage() {
   await requirePermission("employees");

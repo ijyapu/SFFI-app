@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { CustomerSalesTable, type CustomerSalesRow } from "./_components/customer-sales-table";
 
-export const metadata = { title: "Sales by Customer — Reports — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Sales by Customer — Reports" };
 
 export default async function SalesByCustomerPage({
   searchParams,

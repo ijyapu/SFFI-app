@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, ShoppingCart } from "lucide-react";
 
-export const metadata = { title: "Purchases — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Purchases" };
 
 export default async function PurchasesPage() {
   await requirePermission("purchases");

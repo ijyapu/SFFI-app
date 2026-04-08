@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 
-export const metadata = { title: "Reorder Alerts — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Reorder Alerts" };
 
 export default async function ReorderPage() {
   await requirePermission("inventory");

@@ -4,7 +4,7 @@ import { getCurrentRole } from "@/lib/auth";
 import { AdjustmentForm } from "./_components/adjustment-form";
 import { MovementTable } from "./_components/movement-table";
 
-export const metadata = { title: "Stock Adjustments — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Stock Adjustments" };
 
 export default async function AdjustmentsPage() {
   await requirePermission("inventory");

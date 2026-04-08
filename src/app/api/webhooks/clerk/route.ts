@@ -1,3 +1,4 @@
+import { COMPANY } from "@/lib/company";
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { Resend } from "resend";
@@ -65,9 +66,9 @@ export async function POST(req: Request) {
   if (resend) {
     try {
       await resend.emails.send({
-        from:    "SSFI ERP <noreply@ssfi.com.np>",
+        from:    `${COMPANY.nameShort} ERP <noreply@ssfi.com.np>`,
         to:      primaryEmail,
-        subject: "Your SSFI account is under review",
+        subject: `Your ${COMPANY.nameShort} account is under review`,
         html: `
 <!DOCTYPE html>
 <html>
@@ -75,15 +76,15 @@ export async function POST(req: Request) {
   <div style="max-width:480px;margin:40px auto;background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden;">
     <!-- Header -->
     <div style="background:#0f172a;padding:24px 32px;">
-      <p style="margin:0;color:#fff;font-size:16px;font-weight:700;">SSFI ERP</p>
-      <p style="margin:4px 0 0;color:#94a3b8;font-size:12px;">Shanti Special Food Industry Pvt. Ltd.</p>
+      <p style="margin:0;color:#fff;font-size:16px;font-weight:700;">${COMPANY.nameShort} ERP</p>
+      <p style="margin:4px 0 0;color:#94a3b8;font-size:12px;">${COMPANY.name}</p>
     </div>
     <!-- Body -->
     <div style="padding:32px;">
       <h1 style="margin:0 0 8px;font-size:20px;color:#0f172a;">Account Under Review</h1>
       <p style="margin:0 0 20px;font-size:14px;color:#64748b;line-height:1.6;">
         Hi ${firstName},<br><br>
-        Thank you for registering on the <strong>SSFI Enterprise Portal</strong>.
+        Thank you for registering on the <strong>${COMPANY.nameShort} Enterprise Portal</strong>.
         Your account has been received and is currently being reviewed by our administrator.
       </p>
       <div style="background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;padding:16px;margin-bottom:24px;">
@@ -101,7 +102,7 @@ export async function POST(req: Request) {
     <!-- Footer -->
     <div style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:16px 32px;">
       <p style="margin:0;font-size:11px;color:#94a3b8;">
-        © ${new Date().getFullYear()} Shanti Special Food Industry Pvt. Ltd. · Nepal
+        © ${new Date().getFullYear()} ${COMPANY.name} · Nepal
       </p>
     </div>
   </div>

@@ -1,8 +1,9 @@
+import { COMPANY } from "@/lib/company";
 import Image from "next/image";
 import { SignIn } from "@clerk/nextjs";
 import { ShieldCheck, BarChart3, Package, Lock, TrendingUp } from "lucide-react";
 
-export const metadata = { title: "Sign In — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Sign In" };
 
 const FEATURES = [
   { icon: Package,    text: "Inventory and stock tracking" },
@@ -29,7 +30,7 @@ export default function SignInPage() {
             <Image src="/ssfi-logo.jpg" alt="SSFI" fill className="object-contain p-0.5" priority />
           </div>
           <div>
-            <p className="text-white font-semibold text-sm leading-tight tracking-wide">Shanti Special Food Industry</p>
+            <p className="text-white font-semibold text-sm leading-tight tracking-wide">{COMPANY.name}</p>
             <p className="text-red-400/60 text-[9px] tracking-widest uppercase">Enterprise Resource Planning</p>
           </div>
         </div>
@@ -89,7 +90,7 @@ export default function SignInPage() {
             <Image src="/ssfi-logo.jpg" alt="SSFI" fill className="object-contain" />
           </div>
           <div>
-            <p className="font-bold text-red-600 text-sm">Shanti Special Food Industry</p>
+            <p className="font-bold text-red-600 text-sm">{COMPANY.name}</p>
             <p className="text-gray-400 text-[9px] tracking-widest uppercase">Enterprise Portal</p>
           </div>
         </div>
@@ -99,7 +100,7 @@ export default function SignInPage() {
           {/* Heading */}
           <div className="mb-5">
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight leading-snug">
-              Welcome to <span className="text-red-600">SSFI ERP</span>
+              Welcome to <span className="text-red-600">{COMPANY.nameShort} ERP</span>
             </h2>
             <p className="text-gray-400 text-sm mt-1.5">
               Sign in with your Google account to access the portal.
@@ -158,7 +159,7 @@ export default function SignInPage() {
           <div className="mt-6 flex items-center justify-center gap-1.5">
             <ShieldCheck className="h-3 w-3 text-gray-300" />
             <p className="text-xs text-gray-300">
-              Secure, role-based access · Shanti Special Food Industry Pvt. Ltd.
+              Secure, role-based access · {COMPANY.name}
             </p>
           </div>
 

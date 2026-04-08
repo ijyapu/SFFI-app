@@ -11,7 +11,7 @@ import { CloseDayDialog } from "./_components/close-day-dialog";
 import { StartDayButton } from "./_components/start-day-button";
 import { DateNav } from "./_components/date-nav";
 
-export const metadata = { title: "Daily Log — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Daily Log" };
 
 function getTodayStr(): string {
   const now = new Date();

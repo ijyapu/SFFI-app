@@ -1,7 +1,7 @@
 import { requirePermission } from "@/lib/auth";
 import { SettingsNav } from "./_components/settings-nav";
 
-export const metadata = { title: "Settings — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Settings" };
 
 export default async function SettingsLayout({
   children,

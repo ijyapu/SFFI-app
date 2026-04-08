@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { differenceInDays } from "date-fns";
 import { AgingTable, type AgingRow } from "../_components/aging-table";
 
-export const metadata = { title: "Receivables Aging — Reports — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Receivables Aging — Reports" };
 
 function ageBucket(days: number, dueDate: string | null): AgingRow["bucket"] {
   if (!dueDate || days <= 0) return "current";

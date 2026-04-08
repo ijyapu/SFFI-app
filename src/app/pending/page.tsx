@@ -1,9 +1,10 @@
+import { COMPANY } from "@/lib/company";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PendingAccess } from "@/components/auth/pending-access";
 import { PendingRoleWatcher } from "@/components/auth/pending-role-watcher";
 
-export const metadata = { title: "Access Pending Approval — Shanti ERP" };
+export const metadata = { title: "Access Pending Approval — {COMPANY.nameShort} ERP" };
 
 export default async function PendingPage() {
   const user = await currentUser();

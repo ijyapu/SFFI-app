@@ -7,7 +7,7 @@ import { TrendingUp, TrendingDown, Package, BarChart2 } from "lucide-react";
 import { CostingDatePicker } from "./_components/costing-date-picker";
 import { ProductMarginTable, type ProductCostRow } from "./_components/product-margin-table";
 
-export const metadata = { title: "Costing — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Costing" };
 
 export default async function CostingPage({
   searchParams,

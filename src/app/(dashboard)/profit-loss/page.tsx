@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/auth";
 import { DateRangePicker } from "./_components/date-range-picker";
 import { PlBreakdown } from "./_components/pl-breakdown";
 
-export const metadata = { title: "Profit & Loss — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Profit & Loss" };
 
 export default async function ProfitLossPage({
   searchParams,

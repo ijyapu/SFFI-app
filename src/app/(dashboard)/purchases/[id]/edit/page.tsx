@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 import { PurchaseForm } from "../../new/_components/po-form";
 
-export const metadata = { title: "Edit Purchase — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Edit Purchase" };
 
 export default async function EditPurchasePage({
   params,

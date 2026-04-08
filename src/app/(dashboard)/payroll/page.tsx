@@ -5,7 +5,7 @@ import { PayrollList } from "./_components/payroll-list";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Lock, FileText, AlertCircle } from "lucide-react";
 
-export const metadata = { title: "Payroll — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Payroll" };
 
 export default async function PayrollPage() {
   await requirePermission("payroll");

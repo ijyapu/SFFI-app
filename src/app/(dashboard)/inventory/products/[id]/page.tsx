@@ -13,7 +13,7 @@ import { ProductMovementHistory } from "./_components/product-movement-history";
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const product = await prisma.product.findUnique({ where: { id }, select: { name: true } });
-  return { title: product ? `${product.name} — Shanti Special Food Industry ERP` : "Product — Shanti Special Food Industry ERP" };
+  return { title: product ? `${product.name}` : "Product" };
 }
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {

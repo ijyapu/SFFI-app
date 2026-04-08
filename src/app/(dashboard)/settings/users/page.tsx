@@ -2,7 +2,7 @@ import { clerkClient, auth } from "@clerk/nextjs/server";
 import { UserRoleTable, type UserRow } from "./_components/user-role-table";
 import type { AppRole } from "@/types/globals";
 
-export const metadata = { title: "Users & Roles — Settings — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Users & Roles — Settings" };
 
 export default async function UsersPage() {
   const { userId: currentUserId } = await auth();

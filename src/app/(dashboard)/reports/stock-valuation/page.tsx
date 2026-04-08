@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { StockValuationTable, type StockCategory } from "./_components/stock-valuation-table";
 
 export const metadata = {
-  title: "Stock Valuation — Reports — Shanti Special Food Industry ERP",
+  title: "Stock Valuation — Reports",
 };
 
 export default async function StockValuationPage() {

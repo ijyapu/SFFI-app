@@ -6,7 +6,7 @@ import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { ArrowLeft } from "lucide-react";
 
-export const metadata = { title: "New Sales Order — Shanti Special Food Industry ERP" };
+export const metadata = { title: "New Sales Order" };
 
 export default async function NewSalesOrderPage() {
   await requirePermission("sales");

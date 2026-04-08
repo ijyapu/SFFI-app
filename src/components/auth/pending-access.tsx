@@ -1,3 +1,4 @@
+import { COMPANY } from "@/lib/company";
 "use client";
 
 import Image from "next/image";
@@ -45,7 +46,7 @@ export function PendingAccess({ name = "there", email }: Props) {
             <Image src="/ssfi-logo.jpg" alt="SSFI" fill className="object-contain" priority />
           </div>
           <div className="leading-tight">
-            <p className="font-bold text-gray-900 text-sm">Shanti ERP</p>
+            <p className="font-bold text-gray-900 text-sm">{COMPANY.nameShort} ERP</p>
             <p className="text-red-600 text-[10px] tracking-widest uppercase">Enterprise Portal</p>
           </div>
         </div>
@@ -195,7 +196,7 @@ export function PendingAccess({ name = "there", email }: Props) {
       {/* Footer */}
       <footer className="border-t border-gray-200 py-4 text-center">
         <p className="text-xs text-gray-400">
-          © {new Date().getFullYear()} Shanti Special Food Industry Pvt. Ltd. · Nepal
+          © {new Date().getFullYear()} {COMPANY.name} · Nepal
         </p>
       </footer>
 

@@ -14,7 +14,7 @@ import { getDailyLogHistory } from "../actions";
 import { ReopenDialog } from "../_components/reopen-dialog";
 import { getCurrentRole } from "@/lib/auth";
 
-export const metadata = { title: "Daily Log History — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Daily Log History" };
 
 function formatDate(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);

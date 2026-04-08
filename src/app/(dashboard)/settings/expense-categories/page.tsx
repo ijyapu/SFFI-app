@@ -6,7 +6,7 @@ import {
   deleteExpenseCategory,
 } from "./actions";
 
-export const metadata = { title: "Expense Categories — Settings — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Expense Categories — Settings" };
 
 export default async function ExpenseCategoriesPage() {
   const cats = await prisma.expenseCategory.findMany({

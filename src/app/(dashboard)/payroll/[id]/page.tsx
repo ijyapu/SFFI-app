@@ -17,8 +17,8 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const run = await prisma.payrollRun.findUnique({ where: { id }, select: { month: true, year: true } });
   return {
     title: run
-      ? `${MONTHS[run.month - 1]} ${run.year} Payroll — Shanti Special Food Industry ERP`
-      : "Payroll Run — Shanti Special Food Industry ERP",
+      ? `${MONTHS[run.month - 1]} ${run.year} Payroll`
+      : "Payroll Run",
   };
 }
 

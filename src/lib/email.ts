@@ -1,10 +1,11 @@
 import { Resend } from "resend";
+import { COMPANY } from "@/lib/company";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM    = "SSFI ERP <onboarding@resend.dev>";
+const FROM    = `${COMPANY.nameShort} ERP <onboarding@resend.dev>`;
 const ADMIN   = process.env.ADMIN_EMAIL ?? "admin@ssfi.com.np";
 const YEAR    = new Date().getFullYear();
 
@@ -24,7 +25,7 @@ function layout(accentColor: string, body: string): string {
       <span style="color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;">SS</span>
     </div>
     <div>
-      <p style="margin:0;color:#f1f5f9;font-size:14px;font-weight:700;line-height:1.2;">SSFI ERP</p>
+      <p style="margin:0;color:#f1f5f9;font-size:14px;font-weight:700;line-height:1.2;">${COMPANY.nameShort} ERP</p>
       <p style="margin:2px 0 0;color:#64748b;font-size:10px;letter-spacing:.08em;text-transform:uppercase;">Enterprise Portal</p>
     </div>
   </div>
@@ -35,7 +36,7 @@ function layout(accentColor: string, body: string): string {
   <!-- Footer -->
   <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:14px 32px;">
     <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">
-      © ${YEAR} Shanti Special Food Industry Pvt. Ltd. · Nepal
+      © ${YEAR} ${COMPANY.name} · Nepal
     </p>
   </div>
 </div>
@@ -73,7 +74,7 @@ export async function sendRequestReceivedEmail(to: string, name: string) {
       Hi <strong style="color:#111827;">${name}</strong>,
     </p>
     <p style="margin:0 0 20px;font-size:14px;color:#4b5563;line-height:1.7;">
-      Thank you for submitting your access request to the <strong>SSFI Enterprise Portal</strong>.
+      Thank you for submitting your access request to the <strong>${COMPANY.nameShort} Enterprise Portal</strong>.
       We have received your application and it is currently pending administrator review.
     </p>
 
@@ -94,7 +95,7 @@ export async function sendRequestReceivedEmail(to: string, name: string) {
     await resend.emails.send({
       from:    FROM,
       to,
-      subject: "Access request received — SSFI ERP",
+      subject: "Access request received",
       html:    layout("linear-gradient(90deg,#f59e0b,#fcd34d)", body),
     });
   } catch (err) {
@@ -143,7 +144,7 @@ export async function sendAdminNewRequestAlert(request: {
     await resend.emails.send({
       from:    FROM,
       to:      ADMIN,
-      subject: `New access request from ${request.fullName} — SSFI ERP`,
+      subject: `New access request from ${request.fullName}`,
       html:    layout("linear-gradient(90deg,#3b82f6,#60a5fa)", body),
     });
   } catch (err) {
@@ -171,7 +172,7 @@ export async function sendApprovalEmail(to: string, name: string, role: string) 
     <p style="margin:0 0 20px;font-size:14px;color:#4b5563;line-height:1.7;">
       Hi <strong style="color:#111827;">${name}</strong>,<br><br>
       Great news! Your access request has been approved. You can now sign in to the
-      <strong>SSFI Enterprise Portal</strong> and access the features available to your role.
+      <strong>${COMPANY.nameShort} Enterprise Portal</strong> and access the features available to your role.
     </p>
 
     <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:12px;">
@@ -187,14 +188,14 @@ export async function sendApprovalEmail(to: string, name: string, role: string) 
       <a href="mailto:${ADMIN}" style="color:#dc2626;text-decoration:none;">${ADMIN}</a>.
     </p>
 
-    ${btn("Sign In to SSFI ERP", signInUrl, "#16a34a")}
+    ${btn(`Sign In to ${COMPANY.nameShort} ERP`, signInUrl, "#16a34a")}
   `;
 
   try {
     await resend.emails.send({
       from:    FROM,
       to,
-      subject: "Your SSFI ERP access has been approved",
+      subject: `Your ${COMPANY.nameShort} ERP access has been approved`,
       html:    layout("linear-gradient(90deg,#16a34a,#4ade80)", body),
     });
   } catch (err) {
@@ -233,7 +234,7 @@ export async function sendRejectionEmail(to: string, name: string, note?: string
     await resend.emails.send({
       from:    FROM,
       to,
-      subject: "Update on your SSFI ERP access request",
+      subject: `Update on your ${COMPANY.nameShort} ERP access request`,
       html:    layout("linear-gradient(90deg,#ef4444,#f87171)", body),
     });
   } catch (err) {

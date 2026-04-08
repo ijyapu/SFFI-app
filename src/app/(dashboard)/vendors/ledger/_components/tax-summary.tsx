@@ -2,6 +2,7 @@ import type { VendorLedgerData } from "../actions";
 import { format } from "date-fns";
 import { toNepaliDateString, toNepaliMonthYear } from "@/lib/nepali-date";
 import { AlertCircle, CheckCircle2, FileText } from "lucide-react";
+import { COMPANY } from "@/lib/company";
 
 function Rs(n: number) {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -23,7 +24,7 @@ export function TaxSummary({ data }: { data: VendorLedgerData }) {
           <FileText className="h-4 w-4 text-muted-foreground" />
           <h3 className="font-semibold text-sm">Nepal Tax Summary</h3>
           <span className="text-xs text-muted-foreground">
-            (IRD Purchase Book — VAT Input Credit)
+            (IRD Purchase Book — VAT Input Credit) · PAN: {COMPANY.pan}
           </span>
         </div>
         <div className="text-xs text-muted-foreground">

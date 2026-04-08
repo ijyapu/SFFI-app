@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { AlertTriangle, CheckCircle2, FileText } from "lucide-react";
 import type { CustomerLedgerData } from "../actions";
+import { COMPANY } from "@/lib/company";
 
 function fmt(n: number) {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -92,7 +93,7 @@ export function TaxSummary({ data }: { data: CustomerLedgerData }) {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nepal IRD — Sales Book (Bikri Bahi) Notes</p>
         <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
           <li>VAT collected (output VAT) must be deposited with IRD by the 25th of the following month.</li>
-          <li>VAT invoices must include SSFI&apos;s VAT registration number, customer name, and PAN (if applicable).</li>
+          <li>VAT invoices must include {COMPANY.name}&apos;s PAN ({COMPANY.pan}), customer name, and customer PAN (if applicable).</li>
           <li>Sales returns must be supported by a credit note — keep copies for IRD audit.</li>
           <li>Net VAT payable = Output VAT (collected) − Input VAT credit (from purchases).</li>
           <li>All amounts in Nepalese Rupees (NPR). Fiscal year: Shrawan 1 to Ashadh end (B.S. calendar).</li>

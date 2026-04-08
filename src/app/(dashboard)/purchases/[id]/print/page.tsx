@@ -4,6 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { format } from "date-fns";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import { PrintTrigger } from "./_components/print-trigger";
+import { COMPANY } from "@/lib/company";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -50,11 +51,11 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "24px", borderBottom: "2px solid #c0392b", paddingBottom: "16px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/ssfi-logo.jpg" alt="SSFI" style={{ width: "56px", height: "56px", objectFit: "contain" }} />
+              <img src="/ssfi-logo.jpg" alt={COMPANY.nameShort} style={{ width: "56px", height: "56px", objectFit: "contain" }} />
               <div>
-                <div style={{ fontSize: "16px", fontWeight: "700", color: "#c0392b", letterSpacing: "0.5px" }}>SHANTI SPECIAL FOOD INDUSTRY PVT. LTD.</div>
-                <div style={{ fontSize: "10px", color: "#555", marginTop: "2px" }}>Kathmandu, Nepal</div>
-                <div style={{ fontSize: "10px", color: "#555" }}>Phone: +977-XXXXXXXXXX</div>
+                <div style={{ fontSize: "16px", fontWeight: "700", color: "#c0392b", letterSpacing: "0.5px" }}>{COMPANY.name.toUpperCase()}</div>
+                <div style={{ fontSize: "10px", color: "#555", marginTop: "2px" }}>{COMPANY.address}</div>
+                <div style={{ fontSize: "10px", color: "#555" }}>Phone: {COMPANY.phone} · PAN: {COMPANY.pan}</div>
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
@@ -159,7 +160,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
           {/* ── Footer ── */}
           <div style={{ borderTop: "1px solid #eee", paddingTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
             <div style={{ color: "#aaa", fontSize: "10px" }}>
-              Printed on {format(new Date(), "dd MMM yyyy, HH:mm")} · SSFI ERP
+              Printed on {format(new Date(), "dd MMM yyyy, HH:mm")} · {COMPANY.nameShort} ERP
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ borderTop: "1px solid #333", paddingTop: "4px", fontSize: "10px", color: "#555", width: "140px" }}>Authorized Signature</div>

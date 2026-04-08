@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     select: { orderNumber: true },
   });
   return {
-    title: so ? `${so.orderNumber} — Shanti Special Food Industry ERP` : "Sales Order — Shanti Special Food Industry ERP",
+    title: so ? `${so.orderNumber}` : "Sales Order",
   };
 }
 

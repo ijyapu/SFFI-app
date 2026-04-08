@@ -16,7 +16,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     select: { firstName: true, lastName: true },
   });
   return {
-    title: emp ? `${emp.firstName} ${emp.lastName} — Shanti Special Food Industry ERP` : "Employee — Shanti Special Food Industry ERP",
+    title: emp ? `${emp.firstName} ${emp.lastName}` : "Employee",
   };
 }
 

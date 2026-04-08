@@ -8,8 +8,9 @@ import { TaxSummary } from "./_components/tax-summary";
 import { RecordPaymentButton } from "./_components/record-payment-dialog";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import { BookOpen } from "lucide-react";
+import { COMPANY } from "@/lib/company";
 
-export const metadata = { title: "Vendor Ledger — SSFI ERP" };
+export const metadata = { title: "Vendor Ledger" };
 
 interface PageProps {
   searchParams: Promise<{ supplierId?: string; from?: string; to?: string }>;
@@ -122,8 +123,8 @@ export default async function VendorLedgerPage({ searchParams }: PageProps) {
             <div className="hidden print:block mb-4">
               <div className="flex justify-between items-start border-b-2 border-red-700 pb-3 mb-4">
                 <div>
-                  <p className="text-lg font-bold text-red-700">SHANTI SPECIAL FOOD INDUSTRY PVT. LTD.</p>
-                  <p className="text-sm text-gray-500">Kathmandu, Nepal</p>
+                  <p className="text-lg font-bold text-red-700">{COMPANY.name.toUpperCase()}</p>
+                  <p className="text-sm text-gray-500">{COMPANY.address} · PAN: {COMPANY.pan}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-base font-bold">VENDOR LEDGER</p>

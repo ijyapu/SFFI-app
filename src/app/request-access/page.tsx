@@ -1,3 +1,4 @@
+import { COMPANY } from "@/lib/company";
 "use client";
 
 import Image from "next/image";
@@ -100,7 +101,7 @@ export default function RequestAccessPage() {
               <Image src="/ssfi-logo.jpg" alt="SSFI" fill className="object-contain" priority />
             </div>
             <div className="leading-tight">
-              <p className="font-bold text-gray-900 text-sm">Shanti ERP</p>
+              <p className="font-bold text-gray-900 text-sm">{COMPANY.nameShort} ERP</p>
               <p className="text-red-600 text-[10px] tracking-widest uppercase">Enterprise Portal</p>
             </div>
           </div>
@@ -125,7 +126,7 @@ export default function RequestAccessPage() {
               {/* Page heading */}
               <div className="mb-8">
                 <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                  Request Access to Shanti ERP
+                  Request Access to {COMPANY.nameShort} ERP
                 </h1>
                 <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">
                   Submit your information for administrator review. Access is granted
@@ -246,7 +247,7 @@ export default function RequestAccessPage() {
 
       <footer className="py-5 text-center border-t border-gray-200">
         <p className="text-xs text-gray-400">
-          © {new Date().getFullYear()} Shanti Special Food Industry Pvt. Ltd. · Nepal
+          © {new Date().getFullYear()} {COMPANY.name} · Nepal
         </p>
       </footer>
     </div>

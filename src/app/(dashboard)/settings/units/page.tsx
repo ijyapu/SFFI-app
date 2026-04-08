@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { SettingsCrudTable } from "../_components/settings-crud-table";
 import { createUnit, renameUnit, deleteUnit } from "./actions";
 
-export const metadata = { title: "Units — Settings — Shanti Special Food Industry ERP" };
+export const metadata = { title: "Units — Settings" };
 
 export default async function UnitsPage() {
   const units = await prisma.unit.findMany({
