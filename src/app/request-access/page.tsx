@@ -1,5 +1,5 @@
-import { COMPANY } from "@/lib/company";
 "use client";
+import { COMPANY } from "@/lib/company";
 
 import Image from "next/image";
 import Link from "next/link";
