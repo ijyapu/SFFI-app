@@ -702,3 +702,21 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([createdAt])
 }
+
+// ─────────────────────────────────────────────
+// COMPANY SETTINGS (singleton row, id = "main")
+// ─────────────────────────────────────────────
+
+model CompanySettings {
+  id          String   @id @default("main")
+  name        String
+  nameShort   String
+  slogan      String
+  address     String
+  phone       String
+  pan         String
+  owner       String
+  established Int
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
+}

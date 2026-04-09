@@ -5,7 +5,7 @@
 export const COMPANY = {
   name:        "Shanti Special Food Pvt. Ltd.",
   nameShort:   "SSFI",
-  slogan:      "Shanti ko Swad maan ma bascha",
+  slogan:      "शान्तिको स्वाद मनमा बस्छ।",
   address:     "Suryabinayak-06, Bhaktapur",
   phone:       "01-5992003",
   pan:         "304006906",

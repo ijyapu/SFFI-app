@@ -14,6 +14,7 @@ import {
   ClipboardList,
   BookOpen,
   BookMarked,
+  Building2,
   type LucideIcon,
 } from "lucide-react";
 import type { PermissionKey } from "@/lib/roles";
@@ -137,6 +138,11 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "System",
     items: [
+      {
+        title: "Company",
+        href: "/company",
+        icon: Building2,
+      },
       {
         title: "Settings",
         href: "/settings",

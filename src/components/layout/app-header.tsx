@@ -1,11 +1,16 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { UserButton } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { NAV_GROUPS } from "@/components/layout/nav-config";
 import { NotificationBell } from "@/components/layout/notification-bell";
+
+const UserButton = dynamic(
+  () => import("@clerk/nextjs").then((m) => ({ default: m.UserButton })),
+  { ssr: false }
+);
 
 function useBreadcrumb() {
   const pathname = usePathname();

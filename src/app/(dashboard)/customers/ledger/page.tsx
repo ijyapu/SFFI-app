@@ -48,9 +48,46 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
     <>
       <style>{`
         @media print {
+          @page { size: A4 landscape; margin: 12mm 14mm; }
           nav, aside, header, .no-print { display: none !important; }
-          body { font-size: 11px; }
+          body { font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .print-break { page-break-before: always; }
+
+          .print-table-wrapper {
+            overflow: visible !important;
+            width: 100% !important;
+          }
+          .print-table-wrapper table {
+            width: 100% !important;
+            table-layout: fixed !important;
+            font-size: 9px !important;
+            border-collapse: collapse !important;
+          }
+          .print-table-wrapper th,
+          .print-table-wrapper td {
+            padding: 4px 5px !important;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+          }
+          .print-table-wrapper th:nth-child(1),
+          .print-table-wrapper td:nth-child(1) { width: 13%; }
+          .print-table-wrapper th:nth-child(2),
+          .print-table-wrapper td:nth-child(2) { width: 10%; }
+          .print-table-wrapper th:nth-child(3),
+          .print-table-wrapper td:nth-child(3) { width: 18%; white-space: normal; }
+          .print-table-wrapper th:nth-child(4),
+          .print-table-wrapper td:nth-child(4) { width: 13%; }
+          .print-table-wrapper th:nth-child(5),
+          .print-table-wrapper td:nth-child(5) { width: 10%; }
+          .print-table-wrapper th:nth-child(6),
+          .print-table-wrapper td:nth-child(6) { width: 10%; }
+          .print-table-wrapper th:nth-child(7),
+          .print-table-wrapper td:nth-child(7) { width: 13%; }
+          .print-table-wrapper th:nth-child(8),
+          .print-table-wrapper td:nth-child(8) { width: 13%; }
+          .print-table-wrapper tr { page-break-inside: avoid; }
+          .print-table-wrapper a svg { display: none; }
         }
       `}</style>
 
@@ -114,6 +151,7 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
                 <div>
                   <p className="text-lg font-bold text-red-700">{COMPANY.name.toUpperCase()}</p>
                   <p className="text-sm text-gray-500">{COMPANY.address} · PAN: {COMPANY.pan}</p>
+                  <p className="text-xs text-gray-400">Tel: {COMPANY.phone}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-base font-bold">CUSTOMER LEDGER</p>
@@ -162,13 +200,15 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
             </div>
 
             {/* ── Ledger table ── */}
-            <LedgerTable
-              entries={ledgerData.entries}
-              openingBalance={ledgerData.openingBalance}
-              closingBalance={ledgerData.closingBalance}
-              from={from}
-              to={to}
-            />
+            <div className="print-table-wrapper">
+              <LedgerTable
+                entries={ledgerData.entries}
+                openingBalance={ledgerData.openingBalance}
+                closingBalance={ledgerData.closingBalance}
+                from={from}
+                to={to}
+              />
+            </div>
 
             {/* ── Tax Summary ── */}
             <div className="print-break">

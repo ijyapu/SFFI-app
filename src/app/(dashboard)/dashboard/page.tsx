@@ -121,11 +121,13 @@ export default async function DashboardPage() {
   const netPosition      = totalReceivables - totalPayables;
 
   const inventoryValue = inventoryProducts.reduce(
-    (sum, p) => sum + Number(p.currentStock) * Number(p.costPrice), 0
+    (sum: number, p: { currentStock: unknown; costPrice: unknown }) =>
+      sum + Number(p.currentStock) * Number(p.costPrice), 0
   );
 
   const lowStockCount = lowStockProducts.filter(
-    (p) => Number(p.currentStock) <= Number(p.reorderLevel)
+    (p: { currentStock: unknown; reorderLevel: unknown }) =>
+      Number(p.currentStock) <= Number(p.reorderLevel)
   ).length;
 
   const totalAlerts = lowStockCount + pendingExpenses + pendingPayroll + openPOs;
@@ -427,7 +429,7 @@ export default async function DashboardPage() {
 
       {/* ── Recent Activity ── */}
       <RecentActivity
-        recentSales={recentSalesOrders.map((so) => ({
+        recentSales={recentSalesOrders.map((so: (typeof recentSalesOrders)[0]) => ({
           id:           so.id,
           orderNumber:  so.orderNumber,
           customerName: so.customer.name,
@@ -435,7 +437,7 @@ export default async function DashboardPage() {
           status:       so.status,
           orderDate:    so.orderDate.toISOString(),
         }))}
-        recentPurchases={recentPurchaseOrders.map((po) => ({
+        recentPurchases={recentPurchaseOrders.map((po: (typeof recentPurchaseOrders)[0]) => ({
           id:           po.id,
           orderNumber:  po.orderNumber,
           supplierName: po.supplier.name,
