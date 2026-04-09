@@ -19,7 +19,7 @@ const schema = z.object({
   phone:       z.string().min(1, "Required"),
   pan:         z.string().min(1, "Required"),
   owner:       z.string().min(1, "Required"),
-  established: z.coerce.number().int().min(1900),
+  established: z.number().int().min(1900),
 });
 
 export function CompanyForm({ info, isAdmin }: { info: CompanyInfo; isAdmin: boolean }) {
@@ -80,7 +80,10 @@ export function CompanyForm({ info, isAdmin }: { info: CompanyInfo; isAdmin: boo
             <Input {...register("owner")} />
           </Field>
           <Field label="Established Year" error={errors.established?.message}>
-            <Input {...register("established")} type="number" />
+            <Input
+              {...register("established", { valueAsNumber: true })}
+              type="number"
+            />
           </Field>
         </div>
       </div>
