@@ -21,7 +21,7 @@ import { recordVendorPayment, type OutstandingInvoice } from "../actions";
 const METHODS = [
   { value: "CASH",          label: "Cash" },
   { value: "BANK_TRANSFER", label: "Bank Transfer" },
-  { value: "CHECK",         label: "Cheque" },
+  { value: "CHEQUE",         label: "Cheque" },
   { value: "ESEWA",         label: "eSewa" },
   { value: "KHALTI",        label: "Khalti" },
   { value: "IME_PAY",       label: "IME Pay" },

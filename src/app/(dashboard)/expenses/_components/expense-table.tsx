@@ -122,7 +122,11 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
           />
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
             <SelectTrigger className="w-36">
-              <SelectValue placeholder="All statuses" />
+              <span>
+                {statusFilter === "all"
+                  ? "All statuses"
+                  : (STATUS_CONFIG[statusFilter as keyof typeof STATUS_CONFIG]?.label ?? "All statuses")}
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
@@ -133,7 +137,11 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
           </Select>
           <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")}>
             <SelectTrigger className="w-44">
-              <SelectValue placeholder="All categories" />
+              <span>
+                {categoryFilter === "all"
+                  ? "All categories"
+                  : (categories.find((c) => c.id === categoryFilter)?.name ?? "All categories")}
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All categories</SelectItem>

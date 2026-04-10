@@ -166,25 +166,25 @@ export function DailyLogTable({ items, isOpen }: Props) {
     <div className="rounded-lg border overflow-x-auto">
       <Table>
         <TableHeader>
-          <TableRow className="bg-muted/40">
-            <TableHead className="min-w-40 sticky left-0 bg-muted/40">Product</TableHead>
-            <TableHead className="w-20 text-right">Opening</TableHead>
-            <TableHead className="w-20 text-right text-blue-600">
+          <TableRow className="bg-muted/60 border-b-2 border-border">
+            <TableHead className="min-w-40 sticky left-0 bg-muted/60 font-bold text-foreground">Product</TableHead>
+            <TableHead className="w-20 text-right font-semibold text-foreground/80">Opening</TableHead>
+            <TableHead className="w-20 text-right text-blue-600 font-semibold">
               Purchased
               <span className="block text-[10px] font-normal text-blue-400 normal-case tracking-normal">auto</span>
             </TableHead>
-            <TableHead className="w-22 text-right text-emerald-700">Produced</TableHead>
-            <TableHead className="w-22 text-right text-orange-600">Used</TableHead>
-            <TableHead className="w-22 text-right text-rose-600">Sold</TableHead>
-            <TableHead className="w-22 text-right text-rose-600">Waste</TableHead>
-            <TableHead className="w-22 text-right text-rose-600">Damaged</TableHead>
-            <TableHead className="w-22 text-right font-semibold border-l">Closing</TableHead>
-            <TableHead className="w-22 text-right border-l">
+            <TableHead className="w-22 text-right text-emerald-700 font-semibold">Produced</TableHead>
+            <TableHead className="w-22 text-right text-orange-600 font-semibold">Used</TableHead>
+            <TableHead className="w-22 text-right text-rose-600 font-semibold">Sold</TableHead>
+            <TableHead className="w-22 text-right text-rose-600 font-semibold">Waste</TableHead>
+            <TableHead className="w-22 text-right text-rose-600 font-semibold">Damaged</TableHead>
+            <TableHead className="w-22 text-right font-bold text-foreground border-l bg-muted/60">Closing</TableHead>
+            <TableHead className="w-22 text-right border-l font-semibold text-foreground/80">
               Actual
               <span className="block text-[10px] font-normal text-muted-foreground normal-case tracking-normal">count</span>
             </TableHead>
-            <TableHead className="w-20 text-right">Variance</TableHead>
-            <TableHead className="min-w-30">Notes</TableHead>
+            <TableHead className="w-20 text-right font-semibold text-foreground/80">Variance</TableHead>
+            <TableHead className="min-w-30 font-semibold text-foreground/80">Notes</TableHead>
             <TableHead className="w-6" />
           </TableRow>
         </TableHeader>
@@ -216,37 +216,40 @@ export function DailyLogTable({ items, isOpen }: Props) {
             return (
               <React.Fragment key={catId}>
                 {/* Category header */}
-                <TableRow className="bg-muted/30 hover:bg-muted/30">
+                <TableRow className="bg-primary/8 hover:bg-primary/8 border-y border-primary/15">
                   <TableCell
                     colSpan={13}
-                    className="py-1.5 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+                    className="py-2 px-3"
                   >
-                    <span>{catName}</span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-bold uppercase tracking-widest text-primary">{catName}</span>
+                      <span className="text-xs text-muted-foreground/60">({catRows.length} items)</span>
+                    </div>
                     {(totals.produced > 0 || totals.used > 0 || totals.sold > 0 || totals.waste > 0) && (
-                      <span className="ml-3 font-normal normal-case tracking-normal text-muted-foreground/70">
+                      <div className="flex flex-wrap gap-x-3 mt-0.5">
                         {totals.produced > 0 && (
-                          <span className="mr-2 text-emerald-600">
+                          <span className="text-[11px] text-emerald-600 font-medium">
                             <TrendingUp className="inline h-3 w-3 mr-0.5" />
                             +{fmt(totals.produced)} produced
                           </span>
                         )}
                         {totals.used > 0 && (
-                          <span className="mr-2 text-orange-500">
+                          <span className="text-[11px] text-orange-500 font-medium">
                             {fmt(totals.used)} used
                           </span>
                         )}
                         {totals.sold > 0 && (
-                          <span className="mr-2 text-rose-500">
+                          <span className="text-[11px] text-rose-500 font-medium">
                             {fmt(totals.sold)} sold
                           </span>
                         )}
                         {totals.waste > 0 && (
-                          <span className="text-rose-400">
+                          <span className="text-[11px] text-rose-400 font-medium">
                             <TrendingDown className="inline h-3 w-3 mr-0.5" />
                             {fmt(totals.waste)} waste/damaged
                           </span>
                         )}
-                      </span>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>

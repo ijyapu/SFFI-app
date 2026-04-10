@@ -11,10 +11,11 @@ export const metadata = { title: "New Sales Order" };
 export default async function NewSalesOrderPage() {
   await requirePermission("sales");
 
-  const [customers, products] = await Promise.all([
+  const [rawCustomers, products] = await Promise.all([
     prisma.customer.findMany({
       where: { deletedAt: null },
       orderBy: { name: "asc" },
+      select: { id: true, name: true, email: true, phone: true, address: true, pan: true, openingBalance: true },
     }),
     prisma.product.findMany({
       where: { deletedAt: null },
@@ -22,6 +23,11 @@ export default async function NewSalesOrderPage() {
       orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
     }),
   ]);
+
+  const customers = rawCustomers.map((c) => ({
+    ...c,
+    openingBalance: Number(c.openingBalance),
+  }));
 
   const serialisedProducts = products.map((p) => ({
     id:           p.id,
@@ -49,7 +55,7 @@ export default async function NewSalesOrderPage() {
         </div>
       </div>
 
-      {customers.length === 0 ? (
+      {rawCustomers.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
           <p>No customers found.</p>
           <Link href="/sales/customers" className="text-primary underline text-sm mt-1 inline-block">

@@ -27,9 +27,7 @@ async function main() {
   // ─────────────────────────────────────────────
   const categories = await Promise.all([
     prisma.category.upsert({ where: { name: "Raw Materials" }, update: {}, create: { name: "Raw Materials" } }),
-    prisma.category.upsert({ where: { name: "Finished Products" }, update: {}, create: { name: "Finished Products" } }),
     prisma.category.upsert({ where: { name: "Packaging" }, update: {}, create: { name: "Packaging" } }),
-    prisma.category.upsert({ where: { name: "Consumables" }, update: {}, create: { name: "Consumables" } }),
   ]);
   console.log(`✅ Categories (${categories.length})`);
 
@@ -110,31 +108,6 @@ async function main() {
       where: { sku: "RM-010" }, update: {},
       create: { sku: "RM-010", name: "Baking Powder", categoryId: catMap["Raw Materials"], unitId: unitMap["kg"], costPrice: 5.00, sellingPrice: 0, reorderLevel: 5, currentStock: 15 },
     }),
-    // Finished Products
-    prisma.product.upsert({
-      where: { sku: "FG-001" }, update: {},
-      create: { sku: "FG-001", name: "White Sandwich Bread", categoryId: catMap["Finished Products"], unitId: unitMap["loaf"], costPrice: 1.80, sellingPrice: 3.50, reorderLevel: 20, currentStock: 60 },
-    }),
-    prisma.product.upsert({
-      where: { sku: "FG-002" }, update: {},
-      create: { sku: "FG-002", name: "Whole Wheat Bread", categoryId: catMap["Finished Products"], unitId: unitMap["loaf"], costPrice: 2.00, sellingPrice: 4.00, reorderLevel: 15, currentStock: 40 },
-    }),
-    prisma.product.upsert({
-      where: { sku: "FG-003" }, update: {},
-      create: { sku: "FG-003", name: "Chocolate Cake (1kg)", categoryId: catMap["Finished Products"], unitId: unitMap["pcs"], costPrice: 8.50, sellingPrice: 18.00, reorderLevel: 5, currentStock: 12 },
-    }),
-    prisma.product.upsert({
-      where: { sku: "FG-004" }, update: {},
-      create: { sku: "FG-004", name: "Butter Croissant", categoryId: catMap["Finished Products"], unitId: unitMap["pcs"], costPrice: 0.90, sellingPrice: 2.00, reorderLevel: 30, currentStock: 80 },
-    }),
-    prisma.product.upsert({
-      where: { sku: "FG-005" }, update: {},
-      create: { sku: "FG-005", name: "Meat Pie", categoryId: catMap["Finished Products"], unitId: unitMap["pcs"], costPrice: 1.20, sellingPrice: 2.50, reorderLevel: 30, currentStock: 70 },
-    }),
-    prisma.product.upsert({
-      where: { sku: "FG-006" }, update: {},
-      create: { sku: "FG-006", name: "Doughnut (Plain)", categoryId: catMap["Finished Products"], unitId: unitMap["pcs"], costPrice: 0.60, sellingPrice: 1.50, reorderLevel: 30, currentStock: 50 },
-    }),
     // Packaging
     prisma.product.upsert({
       where: { sku: "PK-001" }, update: {},
@@ -147,15 +120,6 @@ async function main() {
     prisma.product.upsert({
       where: { sku: "PK-003" }, update: {},
       create: { sku: "PK-003", name: "Pastry Box (Small)", categoryId: catMap["Packaging"], unitId: unitMap["pcs"], costPrice: 0.25, sellingPrice: 0, reorderLevel: 200, currentStock: 600 },
-    }),
-    // Consumables
-    prisma.product.upsert({
-      where: { sku: "CS-001" }, update: {},
-      create: { sku: "CS-001", name: "Baking / Parchment Paper", categoryId: catMap["Consumables"], unitId: unitMap["box"], costPrice: 6.00, sellingPrice: 0, reorderLevel: 5, currentStock: 15 },
-    }),
-    prisma.product.upsert({
-      where: { sku: "CS-002" }, update: {},
-      create: { sku: "CS-002", name: "Non-Stick Baking Spray", categoryId: catMap["Consumables"], unitId: unitMap["pcs"], costPrice: 4.50, sellingPrice: 0, reorderLevel: 6, currentStock: 12 },
     }),
   ]);
   console.log(`✅ Products (${products.length})`);
