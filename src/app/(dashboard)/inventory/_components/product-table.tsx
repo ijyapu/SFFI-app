@@ -110,7 +110,11 @@ export function ProductTable({ products, categories, units }: Props) {
           />
           <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")}>
             <SelectTrigger className="w-44">
-              <SelectValue placeholder="All categories" />
+              <span>
+                {categoryFilter === "all"
+                  ? "All categories"
+                  : (categories.find((c) => c.id === categoryFilter)?.name ?? "All categories")}
+              </span>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All categories</SelectItem>
