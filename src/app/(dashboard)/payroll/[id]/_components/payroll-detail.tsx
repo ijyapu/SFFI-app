@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { Lock, Loader2, Printer, ArrowRight } from "lucide-react";
+import { COMPANY } from "@/lib/company";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -52,10 +53,19 @@ type Props = {
   status: "DRAFT" | "FINALIZED";
   notes: string | null;
   items: PayrollItem[];
+  autoPrint?: boolean;
 };
 
-export function PayrollDetail({ id, month, year, status, notes, items }: Props) {
+export function PayrollDetail({ id, month, year, status, notes, items, autoPrint }: Props) {
   const [finalizing, setFinalizing] = useState(false);
+
+  const printTriggered = useRef(false);
+  useEffect(() => {
+    if (autoPrint && !printTriggered.current) {
+      printTriggered.current = true;
+      window.print();
+    }
+  }, [autoPrint]);
   const [openItemId, setOpenItemId] = useState<string | null>(null);
   const { sortKey, sortDir, toggle } = useSortable("employeeName");
 
@@ -98,8 +108,61 @@ export function PayrollDetail({ id, month, year, status, notes, items }: Props) 
 
   return (
     <div className="space-y-6">
+      {/* Print styles */}
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 12mm 14mm; }
+
+          /* Hide app shell — use exact attribute/element selectors only */
+          [data-sidebar="sidebar"], header { display: none !important; }
+
+          /* Hide interactive / screen-only elements */
+          .no-print, .payroll-actions, .hide-on-print { display: none !important; }
+
+          /* Show print header */
+          .print-header { display: block !important; }
+
+          /* Let the table expand to full width */
+          .payroll-table-wrapper {
+            overflow: visible !important;
+            width: 100% !important;
+          }
+          .payroll-table-wrapper > div {
+            min-width: 0 !important;
+            width: 100% !important;
+          }
+          .payroll-table-wrapper table {
+            width: 100% !important;
+            font-size: 9pt;
+            border-collapse: collapse;
+          }
+          .payroll-table-wrapper th,
+          .payroll-table-wrapper td {
+            padding: 4px 6px !important;
+            font-size: 9pt !important;
+          }
+
+          /* Summary below table, not side-by-side */
+          .payroll-grid { display: block !important; }
+          .payroll-summary { width: 100% !important; margin-top: 16px; }
+          .payroll-summary > div { break-inside: avoid; }
+        }
+        .print-header { display: none; }
+      `}</style>
+
+      {/* Print-only header */}
+      <div className="print-header text-center mb-4">
+        <div className="text-base font-bold uppercase">{COMPANY.name}</div>
+        <div className="text-xs">{COMPANY.address} | PAN: {COMPANY.pan} | Tel: {COMPANY.phone}</div>
+        <div className="text-sm font-semibold mt-1">Payroll — {period}</div>
+        <div className="text-xs text-gray-500">
+          Status: {finalized ? "Finalized" : "Draft"} · {items.length} employee{items.length !== 1 ? "s" : ""}
+        </div>
+        <hr className="mt-2 border-gray-400" />
+      </div>
+
       {/* Status bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 no-print">
         <div className="flex items-center gap-3">
           {finalized ? (
             <Badge variant="secondary" className="bg-green-100 text-green-700 text-sm px-3 py-1">
@@ -120,7 +183,7 @@ export function PayrollDetail({ id, month, year, status, notes, items }: Props) 
             </Badge>
           )}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 payroll-actions">
           <Button variant="outline" onClick={() => window.print()}>
             <Printer className="h-4 w-4" />
             Print
@@ -134,9 +197,9 @@ export function PayrollDetail({ id, month, year, status, notes, items }: Props) 
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4 payroll-grid">
         {/* Main table */}
-        <div className="lg:col-span-3 overflow-x-auto">
+        <div className="lg:col-span-3 overflow-x-auto payroll-table-wrapper">
           <div className="rounded-lg border min-w-160">
             <Table>
               <TableHeader>
@@ -150,7 +213,7 @@ export function PayrollDetail({ id, month, year, status, notes, items }: Props) 
                   <TableHead numeric>Total Owed (Rs)</TableHead>
                   <TableHead numeric><SortButton col="totalPaid"    label="Paid (Rs)"      {...sp} className="justify-end" /></TableHead>
                   <TableHead numeric><SortButton col="remaining"    label="Remaining (Rs)" {...sp} className="justify-end" /></TableHead>
-                  <TableHead className="w-24" />
+                  <TableHead className="w-24 hide-on-print" />
                 </TableRow>
                 ); })()}
               </TableHeader>
@@ -203,7 +266,7 @@ export function PayrollDetail({ id, month, year, status, notes, items }: Props) 
                           </span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hide-on-print">
                         <Button
                           variant="outline"
                           size="sm"
@@ -222,7 +285,7 @@ export function PayrollDetail({ id, month, year, status, notes, items }: Props) 
         </div>
 
         {/* Summary sidebar */}
-        <div className="space-y-4">
+        <div className="space-y-4 payroll-summary">
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">

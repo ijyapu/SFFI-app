@@ -1,15 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { applyStockMovement } from "@/lib/stock";
 import { adjustmentSchema, type AdjustmentFormValues } from "@/lib/validators/stock";
 import { prisma } from "@/lib/prisma";
 
 async function requireStockAccess() {
-  const { userId, sessionClaims } = await auth();
+  const { userId } = await auth();
   if (!userId) throw new Error("Unauthenticated");
-  const role = sessionClaims?.publicMetadata?.role as string | undefined;
+  const user = await currentUser();
+  const role = user?.publicMetadata?.role as string | undefined;
   if (!role || !["admin", "manager", "accountant"].includes(role)) {
     throw new Error("Unauthorized");
   }

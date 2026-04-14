@@ -22,9 +22,16 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   };
 }
 
-export default async function PayrollRunPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PayrollRunPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ print?: string }>;
+}) {
   await requirePermission("payroll");
   const { id } = await params;
+  const { print: autoPrint } = await searchParams;
 
   const run = await prisma.payrollRun.findUnique({
     where: { id },
@@ -90,7 +97,7 @@ export default async function PayrollRunPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      <PayrollDetail {...serialised} />
+      <PayrollDetail {...serialised} autoPrint={autoPrint === "1"} />
     </div>
   );
 }

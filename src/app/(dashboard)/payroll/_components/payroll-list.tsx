@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { Plus, ExternalLink, Trash2, Lock } from "lucide-react";
+import { Plus, ExternalLink, Trash2, Lock, Printer } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -135,6 +135,14 @@ export function PayrollList({ runs }: { runs: PayrollRun[] }) {
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Link>
+                      <Button
+                        variant="ghost"
+                        size="icon-sm"
+                        title={`Print ${label} payroll`}
+                        onClick={() => window.open(`/payroll/${run.id}?print=1`, "_blank")}
+                      >
+                        <Printer className="h-3.5 w-3.5" />
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
                           <Trash2 className="h-3.5 w-3.5 text-destructive" />
