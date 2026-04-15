@@ -87,7 +87,7 @@ export const newSupplierSchema = z.object({
   phone:          z.string().optional(),
   address:        z.string().optional(),
   pan:            z.string().optional(),
-  openingBalance: z.number().min(0).default(0),
+  openingBalance: z.number().min(0).optional(),
 });
 
 export type NewSupplierValues = z.infer<typeof newSupplierSchema>;
