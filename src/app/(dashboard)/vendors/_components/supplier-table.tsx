@@ -91,7 +91,7 @@ export function SupplierTable({ suppliers }: { suppliers: Supplier[] }) {
             {sorted.length === 0 && (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                  {search ? "No suppliers match your search." : "No suppliers yet."}
+                  {search ? "No vendors match your search." : "No vendors yet."}
                 </TableCell>
               </TableRow>
             )}

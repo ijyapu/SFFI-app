@@ -109,7 +109,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>First Name *</FormLabel>
-                    <FormControl><Input {...field} placeholder="John" /></FormControl>
+                    <FormControl><Input {...field} placeholder="Bikash" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -120,7 +120,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Last Name *</FormLabel>
-                    <FormControl><Input {...field} placeholder="Doe" /></FormControl>
+                    <FormControl><Input {...field} placeholder="Shrestha" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -161,7 +161,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
-                    <FormControl><Input {...field} type="email" placeholder="ram@ssfi.com" /></FormControl>
+                    <FormControl><Input {...field} type="email" placeholder="employee@ssfi.com" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

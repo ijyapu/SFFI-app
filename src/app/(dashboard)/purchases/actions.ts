@@ -335,16 +335,19 @@ export async function createProductInline(values: NewProductValues) {
 // ─── Quick Supplier Create (returns new supplier for inline form use) ──────
 
 export async function createSupplierInline(
-  values: { name: string; contactName?: string; phone?: string; address?: string }
+  values: { name: string; contactName?: string; email?: string; phone?: string; address?: string; pan?: string; openingBalance?: number }
 ) {
   await requirePurchasesAccess();
   const data = newSupplierSchema.parse(values);
   const supplier = await prisma.supplier.create({
     data: {
-      name:        data.name,
-      contactName: data.contactName || null,
-      phone:       data.phone || null,
-      address:     data.address || null,
+      name:           data.name,
+      contactName:    data.contactName || null,
+      email:          data.email || null,
+      phone:          data.phone || null,
+      address:        data.address || null,
+      pan:            data.pan || null,
+      openingBalance: data.openingBalance ?? 0,
     },
     select: { id: true, name: true, contactName: true, phone: true },
   });

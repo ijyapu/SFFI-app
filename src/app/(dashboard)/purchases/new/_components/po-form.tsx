@@ -215,7 +215,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
   // ── Inline supplier form ────────────────────────────────────────────────────
   const supplierForm = useForm<NewSupplierValues>({
     resolver: zodResolver(newSupplierSchema),
-    defaultValues: { name: "", contactName: "", phone: "", address: "" },
+    defaultValues: { name: "", contactName: "", email: "", phone: "", address: "", pan: "", openingBalance: 0 },
   });
 
   async function handleCreateSupplier(values: NewSupplierValues) {
@@ -676,22 +676,75 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
 
       {/* ── New Supplier Dialog ── */}
       <Dialog open={supplierOpen} onOpenChange={(v) => !v && setSupplierOpen(false)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Add New Vendor</DialogTitle></DialogHeader>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>New Vendor</DialogTitle></DialogHeader>
           <Form {...supplierForm}>
-            <form onSubmit={supplierForm.handleSubmit(handleCreateSupplier)} className="space-y-3">
+            <form onSubmit={supplierForm.handleSubmit(handleCreateSupplier)} className="space-y-4">
               <FormField control={supplierForm.control} name="name" render={({ field }) => (
-                <FormItem><FormLabel>Name *</FormLabel><FormControl><Input {...field} placeholder="Company name" /></FormControl><FormMessage /></FormItem>
+                <FormItem>
+                  <FormLabel>Vendor Name *</FormLabel>
+                  <FormControl><Input {...field} placeholder="e.g. SSFI Pvt. Ltd." /></FormControl>
+                  <FormMessage />
+                </FormItem>
               )} />
               <FormField control={supplierForm.control} name="contactName" render={({ field }) => (
-                <FormItem><FormLabel>Contact Person</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem>
+                  <FormLabel>Contact Person</FormLabel>
+                  <FormControl><Input {...field} placeholder="e.g. Bikash Shrestha" /></FormControl>
+                  <FormMessage />
+                </FormItem>
               )} />
-              <FormField control={supplierForm.control} name="phone" render={({ field }) => (
-                <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} placeholder="+977" /></FormControl><FormMessage /></FormItem>
-              )} />
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={supplierForm.control} name="email" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl><Input {...field} type="email" placeholder="vendor@example.com" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={supplierForm.control} name="phone" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone</FormLabel>
+                    <FormControl><Input {...field} placeholder="98XXXXXXXX" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
               <FormField control={supplierForm.control} name="address" render={({ field }) => (
-                <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem>
+                  <FormLabel>Address</FormLabel>
+                  <FormControl>
+                    <Textarea {...field} placeholder="Tole, Municipality/City, District, Province" rows={2} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )} />
+              <div className="grid grid-cols-2 gap-3">
+                <FormField control={supplierForm.control} name="pan" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>PAN Number</FormLabel>
+                    <FormControl><Input {...field} placeholder="e.g. 123456789" /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+                <FormField control={supplierForm.control} name="openingBalance" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Opening Balance (Rs)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number" min="0" step="0.01"
+                        value={field.value === 0 ? "" : field.value}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        placeholder="0.00"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              </div>
+              <p className="text-xs text-muted-foreground -mt-2">
+                Opening balance = amount owed to this vendor before using this system.
+              </p>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setSupplierOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={supplierForm.formState.isSubmitting}>

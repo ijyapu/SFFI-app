@@ -87,7 +87,7 @@ export function SupplierForm({ open, onClose, supplier }: Props) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Vendor Name *</FormLabel>
-                  <FormControl><Input {...field} placeholder="e.g. Golden Grain Mills" /></FormControl>
+                  <FormControl><Input {...field} placeholder="e.g. SSFI Pvt. Ltd." /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -98,7 +98,7 @@ export function SupplierForm({ open, onClose, supplier }: Props) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Contact Person</FormLabel>
-                  <FormControl><Input {...field} placeholder="e.g. Ram Prasad Sharma" /></FormControl>
+                  <FormControl><Input {...field} placeholder="e.g. Bikash Shrestha" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -110,7 +110,7 @@ export function SupplierForm({ open, onClose, supplier }: Props) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Email</FormLabel>
-                    <FormControl><Input {...field} type="email" placeholder="supplier@example.com" /></FormControl>
+                    <FormControl><Input {...field} type="email" placeholder="Vendor@example.com" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

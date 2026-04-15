@@ -127,7 +127,7 @@ async function main() {
   // ─────────────────────────────────────────────
   // SUPPLIERS
   // ─────────────────────────────────────────────
-  const supplier1 = await prisma.supplier.upsert({
+  await prisma.supplier.upsert({
     where: { id: "seed-supplier-001" }, update: {},
     create: {
       id: "seed-supplier-001",
@@ -263,84 +263,6 @@ async function main() {
     },
   });
   console.log(`✅ Employees (6)`);
-
-  // ─────────────────────────────────────────────
-  // SAMPLE PURCHASE ORDER
-  // ─────────────────────────────────────────────
-  const flourProduct = products.find((p) => p.sku === "RM-001")!;
-  const butterProduct = products.find((p) => p.sku === "RM-004")!;
-  const yeastProduct = products.find((p) => p.sku === "RM-006")!;
-
-  const po = await prisma.purchaseOrder.upsert({
-    where: { orderNumber: "PO-2026-001" }, update: {},
-    create: {
-      orderNumber: "PO-2026-001",
-      supplierId: supplier1.id,
-      status: "DRAFT",
-      orderDate: new Date("2026-03-01"),
-      expectedDate: new Date("2026-03-08"),
-      subtotal: 1635.00,
-      taxAmount: 0,
-      totalAmount: 1635.00,
-      notes: "Seed data — weekly flour & ingredients restock",
-      createdBy: "seed",
-      items: {
-        create: [
-          { productId: flourProduct.id, quantity: 500, receivedQty: 0, unitCost: 2.50, totalCost: 1250.00 },
-          { productId: butterProduct.id, quantity: 30, receivedQty: 0, unitCost: 9.50, totalCost: 285.00 },
-          { productId: yeastProduct.id, quantity: 10, receivedQty: 0, unitCost: 12.00, totalCost: 120.00 },
-        ],
-      },
-    },
-  });
-  console.log(`✅ Sample purchase order (${po.orderNumber})`);
-
-  // ─────────────────────────────────────────────
-  // SAMPLE SALES ORDER
-  // ─────────────────────────────────────────────
-  const breadProduct = products.find((p) => p.sku === "FG-001")!;
-  const croissantProduct = products.find((p) => p.sku === "FG-004")!;
-
-  const so = await prisma.salesOrder.upsert({
-    where: { orderNumber: "SO-2026-001" }, update: {},
-    create: {
-      orderNumber: "SO-2026-001",
-      customerId: "seed-customer-001",
-      status: "DRAFT",
-      orderDate: new Date("2026-03-05"),
-      dueDate: new Date("2026-03-12"),
-      subtotal: 470.00,
-      taxAmount: 0,
-      totalAmount: 470.00,
-      notes: "Seed data — weekly bread delivery to Accra Mall",
-      createdBy: "seed",
-      items: {
-        create: [
-          { productId: breadProduct.id, quantity: 100, unitPrice: 3.50, totalPrice: 350.00 },
-          { productId: croissantProduct.id, quantity: 60, unitPrice: 2.00, totalPrice: 120.00 },
-        ],
-      },
-    },
-  });
-  console.log(`✅ Sample sales order (${so.orderNumber})`);
-
-  // ─────────────────────────────────────────────
-  // SAMPLE EXPENSE
-  // ─────────────────────────────────────────────
-  const utilCat = expenseCategories.find((c) => c.name === "Utilities (Electricity & Water)")!;
-  await prisma.expense.upsert({
-    where: { id: "seed-expense-001" }, update: {},
-    create: {
-      id: "seed-expense-001",
-      categoryId: utilCat.id,
-      description: "Electricity bill — Production floor, March 2026",
-      amount: 850.00,
-      date: new Date("2026-03-01"),
-      status: "SUBMITTED",
-      submittedBy: "seed",
-    },
-  });
-  console.log(`✅ Sample expense`);
 
   console.log("\n✅ Seeding complete.");
 }

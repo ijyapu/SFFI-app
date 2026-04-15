@@ -81,10 +81,13 @@ export const createPurchaseSchema = z.object({
 export type CreatePurchaseValues = z.infer<typeof createPurchaseSchema>;
 
 export const newSupplierSchema = z.object({
-  name:        z.string().min(1, "Name is required"),
-  contactName: z.string().optional(),
-  phone:       z.string().optional(),
-  address:     z.string().optional(),
+  name:           z.string().min(1, "Name is required"),
+  contactName:    z.string().optional(),
+  email:          z.string().optional(),
+  phone:          z.string().optional(),
+  address:        z.string().optional(),
+  pan:            z.string().optional(),
+  openingBalance: z.number().min(0).default(0),
 });
 
 export type NewSupplierValues = z.infer<typeof newSupplierSchema>;
