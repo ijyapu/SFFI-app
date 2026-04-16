@@ -20,7 +20,7 @@ export default async function ReceivablesPage() {
       deletedAt: null,
       status: { in: ["CONFIRMED", "PARTIALLY_PAID"] },
     },
-    include: { customer: true },
+    include: { salesman: true },
     orderBy: { orderDate: "asc" },
   });
 
@@ -36,7 +36,7 @@ export default async function ReceivablesPage() {
       return {
         id:          o.id,
         orderNumber: o.orderNumber,
-        partyName:   o.customer.name,
+        partyName:   o.salesman.name,
         orderDate:   o.orderDate.toISOString(),
         dueDate,
         totalAmount: Number(o.totalAmount),
@@ -51,7 +51,7 @@ export default async function ReceivablesPage() {
   return (
     <AgingTable
       rows={rows}
-      partyLabel="Customer"
+      partyLabel="Salesman"
       orderLabel="Sales Order"
       linkBase="/sales"
     />

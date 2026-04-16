@@ -12,11 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { customerPaymentSchema, type CustomerPaymentValues } from "@/lib/validators/sales";
-import { recordCustomerPayment } from "../../actions";
+import { salesmanPaymentSchema, type SalesmanPaymentValues } from "@/lib/validators/sales";
+import { recordSalesmanPayment } from "../../actions";
 
 type Props = {
   soId: string;
+  factoryAmount: number;
   outstanding: number;
   open: boolean;
   onClose: () => void;
@@ -33,9 +34,9 @@ const METHOD_LABELS = {
   OTHER:         "Other",
 };
 
-export function SoPaymentForm({ soId, outstanding, open, onClose }: Props) {
-  const form = useForm<CustomerPaymentValues>({
-    resolver: zodResolver(customerPaymentSchema),
+export function SoPaymentForm({ soId, factoryAmount, outstanding, open, onClose }: Props) {
+  const form = useForm<SalesmanPaymentValues>({
+    resolver: zodResolver(salesmanPaymentSchema),
     defaultValues: {
       amount:    outstanding,
       method:    "CASH",
@@ -44,9 +45,9 @@ export function SoPaymentForm({ soId, outstanding, open, onClose }: Props) {
     },
   });
 
-  async function onSubmit(values: CustomerPaymentValues) {
+  async function onSubmit(values: SalesmanPaymentValues) {
     try {
-      await recordCustomerPayment(soId, values);
+      await recordSalesmanPayment(soId, values);
       toast.success(`Payment of Rs ${values.amount.toFixed(2)} recorded`);
       form.reset();
       onClose();
@@ -61,9 +62,10 @@ export function SoPaymentForm({ soId, outstanding, open, onClose }: Props) {
         <DialogHeader>
           <DialogTitle>Record Payment</DialogTitle>
         </DialogHeader>
-        <p className="text-sm text-muted-foreground -mt-2">
-          Outstanding: <span className="font-medium text-foreground">Rs {outstanding.toFixed(2)}</span>
-        </p>
+        <div className="text-sm text-muted-foreground -mt-2 space-y-0.5">
+          <p>Factory amount: <span className="font-medium text-foreground">Rs {factoryAmount.toFixed(2)}</span></p>
+          <p>Outstanding: <span className="font-medium text-destructive">Rs {outstanding.toFixed(2)}</span></p>
+        </div>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField

@@ -1,24 +1,24 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { applyStockMovement } from "@/lib/stock";
 import { StockMovementType } from "@prisma/client";
 import {
-  customerSchema, createSoSchema, customerPaymentSchema, salesReturnSchema,
-  type CustomerFormValues, type CreateSoValues,
-  type CustomerPaymentValues, type SalesReturnValues,
+  salesmanSchema, createSoSchema, salesmanPaymentSchema, salesReturnSchema,
+  type SalesmanFormValues, type CreateSoValues,
+  type SalesmanPaymentValues, type SalesReturnValues,
 } from "@/lib/validators/sales";
 
 async function requireSalesAccess() {
-  const { userId, sessionClaims } = await auth();
-  if (!userId) throw new Error("Unauthenticated");
-  const role = sessionClaims?.publicMetadata?.role as string | undefined;
+  const user = await currentUser();
+  if (!user) throw new Error("Unauthenticated");
+  const role = user.publicMetadata?.role as string | undefined;
   if (!role || !["admin", "manager", "accountant"].includes(role)) {
     throw new Error("Unauthorized");
   }
-  return userId;
+  return user.id;
 }
 
 async function generateSoNumber(): Promise<string> {
@@ -39,48 +39,50 @@ async function generateReturnNumber(): Promise<string> {
   return `${prefix}${String(count + 1).padStart(4, "0")}`;
 }
 
-// ─── Customers ────────────────────────────────
+// ─── Salesmen ─────────────────────────────────
 
-export async function createCustomer(values: CustomerFormValues) {
+export async function createSalesman(values: SalesmanFormValues) {
   await requireSalesAccess();
-  const data = customerSchema.parse(values);
-  await prisma.customer.create({
+  const data = salesmanSchema.parse(values);
+  await prisma.salesman.create({
     data: {
-      name:           data.name,
-      email:          data.email || null,
-      phone:          data.phone || null,
-      address:        data.address || null,
-      pan:            data.pan || null,
+      name:          data.name,
+      email:         data.email || null,
+      phone:         data.phone || null,
+      address:       data.address || null,
+      citizenshipNo: data.citizenshipNo || null,
       openingBalance: data.openingBalance ?? 0,
+      commissionPct:  data.commissionPct ?? 25,
     },
   });
-  revalidatePath("/sales/customers");
+  revalidatePath("/sales/salesmen");
 }
 
-export async function updateCustomer(id: string, values: CustomerFormValues) {
+export async function updateSalesman(id: string, values: SalesmanFormValues) {
   await requireSalesAccess();
-  const data = customerSchema.parse(values);
-  await prisma.customer.update({
+  const data = salesmanSchema.parse(values);
+  await prisma.salesman.update({
     where: { id },
     data: {
-      name:           data.name,
-      email:          data.email || null,
-      phone:          data.phone || null,
-      address:        data.address || null,
-      pan:            data.pan || null,
+      name:          data.name,
+      email:         data.email || null,
+      phone:         data.phone || null,
+      address:       data.address || null,
+      citizenshipNo: data.citizenshipNo || null,
       openingBalance: data.openingBalance ?? 0,
+      commissionPct:  data.commissionPct ?? 25,
     },
   });
-  revalidatePath("/sales/customers");
+  revalidatePath("/sales/salesmen");
 }
 
-export async function deleteCustomer(id: string) {
+export async function deleteSalesman(id: string) {
   await requireSalesAccess();
-  await prisma.customer.update({
+  await prisma.salesman.update({
     where: { id },
     data: { deletedAt: new Date() },
   });
-  revalidatePath("/sales/customers");
+  revalidatePath("/sales/salesmen");
 }
 
 // ─── Sales Orders ─────────────────────────────
@@ -89,19 +91,30 @@ export async function createSalesOrder(values: CreateSoValues) {
   const userId = await requireSalesAccess();
   const data = createSoSchema.parse(values);
 
-  const orderNumber = await generateSoNumber();
-  const subtotal = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  // Snapshot the customer's commission rate at dispatch time
+  const customer = await prisma.salesman.findUnique({
+    where: { id: data.customerId },
+    select: { commissionPct: true },
+  });
+  const commissionPct    = Number(customer?.commissionPct ?? 25);
+  const orderNumber      = await generateSoNumber();
+  const subtotal         = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const commissionAmount = Math.round(subtotal * commissionPct) / 100;
+  const factoryAmount    = subtotal - commissionAmount;
 
   await prisma.salesOrder.create({
     data: {
       orderNumber,
-      customerId:  data.customerId,
-      dueDate:     data.dueDate ? new Date(data.dueDate) : null,
-      notes:       data.notes || null,
+      customerId:      data.customerId,
+      dueDate:         data.dueDate ? new Date(data.dueDate) : null,
+      notes:           data.notes || null,
       subtotal,
-      taxAmount:   0,
-      totalAmount: subtotal,
-      createdBy:   userId,
+      taxAmount:       0,
+      totalAmount:     subtotal,
+      commissionPct,
+      commissionAmount,
+      factoryAmount,
+      createdBy:       userId,
       items: {
         create: data.items.map((item) => ({
           productId:  item.productId,
@@ -208,32 +221,33 @@ export async function deleteSalesOrder(id: string) {
   revalidatePath("/sales");
 }
 
-// ─── Customer Payments ────────────────────────
+// ─── Salesman Payments ────────────────────────
 
-export async function recordCustomerPayment(soId: string, values: CustomerPaymentValues) {
+export async function recordSalesmanPayment(soId: string, values: SalesmanPaymentValues) {
   const userId = await requireSalesAccess();
-  const data = customerPaymentSchema.parse(values);
+  const data = salesmanPaymentSchema.parse(values);
 
   const so = await prisma.salesOrder.findUnique({
     where: { id: soId },
-    select: { customerId: true, totalAmount: true, amountPaid: true, status: true },
+    select: { customerId: true, factoryAmount: true, amountPaid: true, status: true },
   });
   if (!so) throw new Error("Sales order not found");
   if (so.status === "DRAFT") throw new Error("Confirm the order before recording a payment");
   if (so.status === "CANCELLED") throw new Error("Cannot record payment for a cancelled order");
 
-  const outstanding = Number(so.totalAmount) - Number(so.amountPaid);
+  const factoryDue  = Number(so.factoryAmount);
+  const outstanding = factoryDue - Number(so.amountPaid);
   if (data.amount > outstanding + 0.001) {
     throw new Error(
-      `Payment of Rs ${data.amount.toFixed(2)} exceeds the outstanding balance of Rs ${outstanding.toFixed(2)}`
+      `Payment of Rs ${data.amount.toFixed(2)} exceeds the factory outstanding balance of Rs ${outstanding.toFixed(2)}`
     );
   }
 
-  const newPaid = Number(so.amountPaid) + data.amount;
-  const newStatus = newPaid >= Number(so.totalAmount) - 0.001 ? "PAID" : "PARTIALLY_PAID";
+  const newPaid   = Number(so.amountPaid) + data.amount;
+  const newStatus = newPaid >= factoryDue - 0.001 ? "PAID" : "PARTIALLY_PAID";
 
   await prisma.$transaction(async (tx) => {
-    await tx.customerPayment.create({
+    await tx.salesmanPayment.create({
       data: {
         salesOrderId: soId,
         customerId:   so.customerId,
@@ -266,23 +280,30 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
 
   const so = await prisma.salesOrder.findUnique({
     where: { id: soId },
-    select: { status: true, orderNumber: true },
+    select: { status: true, orderNumber: true, totalAmount: true, commissionPct: true, returns: { select: { totalAmount: true } } },
   });
   if (!so) throw new Error("Sales order not found");
   if (so.status === "DRAFT" || so.status === "CANCELLED") {
     throw new Error("Cannot process a return for a draft or cancelled order");
   }
 
-  const returnNumber = await generateReturnNumber();
-  const totalAmount = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const returnNumber  = await generateReturnNumber();
+  const returnTotal   = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+
+  // Recalculate commission/factory amounts after this waste return
+  const prevWaste        = so.returns.reduce((sum, r) => sum + Number(r.totalAmount), 0);
+  const netAmount        = Number(so.totalAmount) - prevWaste - returnTotal;
+  const commissionPct    = Number(so.commissionPct);
+  const commissionAmount = Math.round(netAmount * commissionPct) / 100;
+  const factoryAmount    = netAmount - commissionAmount;
 
   await prisma.$transaction(async (tx) => {
-    const salesReturn = await tx.salesReturn.create({
+    await tx.salesReturn.create({
       data: {
         returnNumber,
         salesOrderId: soId,
-        reason:       data.reason,
-        totalAmount,
+        notes:        data.notes || null,
+        totalAmount:  returnTotal,
         createdBy:    userId,
         items: {
           create: data.items.map((item) => ({
@@ -294,21 +315,12 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
       },
     });
 
-    for (const item of data.items) {
-      await applyStockMovement(
-        {
-          productId:     item.productId,
-          type:          StockMovementType.RETURN_IN,
-          quantity:      item.quantity,
-          unitCost:      item.unitPrice,
-          notes:         `Return ${returnNumber} — ${data.reason}`,
-          referenceId:   salesReturn.id,
-          referenceType: "SalesReturn",
-          createdBy:     userId,
-        },
-        tx as Parameters<typeof applyStockMovement>[1]
-      );
-    }
+    // Update commission/factory amounts on the order
+    await tx.salesOrder.update({
+      where: { id: soId },
+      data: { commissionAmount, factoryAmount },
+    });
+    // Waste returns are not restocked — goods are expired/damaged
   });
 
   revalidatePath(`/sales/${soId}`);

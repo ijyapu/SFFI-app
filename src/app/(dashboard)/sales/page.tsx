@@ -14,7 +14,7 @@ export default async function SalesPage() {
 
   const orders = await prisma.salesOrder.findMany({
     where: { deletedAt: null },
-    include: { customer: true },
+    include: { salesman: true },
     orderBy: { createdAt: "desc" },
   });
 
@@ -22,7 +22,7 @@ export default async function SalesPage() {
     id:           o.id,
     orderNumber:  o.orderNumber,
     status:       o.status,
-    customerName: o.customer.name,
+    customerName: o.salesman.name,
     orderDate:    o.orderDate.toISOString(),
     totalAmount:  Number(o.totalAmount),
     amountPaid:   Number(o.amountPaid),
@@ -50,11 +50,11 @@ export default async function SalesPage() {
         </div>
         <div className="flex gap-2">
           <Link
-            href="/sales/customers"
+            href="/sales/salesmen"
             className={cn(buttonVariants({ variant: "outline" }))}
           >
             <Users className="h-4 w-4" />
-            Customers
+            Salesmen
           </Link>
           <Link
             href="/sales/new"

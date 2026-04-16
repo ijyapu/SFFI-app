@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp -r \"c:/Users/rider/Desktop/SSFI/erp-app/src/app/\\(dashboard\\)/sales/customers\" \"c:/Users/rider/Desktop/SSFI/erp-app/src/app/\\(dashboard\\)/sales/salesmen\")",
+      "Bash(cp -r \"c:/Users/rider/Desktop/SSFI/erp-app/src/app/\\(dashboard\\)/customers\" \"c:/Users/rider/Desktop/SSFI/erp-app/src/app/\\(dashboard\\)/salesmen\")",
+      "Bash(xargs sed *)",
+      "Bash(xargs grep *)",
+      "Bash(sed -i -e s/selectedCustomer/selectedSalesman/g -e s/watchCustomerId/watchSalesmanId/g 'c:/Users/rider/Desktop/SSFI/erp-app/src/app/\\(dashboard\\)/sales/new/_components/so-form.tsx')",
+      "Bash(sed -i -e s/rawCustomers/rawSalesmen/g 'c:/Users/rider/Desktop/SSFI/erp-app/src/app/\\(dashboard\\)/sales/new/page.tsx')",
+      "Bash(sed -i -e s/editCustomer/editSalesman/g -e s/setEditCustomer/setEditSalesman/g 'c:/Users/rider/Desktop/SSFI/erp-app/src/app/\\(dashboard\\)/sales/salesmen/_components/salesman-table.tsx')",
+      "Bash(grep -n \"customer\\\\|Customer\" src/app/\\\\\\(dashboard\\\\\\)/sales/salesmen/[id]/ledger/page.tsx src/app/\\\\\\(dashboard\\\\\\)/sales/salesmen/[id]/ledger/_components/salesman-ledger.tsx)",
+      "Bash(ls src/components/ui/photo-upload*)"
+    ]
+  }
+}

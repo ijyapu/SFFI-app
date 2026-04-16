@@ -9,7 +9,7 @@ import { toNepaliDateString } from "@/lib/nepali-date";
 import { BookMarked } from "lucide-react";
 import { COMPANY } from "@/lib/company";
 
-export const metadata = { title: "Customer Ledger" };
+export const metadata = { title: "Salesman Ledger" };
 
 interface PageProps {
   searchParams: Promise<{ customerId?: string; from?: string; to?: string }>;
@@ -27,7 +27,7 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
   const from       = params.from ?? defaultFrom;
   const to         = params.to   ?? defaultTo;
 
-  const customers = await getAllCustomers();
+  const salesmen = await getAllCustomers();
 
   let ledgerData = null;
   let error: string | null = null;
@@ -98,17 +98,17 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
           <div>
             <div className="flex items-center gap-2">
               <BookMarked className="h-5 w-5 text-muted-foreground" />
-              <h1 className="text-xl font-semibold tracking-tight">Customer Ledger</h1>
+              <h1 className="text-xl font-semibold tracking-tight">Salesman Ledger</h1>
             </div>
             <p className="text-muted-foreground text-sm mt-0.5">
-              Accounts receivable ledger per customer · {format(today, "d MMMM yyyy")} · {toNepaliDateString(today)}
+              Accounts receivable ledger per salesman · {format(today, "d MMMM yyyy")} · {toNepaliDateString(today)}
             </p>
           </div>
           {ledgerData && (
             <div className="text-right">
-              <p className="text-sm font-semibold">{ledgerData.customer.name}</p>
-              {ledgerData.customer.pan && (
-                <p className="text-xs text-muted-foreground">PAN: {ledgerData.customer.pan}</p>
+              <p className="text-sm font-semibold">{ledgerData.salesman.name}</p>
+              {ledgerData.salesman.pan && (
+                <p className="text-xs text-muted-foreground">PAN: {ledgerData.salesman.pan}</p>
               )}
             </div>
           )}
@@ -118,7 +118,7 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
         <div className="no-print">
           <Suspense>
             <LedgerFilters
-              customers={customers}
+              salesmen={salesmen}
               customerId={customerId}
               from={from}
               to={to}
@@ -130,7 +130,7 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
         {!customerId && (
           <div className="rounded-lg border border-dashed p-16 text-center">
             <BookMarked className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-            <p className="font-medium text-muted-foreground">Select a customer to view their ledger</p>
+            <p className="font-medium text-muted-foreground">Select a salesman to view their ledger</p>
             <p className="text-sm text-muted-foreground/60 mt-1">
               Shows all sales invoices, payments received, returns, opening & closing balances
             </p>
@@ -155,8 +155,8 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
                 </div>
                 <div className="text-right">
                   <p className="text-base font-bold">CUSTOMER LEDGER</p>
-                  <p className="text-sm">{ledgerData.customer.name}</p>
-                  {ledgerData.customer.pan && <p className="text-xs text-gray-500">Customer PAN: {ledgerData.customer.pan}</p>}
+                  <p className="text-sm">{ledgerData.salesman.name}</p>
+                  {ledgerData.salesman.pan && <p className="text-xs text-gray-500">Salesman PAN: {ledgerData.salesman.pan}</p>}
                   <p className="text-xs text-gray-500">
                     {format(new Date(from), "d MMM yyyy")} – {format(new Date(to), "d MMM yyyy")}
                   </p>
@@ -194,7 +194,7 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
                   Rs {ledgerData.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {ledgerData.closingBalance > 0.005 ? "Customer owes you" : ledgerData.closingBalance < -0.005 ? "You owe customer" : "Settled"}
+                  {ledgerData.closingBalance > 0.005 ? "Salesman owes you" : ledgerData.closingBalance < -0.005 ? "You owe salesman" : "Settled"}
                 </p>
               </div>
             </div>

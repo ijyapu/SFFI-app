@@ -7,7 +7,7 @@ const SUB_NAV = [
   { label: "Stock Valuation",      href: "/reports/stock-valuation" },
   { label: "Receivables Aging",    href: "/reports/receivables" },
   { label: "Payables Aging",       href: "/reports/payables" },
-  { label: "Sales by Customer",    href: "/reports/sales-by-customer" },
+  { label: "Sales by Salesman",    href: "/reports/sales-by-salesman" },
 ];
 
 export function ReportsNav() {

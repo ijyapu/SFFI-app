@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Printer } from "lucide-react";
 
-type Customer = { id: string; name: string; pan: string | null };
+type Salesman = { id: string; name: string; pan: string | null };
 
 function getNepalFYPresets() {
   const today = new Date();
@@ -43,12 +43,12 @@ function getNepalFYPresets() {
 }
 
 export function LedgerFilters({
-  customers,
+  salesmen,
   customerId,
   from,
   to,
 }: {
-  customers: Customer[];
+  salesmen: Salesman[];
   customerId: string;
   from: string;
   to: string;
@@ -64,7 +64,7 @@ export function LedgerFilters({
     if (params.customerId !== undefined) sp.set("customerId", params.customerId);
     if (params.from       !== undefined) sp.set("from",       params.from);
     if (params.to         !== undefined) sp.set("to",         params.to);
-    startTransition(() => router.push(`/customers/ledger?${sp.toString()}`));
+    startTransition(() => router.push(`/salesmen/ledger?${sp.toString()}`));
   }
 
   function applyDates() {
@@ -75,19 +75,19 @@ export function LedgerFilters({
 
   return (
     <div className="flex flex-wrap items-end gap-3">
-      {/* Customer selector */}
+      {/* Salesman selector */}
       <div className="flex flex-col gap-1">
-        <label className="text-xs font-medium text-muted-foreground">Customer</label>
+        <label className="text-xs font-medium text-muted-foreground">Salesman</label>
         <Select value={customerId} onValueChange={(v) => navigate({ customerId: v ?? undefined })}>
           <SelectTrigger className="w-56">
-            <SelectValue placeholder="Select customer">
+            <SelectValue placeholder="Select salesman">
               {customerId
-                ? customers.find((c) => c.id === customerId)?.name ?? "Select customer"
-                : "Select customer"}
+                ? salesmen.find((c) => c.id === customerId)?.name ?? "Select salesman"
+                : "Select salesman"}
             </SelectValue>
           </SelectTrigger>
           <SelectContent className="max-h-72">
-            {customers.map((c) => (
+            {salesmen.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 <span>{c.name}</span>
                 {c.pan && <span className="ml-2 text-xs text-muted-foreground">PAN: {c.pan}</span>}

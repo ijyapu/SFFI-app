@@ -163,47 +163,49 @@ async function main() {
   console.log(`✅ Suppliers (3)`);
 
   // ─────────────────────────────────────────────
-  // CUSTOMERS
+  // SALESMEN
   // ─────────────────────────────────────────────
-  await prisma.customer.upsert({
+  await prisma.salesman.upsert({
     where: { id: "seed-customer-001" }, update: {},
     create: {
       id: "seed-customer-001",
-      name: "Accra Mall Supermarket",
-      email: "procurement@accramall.com",
-      phone: "+233 30 555 6666",
-      address: "Accra Mall, Spintex Road",
+      name: "Ram Bahadur",
+      phone: "+977 98 1234 5678",
+      address: "Kathmandu",
+      commissionPct: 25,
     },
   });
-  await prisma.customer.upsert({
+  await prisma.salesman.upsert({
     where: { id: "seed-customer-002" }, update: {},
     create: {
       id: "seed-customer-002",
-      name: "Koala Supermarket",
-      email: "orders@koala.com",
-      phone: "+233 24 777 8888",
-      address: "Airport Residential Area, Accra",
+      name: "Shyam Prasad",
+      phone: "+977 98 2345 6789",
+      address: "Lalitpur",
+      commissionPct: 25,
     },
   });
-  await prisma.customer.upsert({
+  await prisma.salesman.upsert({
     where: { id: "seed-customer-003" }, update: {},
     create: {
       id: "seed-customer-003",
-      name: "Papaye Fast Food",
-      phone: "+233 27 999 0000",
-      address: "Multiple locations, Accra",
+      name: "Hari Lal",
+      phone: "+977 98 3456 7890",
+      address: "Bhaktapur",
+      commissionPct: 30,
     },
   });
-  await prisma.customer.upsert({
+  await prisma.salesman.upsert({
     where: { id: "seed-customer-004" }, update: {},
     create: {
       id: "seed-customer-004",
-      name: "Walk-in Customer",
+      name: "Gita Kumari",
       phone: null,
       address: null,
+      commissionPct: 25,
     },
   });
-  console.log(`✅ Customers (4)`);
+  console.log(`✅ Salesmen (4)`);
 
   // ─────────────────────────────────────────────
   // EMPLOYEES

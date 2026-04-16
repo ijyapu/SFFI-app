@@ -26,31 +26,49 @@ export default async function SalesOrderDetailPage({
   await requirePermission("sales");
   const { id } = await params;
 
-  const so = await prisma.salesOrder.findUnique({
-    where: { id, deletedAt: null },
-    include: {
-      customer: true,
-      items: {
-        include: { product: { include: { unit: true } } },
-        orderBy: { product: { name: "asc" } },
+  const [so, rawProducts] = await Promise.all([
+    prisma.salesOrder.findUnique({
+      where: { id, deletedAt: null },
+      include: {
+        salesman: true,
+        items: {
+          include: { product: { include: { unit: true } } },
+          orderBy: { product: { name: "asc" } },
+        },
+        payments: { orderBy: { paidAt: "desc" } },
+        returns: {
+          include: { items: { include: { product: { include: { unit: true } } } } },
+          orderBy: { createdAt: "desc" },
+        },
       },
-      payments: { orderBy: { paidAt: "desc" } },
-    },
-  });
+    }),
+    prisma.product.findMany({
+      where: { deletedAt: null },
+      select: { id: true, name: true, unit: { select: { name: true } } },
+      orderBy: { name: "asc" },
+    }),
+  ]);
 
   if (!so) notFound();
+
+  const products = rawProducts.map((p) => ({
+    id: p.id, name: p.name, unitName: p.unit.name,
+  }));
 
   const serialised = {
     id:           so.id,
     orderNumber:  so.orderNumber,
     status:       so.status,
-    customerName: so.customer.name,
+    customerName: so.salesman.name,
     orderDate:    so.orderDate.toISOString(),
     dueDate:      so.dueDate?.toISOString() ?? null,
     notes:        so.notes,
-    subtotal:     Number(so.subtotal),
-    totalAmount:  Number(so.totalAmount),
-    amountPaid:   Number(so.amountPaid),
+    subtotal:         Number(so.subtotal),
+    totalAmount:      Number(so.totalAmount),
+    commissionPct:    Number(so.commissionPct),
+    commissionAmount: Number(so.commissionAmount),
+    factoryAmount:    Number(so.factoryAmount),
+    amountPaid:       Number(so.amountPaid),
     items: so.items.map((i) => ({
       id:          i.id,
       productId:   i.productId,
@@ -68,6 +86,22 @@ export default async function SalesOrderDetailPage({
       notes:     p.notes,
       paidAt:    p.paidAt.toISOString(),
     })),
+    returns: so.returns.map((r) => ({
+      id:           r.id,
+      returnNumber: r.returnNumber,
+      notes:        r.notes,
+      totalAmount:  Number(r.totalAmount),
+      createdAt:    r.createdAt.toISOString(),
+      items: r.items.map((i) => ({
+        id:          i.id,
+        productName: i.product.name,
+        unitName:    i.product.unit.name,
+        quantity:    Number(i.quantity),
+        unitPrice:   Number(i.unitPrice),
+        totalPrice:  Number(i.quantity) * Number(i.unitPrice),
+      })),
+    })),
+    products,
   };
 
   return (
@@ -81,7 +115,7 @@ export default async function SalesOrderDetailPage({
         </Link>
         <div>
           <h1 className="text-2xl font-semibold">{so.orderNumber}</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">{so.customer.name}</p>
+          <p className="text-muted-foreground text-sm mt-0.5">{so.salesman.name}</p>
         </div>
       </div>
 

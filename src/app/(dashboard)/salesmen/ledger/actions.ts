@@ -9,9 +9,9 @@ export type CustomerLedgerEntry = {
   type:          "INVOICE" | "PAYMENT" | "RETURN";
   reference:     string;
   description:   string;
-  invoiceAmount: number; // amount customer owes us
-  paymentAmount: number; // amount received from customer
-  balance:       number; // running balance (positive = customer owes us)
+  invoiceAmount: number; // amount salesman owes us
+  paymentAmount: number; // amount received from salesman
+  balance:       number; // running balance (positive = salesman owes us)
   taxAmount:     number; // VAT collected
   subtotal:      number; // before tax
   paymentMethod: string;
@@ -19,7 +19,7 @@ export type CustomerLedgerEntry = {
 };
 
 export type CustomerLedgerData = {
-  customer: {
+  salesman: {
     id:             string;
     name:           string;
     pan:            string | null;
@@ -52,16 +52,16 @@ export async function getCustomerLedger(
 ): Promise<CustomerLedgerData> {
   await requirePermission("sales");
 
-  const customer = await prisma.customer.findUnique({
+  const salesman = await prisma.salesman.findUnique({
     where: { id: customerId, deletedAt: null },
     select: {
       id: true, name: true, pan: true, phone: true,
       address: true, email: true, openingBalance: true,
     },
   });
-  if (!customer) throw new Error("Customer not found");
+  if (!salesman) throw new Error("Salesman not found");
 
-  // All sales orders for this customer (to compute opening balance)
+  // All sales orders for this salesman (to compute opening balance)
   const allOrders = await prisma.salesOrder.findMany({
     where: { customerId, deletedAt: null },
     select: {
@@ -79,7 +79,7 @@ export async function getCustomerLedger(
   const allReturns = await prisma.salesReturn.findMany({
     where: { salesOrder: { customerId } },
     select: {
-      id: true, returnNumber: true, createdAt: true, totalAmount: true, reason: true,
+      id: true, returnNumber: true, createdAt: true, totalAmount: true, notes: true,
       salesOrderId: true,
       salesOrder: { select: { orderNumber: true } },
     },
@@ -87,7 +87,7 @@ export async function getCustomerLedger(
   });
 
   // Compute opening balance: openingBalance field + invoices before `from` - payments before `from` - returns before `from`
-  const baseOpening = Number(customer.openingBalance);
+  const baseOpening = Number(salesman.openingBalance);
   let computedOpening = baseOpening;
 
   for (const o of allOrders) {
@@ -164,7 +164,7 @@ export async function getCustomerLedger(
       date:          r.createdAt,
       type:          "RETURN",
       reference:     r.returnNumber,
-      description:   `Sales Return · ${r.salesOrder.orderNumber} · ${r.reason}`,
+      description:   `Waste Return · ${r.salesOrder.orderNumber}${r.notes ? ` · ${r.notes}` : ""}`,
       invoiceAmount: 0,
       paymentAmount: Number(r.totalAmount), // return reduces balance
       taxAmount:     0,
@@ -204,9 +204,9 @@ export async function getCustomerLedger(
   const totalReturns  = returnEntries.reduce((s, e) => s + e.paymentAmount, 0);
 
   return {
-    customer: {
-      ...customer,
-      openingBalance: Number(customer.openingBalance),
+    salesman: {
+      ...salesman,
+      openingBalance: Number(salesman.openingBalance),
     },
     openingBalance:  computedOpening,
     closingBalance,
@@ -228,7 +228,7 @@ export async function getCustomerLedger(
 
 export async function getAllCustomers() {
   await requirePermission("sales");
-  return prisma.customer.findMany({
+  return prisma.salesman.findMany({
     where: { deletedAt: null },
     select: { id: true, name: true, pan: true },
     orderBy: { name: "asc" },

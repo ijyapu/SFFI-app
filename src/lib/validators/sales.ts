@@ -1,15 +1,16 @@
 import { z } from "zod";
 
-export const customerSchema = z.object({
+export const salesmanSchema = z.object({
   name:           z.string().min(1, "Name is required"),
   email:          z.string().email("Invalid email").optional().or(z.literal("")),
   phone:          z.string().optional(),
   address:        z.string().optional(),
-  pan:            z.string().optional(),
+  citizenshipNo:  z.string().optional(),
   openingBalance: z.number().min(0).optional(),
+  commissionPct:  z.number().min(0).max(100).optional(),
 });
 
-export type CustomerFormValues = z.infer<typeof customerSchema>;
+export type SalesmanFormValues = z.infer<typeof salesmanSchema>;
 
 // ─── Sales Order ──────────────────────────────
 
@@ -20,7 +21,7 @@ export const soItemSchema = z.object({
 });
 
 export const createSoSchema = z.object({
-  customerId: z.string().min(1, "Select a customer"),
+  customerId: z.string().min(1, "Select a salesman"),
   dueDate:    z.string().optional(),
   notes:      z.string().optional(),
   items:      z.array(soItemSchema).min(1, "Add at least one item"),
@@ -28,16 +29,16 @@ export const createSoSchema = z.object({
 
 export type CreateSoValues = z.infer<typeof createSoSchema>;
 
-// ─── Customer Payment ─────────────────────────
+// ─── Salesman Payment ─────────────────────────
 
-export const customerPaymentSchema = z.object({
+export const salesmanPaymentSchema = z.object({
   amount:    z.number().min(0.01, "Amount must be > 0"),
   method:    z.enum(["CASH", "BANK_TRANSFER", "CHECK", "ESEWA", "KHALTI", "IME_PAY", "FONEPAY", "OTHER"]),
   reference: z.string().optional(),
   notes:     z.string().optional(),
 });
 
-export type CustomerPaymentValues = z.infer<typeof customerPaymentSchema>;
+export type SalesmanPaymentValues = z.infer<typeof salesmanPaymentSchema>;
 
 // ─── Sales Return ─────────────────────────────
 
@@ -48,8 +49,8 @@ export const returnItemSchema = z.object({
 });
 
 export const salesReturnSchema = z.object({
-  reason: z.string().min(1, "Reason is required"),
-  items:  z.array(returnItemSchema).min(1, "Add at least one item"),
+  notes: z.string().optional(),
+  items: z.array(returnItemSchema).min(1, "Add at least one item"),
 });
 
 export type SalesReturnValues = z.infer<typeof salesReturnSchema>;

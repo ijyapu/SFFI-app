@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { createSoSchema, type CreateSoValues } from "@/lib/validators/sales";
 import { createSalesOrder } from "../../actions";
 
-type Customer = { id: string; name: string };
+type Salesman = { id: string; name: string; commissionPct: number };
 type Product  = {
   id: string;
   name: string;
@@ -26,11 +26,11 @@ type Product  = {
 };
 
 type Props = {
-  customers: Customer[];
+  salesmen: Salesman[];
   products:  Product[];
 };
 
-export function SoForm({ customers, products }: Props) {
+export function SoForm({ salesmen, products }: Props) {
   const router = useRouter();
 
   const form = useForm<CreateSoValues>({
@@ -48,12 +48,14 @@ export function SoForm({ customers, products }: Props) {
     name: "items",
   });
 
-  const watchItems = form.watch("items");
+  const watchItems      = form.watch("items");
+  const watchSalesmanId = form.watch("customerId");
 
-  const subtotal = watchItems.reduce(
-    (sum, i) => sum + (i.quantity || 0) * (i.unitPrice || 0),
-    0
-  );
+  const subtotal        = watchItems.reduce((sum, i) => sum + (i.quantity || 0) * (i.unitPrice || 0), 0);
+  const selectedSalesman = salesmen.find((c) => c.id === watchSalesmanId);
+  const commissionPct    = selectedSalesman?.commissionPct ?? 25;
+  const commissionAmount = Math.round(subtotal * commissionPct) / 100;
+  const factoryAmount    = subtotal - commissionAmount;
 
   function handleProductChange(index: number, productId: string) {
     const product = products.find((p) => p.id === productId);
@@ -82,17 +84,17 @@ export function SoForm({ customers, products }: Props) {
             name="customerId"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Customer *</FormLabel>
+                <FormLabel>Salesman *</FormLabel>
                 <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select customer">
-                        {customers.find(c => c.id === field.value)?.name}
+                      <SelectValue placeholder="Select salesman">
+                        {salesmen.find(c => c.id === field.value)?.name}
                       </SelectValue>
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {customers.map((c) => (
+                    {salesmen.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -260,14 +262,26 @@ export function SoForm({ customers, products }: Props) {
               );
             })}
 
-            <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 bg-muted/30">
-              <div className="col-span-3 text-right text-sm font-medium text-muted-foreground">
-                Subtotal
+            <div className="px-3 py-2 bg-muted/30 space-y-1 text-sm">
+              <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2">
+                <div className="col-span-3 text-right text-muted-foreground">Total Taken</div>
+                <div className="text-right font-semibold">Rs {subtotal.toFixed(2)}</div>
+                <div />
               </div>
-              <div className="text-right text-sm font-semibold">
-                Rs {subtotal.toFixed(2)}
-              </div>
-              <div />
+              {subtotal > 0 && (
+                <>
+                  <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 text-amber-600">
+                    <div className="col-span-3 text-right">Commission ({commissionPct}%)</div>
+                    <div className="text-right">Rs {commissionAmount.toFixed(2)}</div>
+                    <div />
+                  </div>
+                  <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 text-green-700 font-semibold">
+                    <div className="col-span-3 text-right">Factory Amount</div>
+                    <div className="text-right">Rs {factoryAmount.toFixed(2)}</div>
+                    <div />
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>

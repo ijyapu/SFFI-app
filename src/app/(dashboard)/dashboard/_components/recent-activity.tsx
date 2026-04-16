@@ -23,7 +23,7 @@ const PO_BADGE: Record<string, { label: string; cls: string }> = {
 };
 
 type RecentSO = {
-  id: string; orderNumber: string; customerName: string;
+  id: string; orderNumber: string; salesmanName: string;
   totalAmount: number; status: string; orderDate: string;
 };
 type RecentPO = {
@@ -69,7 +69,7 @@ export function RecentActivity({ recentSales, recentPurchases }: { recentSales: 
                           {badge.label}
                         </span>
                       </div>
-                      <div className="text-sm font-medium truncate mt-0.5">{so.customerName}</div>
+                      <div className="text-sm font-medium truncate mt-0.5">{so.salesmanName}</div>
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-sm font-semibold tabular-nums">{fmt(so.totalAmount)}</div>

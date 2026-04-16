@@ -51,6 +51,30 @@ type Payment = {
   paidAt: string;
 };
 
+type ReturnItem = {
+  id: string;
+  productName: string;
+  unitName: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+};
+
+type SalesReturn = {
+  id: string;
+  returnNumber: string;
+  notes: string | null;
+  totalAmount: number;
+  createdAt: string;
+  items: ReturnItem[];
+};
+
+type Product = {
+  id: string;
+  name: string;
+  unitName: string;
+};
+
 type Props = {
   id: string;
   orderNumber: string;
@@ -61,15 +85,21 @@ type Props = {
   notes: string | null;
   subtotal: number;
   totalAmount: number;
+  commissionPct: number;
+  commissionAmount: number;
+  factoryAmount: number;
   amountPaid: number;
   items: SoItem[];
   payments: Payment[];
+  returns: SalesReturn[];
+  products: Product[];
 };
 
 export function SoDetail(props: Props) {
   const {
     id, orderNumber, status, customerName, orderDate, dueDate,
-    notes, subtotal, totalAmount, amountPaid, items, payments,
+    notes, subtotal, totalAmount, commissionPct, commissionAmount, factoryAmount,
+    amountPaid, items, payments, returns, products,
   } = props;
 
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -87,7 +117,9 @@ export function SoDetail(props: Props) {
     });
   }, [items, sortKey, sortDir]);
 
-  const outstanding = totalAmount - amountPaid;
+  const totalWaste  = returns.reduce((sum, r) => sum + r.totalAmount, 0);
+  const netAmount   = totalAmount - totalWaste;
+  const outstanding = factoryAmount - amountPaid;
   const cfg = STATUS_CONFIG[status];
 
   async function handleConfirm() {
@@ -150,7 +182,7 @@ export function SoDetail(props: Props) {
             <>
               <Button variant="outline" onClick={() => setReturnOpen(true)}>
                 <RotateCcw className="h-4 w-4" />
-                Process Return
+                Record Waste
               </Button>
               {outstanding > 0.001 && (
                 <Button onClick={() => setPaymentOpen(true)}>
@@ -163,7 +195,7 @@ export function SoDetail(props: Props) {
           {status === "PAID" && (
             <Button variant="outline" onClick={() => setReturnOpen(true)}>
               <RotateCcw className="h-4 w-4" />
-              Process Return
+              Record Waste
             </Button>
           )}
         </div>
@@ -178,7 +210,7 @@ export function SoDetail(props: Props) {
             </CardHeader>
             <CardContent className="space-y-1 text-sm">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Customer</span>
+                <span className="text-muted-foreground">Salesman</span>
                 <span className="font-medium">{customerName}</span>
               </div>
               <div className="flex justify-between">
@@ -236,14 +268,48 @@ export function SoDetail(props: Props) {
               <CardTitle className="text-sm font-medium text-muted-foreground">Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
+              {/* Gross */}
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>Rs {subtotal.toFixed(2)}</span>
-              </div>
-              <Separator />
-              <div className="flex justify-between font-semibold">
-                <span>Total</span>
+                <span className="text-muted-foreground">Total Taken</span>
                 <span>Rs {totalAmount.toFixed(2)}</span>
+              </div>
+
+              {/* Waste deduction — only shown if there are any returns */}
+              {totalWaste > 0.001 && (
+                <div className="flex justify-between text-orange-600">
+                  <span>Waste Deducted</span>
+                  <span>− Rs {totalWaste.toFixed(2)}</span>
+                </div>
+              )}
+
+              {/* Net after waste */}
+              {totalWaste > 0.001 && (
+                <>
+                  <Separator />
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Net Amount</span>
+                    <span>Rs {netAmount.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+
+              {/* Commission calculation */}
+              <div className="flex justify-between text-amber-600">
+                <span className="flex items-center gap-1">
+                  Commission
+                  <span className="text-xs bg-amber-100 text-amber-700 rounded px-1 py-0.5 font-mono">
+                    {netAmount.toFixed(2)} × {commissionPct}%
+                  </span>
+                </span>
+                <span>− Rs {commissionAmount.toFixed(2)}</span>
+              </div>
+
+              <Separator />
+
+              {/* Factory amount */}
+              <div className="flex justify-between font-semibold">
+                <span>Factory Amount</span>
+                <span>Rs {factoryAmount.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-green-600">
                 <span>Collected</span>
@@ -285,18 +351,55 @@ export function SoDetail(props: Props) {
               </CardContent>
             </Card>
           )}
+
+          {returns.length > 0 && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">Returns from Market</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {returns.map((r) => (
+                  <div key={r.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-medium">{r.returnNumber}</span>
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-orange-100 text-orange-700">
+                        Waste
+                      </span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      <DateDisplay date={r.createdAt} />
+                      {r.notes && ` · ${r.notes}`}
+                    </div>
+                    <div className="rounded border divide-y text-xs">
+                      {r.items.map((i) => (
+                        <div key={i.id} className="flex justify-between px-2 py-1">
+                          <span>{i.productName} <span className="text-muted-foreground">({i.unitName})</span></span>
+                          <span className="tabular-nums">×{i.quantity.toLocaleString(undefined, { maximumFractionDigits: 3 })} = Rs {i.totalPrice.toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between text-xs font-medium">
+                      <span className="text-muted-foreground">Total deducted</span>
+                      <span>Rs {r.totalAmount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
 
       <SoPaymentForm
         soId={id}
+        factoryAmount={factoryAmount}
         outstanding={outstanding}
         open={paymentOpen}
         onClose={() => setPaymentOpen(false)}
       />
       <ReturnForm
         soId={id}
-        items={items}
+        products={products}
         open={returnOpen}
         onClose={() => setReturnOpen(false)}
       />

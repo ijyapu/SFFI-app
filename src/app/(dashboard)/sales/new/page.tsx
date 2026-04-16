@@ -11,11 +11,11 @@ export const metadata = { title: "New Sales Order" };
 export default async function NewSalesOrderPage() {
   await requirePermission("sales");
 
-  const [rawCustomers, products] = await Promise.all([
-    prisma.customer.findMany({
+  const [rawSalesmen, products] = await Promise.all([
+    prisma.salesman.findMany({
       where: { deletedAt: null },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, email: true, phone: true, address: true, pan: true, openingBalance: true },
+      select: { id: true, name: true, email: true, phone: true, address: true, pan: true, openingBalance: true, commissionPct: true },
     }),
     prisma.product.findMany({
       where: { deletedAt: null },
@@ -24,9 +24,10 @@ export default async function NewSalesOrderPage() {
     }),
   ]);
 
-  const customers = rawCustomers.map((c) => ({
+  const salesmen = rawSalesmen.map((c) => ({
     ...c,
     openingBalance: Number(c.openingBalance),
+    commissionPct:  Number(c.commissionPct),
   }));
 
   const serialisedProducts = products.map((p) => ({
@@ -55,15 +56,15 @@ export default async function NewSalesOrderPage() {
         </div>
       </div>
 
-      {rawCustomers.length === 0 ? (
+      {rawSalesmen.length === 0 ? (
         <div className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">
-          <p>No customers found.</p>
-          <Link href="/sales/customers" className="text-primary underline text-sm mt-1 inline-block">
-            Add a customer first
+          <p>No salesmen found.</p>
+          <Link href="/sales/salesmen" className="text-primary underline text-sm mt-1 inline-block">
+            Add a salesman first
           </Link>
         </div>
       ) : (
-        <SoForm customers={customers} products={serialisedProducts} />
+        <SoForm salesmen={salesmen} products={serialisedProducts} />
       )}
     </div>
   );

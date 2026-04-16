@@ -28,6 +28,7 @@ enum DailyLogStatus {
   CLOSED
 }
 
+
 enum PurchaseOrderStatus {
   DRAFT
   CONFIRMED
@@ -392,24 +393,30 @@ model PurchaseLineItem {
 }
 
 // ─────────────────────────────────────────────
-// CUSTOMERS & SALES
+// SALESMEN & SALES
 // ─────────────────────────────────────────────
 
-model Customer {
-  id             String  @id @default(cuid())
+model Salesman {
+  id             String    @id @default(cuid())
   name           String
   email          String?
   phone          String?
   address        String?
-  pan            String? // PAN number (Permanent Account Number)
-  openingBalance Decimal @default(0) @db.Decimal(10, 2) // amount customer owed before system use
+  pan            String?   // PAN number
+  dob            DateTime? // Date of birth
+  citizenshipNo  String?   // Citizenship certificate number
+  photo          String?   // Profile photo URL
+  openingBalance Decimal   @default(0) @db.Decimal(10, 2)
+  commissionPct  Decimal   @default(25.00) @db.Decimal(5, 2)
 
   salesOrders SalesOrder[]
-  payments    CustomerPayment[]
+  payments    SalesmanPayment[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
+
+  @@map("Customer")
 }
 
 model SalesOrder {
@@ -420,16 +427,21 @@ model SalesOrder {
   orderDate   DateTime         @default(now())
   dueDate     DateTime?
 
-  subtotal    Decimal @db.Decimal(10, 2)
-  taxAmount   Decimal @default(0) @db.Decimal(10, 2)
-  totalAmount Decimal @db.Decimal(10, 2)
-  amountPaid  Decimal @default(0) @db.Decimal(10, 2) // must never exceed totalAmount
+  subtotal         Decimal @db.Decimal(10, 2)
+  taxAmount        Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount      Decimal @db.Decimal(10, 2)
+  amountPaid       Decimal @default(0) @db.Decimal(10, 2) // must never exceed factoryAmount
+
+  // Commission fields — snapshot from customer at dispatch time
+  commissionPct    Decimal @default(25.00) @db.Decimal(5, 2)  // e.g. 25.00 or 30.00
+  commissionAmount Decimal @default(0) @db.Decimal(10, 2)     // commissionPct% of net amount
+  factoryAmount    Decimal @default(0) @db.Decimal(10, 2)     // (100 - commissionPct)% of net amount
 
   notes String?
 
-  customer Customer         @relation(fields: [customerId], references: [id])
+  salesman Salesman         @relation(fields: [customerId], references: [id])
   items    SalesOrderItem[]
-  payments CustomerPayment[]
+  payments SalesmanPayment[]
   returns  SalesReturn[]
 
   createdBy String
@@ -458,11 +470,11 @@ model SalesOrderItem {
 }
 
 model SalesReturn {
-  id           String  @id @default(cuid())
-  returnNumber String  @unique
+  id           String   @id @default(cuid())
+  returnNumber String   @unique
   salesOrderId String
-  reason       String
-  totalAmount  Decimal @db.Decimal(10, 2)
+  notes        String?
+  totalAmount  Decimal  @db.Decimal(10, 2)
 
   salesOrder SalesOrder      @relation(fields: [salesOrderId], references: [id])
   items      SalesReturnItem[]
@@ -484,7 +496,7 @@ model SalesReturnItem {
   @@index([salesReturnId])
 }
 
-model CustomerPayment {
+model SalesmanPayment {
   id           String        @id @default(cuid())
   salesOrderId String
   customerId   String
@@ -495,13 +507,14 @@ model CustomerPayment {
   paidAt       DateTime      @default(now())
 
   salesOrder SalesOrder @relation(fields: [salesOrderId], references: [id])
-  customer   Customer   @relation(fields: [customerId], references: [id])
+  salesman   Salesman   @relation(fields: [customerId], references: [id])
 
   createdBy String
   createdAt DateTime @default(now())
 
   @@index([salesOrderId])
   @@index([customerId])
+  @@map("CustomerPayment")
 }
 
 // ─────────────────────────────────────────────

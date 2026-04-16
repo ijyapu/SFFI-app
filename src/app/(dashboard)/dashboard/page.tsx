@@ -82,7 +82,7 @@ export default async function DashboardPage() {
     }),
     prisma.salesOrder.findMany({
       where: { deletedAt: null },
-      include: { customer: true },
+      include: { salesman: true },
       orderBy: { createdAt: "desc" },
       take: 6,
     }),
@@ -273,7 +273,7 @@ export default async function DashboardPage() {
               {fmt(totalReceivables)}
             </p>
             <div className="flex items-center justify-between mt-1">
-              <p className="text-xs text-muted-foreground">Owed by customers</p>
+              <p className="text-xs text-muted-foreground">Owed by salesmen</p>
               {totalReceivables > 0 && (
                 <Link href="/sales" className="text-xs text-primary hover:underline flex items-center gap-0.5">
                   View <ArrowUpRight className="h-3 w-3" />
@@ -432,7 +432,7 @@ export default async function DashboardPage() {
         recentSales={recentSalesOrders.map((so: (typeof recentSalesOrders)[0]) => ({
           id:           so.id,
           orderNumber:  so.orderNumber,
-          customerName: so.customer.name,
+          salesmanName: so.salesman.name,
           totalAmount:  Number(so.totalAmount),
           status:       so.status,
           orderDate:    so.orderDate.toISOString(),

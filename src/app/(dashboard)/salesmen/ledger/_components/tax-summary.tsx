@@ -8,8 +8,8 @@ function fmt(n: number) {
 }
 
 export function TaxSummary({ data }: { data: CustomerLedgerData }) {
-  const { customer, taxSummary, from, to } = data;
-  const hasPan = !!customer.pan;
+  const { salesman, taxSummary, from, to } = data;
+  const hasPan = !!salesman.pan;
 
   return (
     <div className="space-y-4">
@@ -26,9 +26,9 @@ export function TaxSummary({ data }: { data: CustomerLedgerData }) {
         <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-300">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <div>
-            <p className="font-semibold">Customer PAN not recorded</p>
+            <p className="font-semibold">Salesman PAN not recorded</p>
             <p className="text-xs mt-0.5">
-              IRD requires customer PAN for VAT-taxable sales above Rs 5,000. Update this customer&apos;s profile.
+              IRD requires salesman PAN for VAT-taxable sales above Rs 5,000. Update this salesman&apos;s profile.
             </p>
           </div>
         </div>
@@ -37,7 +37,7 @@ export function TaxSummary({ data }: { data: CustomerLedgerData }) {
       {hasPan && taxSummary.vatInvoiceCount > 0 && (
         <div className="flex items-start gap-2 rounded-lg border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 p-3 text-sm text-emerald-800 dark:text-emerald-300">
           <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-          <p>Customer PAN ({customer.pan}) recorded — eligible for VAT sales book entry.</p>
+          <p>Salesman PAN ({salesman.pan}) recorded — eligible for VAT sales book entry.</p>
         </div>
       )}
 
@@ -93,7 +93,7 @@ export function TaxSummary({ data }: { data: CustomerLedgerData }) {
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nepal IRD — Sales Book (Bikri Bahi) Notes</p>
         <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
           <li>VAT collected (output VAT) must be deposited with IRD by the 25th of the following month.</li>
-          <li>VAT invoices must include {COMPANY.name}&apos;s PAN ({COMPANY.pan}), customer name, and customer PAN (if applicable).</li>
+          <li>VAT invoices must include {COMPANY.name}&apos;s PAN ({COMPANY.pan}), salesman name, and salesman PAN (if applicable).</li>
           <li>Sales returns must be supported by a credit note — keep copies for IRD audit.</li>
           <li>Net VAT payable = Output VAT (collected) − Input VAT credit (from purchases).</li>
           <li>All amounts in Nepalese Rupees (NPR). Fiscal year: Shrawan 1 to Ashadh end (B.S. calendar).</li>

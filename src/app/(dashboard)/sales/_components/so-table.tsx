@@ -76,7 +76,7 @@ export function SoTable({ orders }: { orders: SO[] }) {
     <div className="space-y-4">
       <div className="flex gap-2">
         <Input
-          placeholder="Search by SO number or customer..."
+          placeholder="Search by SO number or salesman..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="max-w-xs"
@@ -100,7 +100,7 @@ export function SoTable({ orders }: { orders: SO[] }) {
             {(() => { const sp = { sortKey, sortDir, toggle }; return (
             <TableRow>
               <TableHead><SortButton col="orderNumber"  label="SO Number"    {...sp} /></TableHead>
-              <TableHead><SortButton col="customerName" label="Customer"     {...sp} /></TableHead>
+              <TableHead><SortButton col="customerName" label="Salesman"     {...sp} /></TableHead>
               <TableHead><SortButton col="orderDate"    label="Date"         {...sp} /></TableHead>
               <TableHead><SortButton col="status"       label="Status"       {...sp} /></TableHead>
               <TableHead numeric><SortButton col="totalAmount"  label="Total (Rs)"    {...sp} className="justify-end" /></TableHead>

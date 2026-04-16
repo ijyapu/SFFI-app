@@ -82,8 +82,14 @@ export const NAV_GROUPS: NavGroup[] = [
         permission: "sales",
       },
       {
-        title: "Customer Ledger",
-        href: "/customers/ledger",
+        title: "Salesmen",
+        href: "/sales/salesmen",
+        icon: Users,
+        permission: "sales",
+      },
+      {
+        title: "Salesman Ledger",
+        href: "/salesmen/ledger",
         icon: BookMarked,
         permission: "sales",
       },

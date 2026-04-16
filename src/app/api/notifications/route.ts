@@ -57,7 +57,7 @@ export async function GET() {
         status:   { in: ["CONFIRMED", "PARTIALLY_PAID"] },
         dueDate:  { lt: now },
       },
-      include: { customer: true },
+      include: { salesman: true },
       take:    20,
       orderBy: { dueDate: "asc" },
     });
@@ -68,7 +68,7 @@ export async function GET() {
         id:          `overdue_so_${o.id}`,
         type:        "overdue_receivable",
         title:       "Overdue receivable",
-        description: `${o.orderNumber} · ${o.customer.name} · ${days}d overdue`,
+        description: `${o.orderNumber} · ${o.salesman.name} · ${days}d overdue`,
         href:        `/sales/${o.id}`,
         severity:    days > 30 ? "error" : "warning",
       });

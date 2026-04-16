@@ -10,7 +10,7 @@ import { useSortable, compareValues } from "@/hooks/use-sortable";
 export interface AgingRow {
   id: string;
   orderNumber: string;
-  partyName: string;   // customer or supplier
+  partyName: string;   // salesman or supplier
   orderDate: string;
   dueDate: string | null;
   totalAmount: number;
@@ -22,7 +22,7 @@ export interface AgingRow {
 
 interface Props {
   rows: AgingRow[];
-  partyLabel: string; // "Customer" | "Supplier"
+  partyLabel: string; // "Salesman" | "Supplier"
   orderLabel: string; // "Sales Order" | "Purchase Order"
   linkBase: string;   // "/sales" | "/purchases"
 }

@@ -6,9 +6,9 @@ import { format, startOfMonth, endOfMonth, subMonths, startOfYear } from "date-f
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
-export interface CustomerSalesRow {
+export interface SalesmanSalesRow {
   customerId: string;
-  customerName: string;
+  salesmanName: string;
   orderCount: number;
   totalRevenue: number;
   totalPaid: number;
@@ -17,13 +17,13 @@ export interface CustomerSalesRow {
 }
 
 interface Props {
-  rows: CustomerSalesRow[];
+  rows: SalesmanSalesRow[];
   from: string;
   to: string;
   totalRevenue: number;
 }
 
-type SortKey = "customerName" | "orderCount" | "totalRevenue" | "totalPaid" | "outstanding" | "avgOrderValue";
+type SortKey = "salesmanName" | "orderCount" | "totalRevenue" | "totalPaid" | "outstanding" | "avgOrderValue";
 
 const Rs = (n: number) =>
   "Rs " + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -37,7 +37,7 @@ const PRESETS = [
   { label: "This Year",     from: () => fmt(startOfYear(new Date())), to: () => fmt(endOfMonth(new Date())) },
 ];
 
-export function CustomerSalesTable({ rows, from, to, totalRevenue }: Props) {
+export function SalesmanSalesTable({ rows, from, to, totalRevenue }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [sortKey, setSortKey] = useState<SortKey>("totalRevenue");
@@ -45,7 +45,7 @@ export function CustomerSalesTable({ rows, from, to, totalRevenue }: Props) {
   const [search, setSearch]   = useState("");
 
   function navigate(newFrom: string, newTo: string) {
-    startTransition(() => router.push(`/reports/sales-by-customer?from=${newFrom}&to=${newTo}`));
+    startTransition(() => router.push(`/reports/sales-by-salesman?from=${newFrom}&to=${newTo}`));
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -61,7 +61,7 @@ export function CustomerSalesTable({ rows, from, to, totalRevenue }: Props) {
 
   const sorted = useMemo(() => {
     const filtered = rows.filter((r) =>
-      r.customerName.toLowerCase().includes(search.toLowerCase())
+      r.salesmanName.toLowerCase().includes(search.toLowerCase())
     );
     return filtered.sort((a, b) => {
       const av = a[sortKey] as number | string;
@@ -121,7 +121,7 @@ export function CustomerSalesTable({ rows, from, to, totalRevenue }: Props) {
           <p className="text-xl font-bold">{Rs(totalRevenue)}</p>
         </div>
         <div>
-          <p className="text-xs text-muted-foreground">Customers</p>
+          <p className="text-xs text-muted-foreground">Salesmen</p>
           <p className="text-xl font-bold">{rows.length}</p>
         </div>
         <div>
@@ -135,10 +135,10 @@ export function CustomerSalesTable({ rows, from, to, totalRevenue }: Props) {
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
-            <CardTitle>Sales by Customer</CardTitle>
+            <CardTitle>Sales by Salesman</CardTitle>
             <input
               type="search"
-              placeholder="Search customer..."
+              placeholder="Search salesman..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="rounded-md border border-border bg-background px-3 py-1.5 text-sm w-48"
@@ -151,7 +151,7 @@ export function CustomerSalesTable({ rows, from, to, totalRevenue }: Props) {
               <thead className="border-b border-border bg-muted/30">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground">#</th>
-                  <Th col="customerName"  label="Customer" />
+                  <Th col="salesmanName"  label="Salesman" />
                   <Th col="orderCount"    label="Orders" right />
                   <Th col="totalRevenue"  label="Revenue" right />
                   <Th col="totalPaid"     label="Collected" right />
@@ -170,7 +170,7 @@ export function CustomerSalesTable({ rows, from, to, totalRevenue }: Props) {
                 {sorted.map((row, i) => (
                   <tr key={row.customerId} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3 text-xs text-muted-foreground">{i + 1}</td>
-                    <td className="px-4 py-3 font-medium">{row.customerName}</td>
+                    <td className="px-4 py-3 font-medium">{row.salesmanName}</td>
                     <td className="px-4 py-3 text-right tabular-nums">{row.orderCount}</td>
                     <td className="px-4 py-3 text-right tabular-nums font-medium">{Rs(row.totalRevenue)}</td>
                     <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">{Rs(row.totalPaid)}</td>
