@@ -22,6 +22,7 @@ export default async function SalesPage() {
     id:            o.id,
     orderNumber:   o.orderNumber,
     status:        o.status,
+    salesmanId:    o.customerId,
     customerName:  o.salesman.name,
     orderDate:     o.orderDate.toISOString(),
     totalAmount:   Number(o.totalAmount),
@@ -29,7 +30,9 @@ export default async function SalesPage() {
     amountPaid:    Number(o.amountPaid),
   }));
 
-  const activeCount      = serialised.filter((o) => o.status === "CONFIRMED" || o.status === "PARTIALLY_PAID").length;
+  const totalCommission  = orders
+    .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT")
+    .reduce((sum, o) => sum + Number(o.commissionAmount), 0);
   const totalRevenue     = serialised
     .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT")
     .reduce((sum, o) => sum + o.factoryAmount, 0);
@@ -62,11 +65,13 @@ export default async function SalesPage() {
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 shrink-0">
         <Card className="py-3">
           <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Orders</CardTitle>
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Commission Given</CardTitle>
           </CardHeader>
           <CardContent className="px-4 pb-0">
-            <p className={`text-2xl font-bold ${activeCount > 0 ? "text-blue-600" : ""}`}>{activeCount}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Confirmed, awaiting payment</p>
+            <p className="text-2xl font-bold text-amber-600">
+              Rs {totalCommission.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">Total paid to salesmen</p>
           </CardContent>
         </Card>
 

@@ -192,8 +192,30 @@ export async function createSalesOrder(values: CreateSoValues) {
     }
   });
 
+  // Best-effort: update soldQty in today's open daily log.
+  // SALE movements already deducted stock — daily log close skips DAILY_OUT for sold to avoid double-deduction.
+  try {
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const openLog = await prisma.dailyLog.findUnique({
+      where:  { logDate: todayUTC },
+      select: { id: true, status: true },
+    });
+    if (openLog?.status === "OPEN") {
+      for (const item of data.items) {
+        await prisma.dailyLogItem.updateMany({
+          where: { dailyLogId: openLog.id, productId: item.productId },
+          data:  { soldQty: { increment: item.quantity } },
+        });
+      }
+    }
+  } catch {
+    // Best-effort — don't fail order creation if daily log update fails
+  }
+
   revalidatePath("/sales");
   revalidatePath("/inventory");
+  revalidatePath("/daily-log");
 }
 
 export async function confirmSalesOrder(id: string) {
@@ -305,8 +327,31 @@ export async function deleteSalesOrder(id: string) {
     });
   });
 
+  // Best-effort: reverse soldQty in today's open daily log
+  if (needsReversal) {
+    try {
+      const now = new Date();
+      const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+      const openLog = await prisma.dailyLog.findUnique({
+        where:  { logDate: todayUTC },
+        select: { id: true, status: true },
+      });
+      if (openLog?.status === "OPEN") {
+        for (const item of so.items) {
+          await prisma.dailyLogItem.updateMany({
+            where: { dailyLogId: openLog.id, productId: item.productId },
+            data:  { soldQty: { decrement: Number(item.quantity) } },
+          });
+        }
+      }
+    } catch {
+      // Best-effort
+    }
+  }
+
   revalidatePath("/sales");
   revalidatePath("/inventory");
+  revalidatePath("/daily-log");
 }
 
 // ─── Salesman Payments ────────────────────────

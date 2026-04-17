@@ -340,7 +340,9 @@ export async function closeDailyLog(logId: string): Promise<void> {
 
     addMovement(StockMovementType.DAILY_IN,  produced, "produced");
     addMovement(StockMovementType.DAILY_OUT, used,     "used");
-    addMovement(StockMovementType.DAILY_OUT, sold,     "sold");
+    // soldQty is auto-populated from confirmed sales orders, which already create SALE stock movements.
+    // Skipping DAILY_OUT for sold here prevents double-deduction.
+    // addMovement(StockMovementType.DAILY_OUT, sold, "sold");
     addMovement(StockMovementType.DAILY_OUT, waste,    "waste");
     addMovement(StockMovementType.DAILY_OUT, damaged,  "damaged");
 
@@ -507,6 +509,30 @@ export async function reopenDailyLog(logId: string): Promise<void> {
           notes: null,
         },
       });
+
+      // Re-populate soldQty from confirmed sales orders for this log's date.
+      // Since close no longer creates DAILY_OUT for sold, soldQty must reflect actual sales.
+      const nextDay = new Date(logDate.getTime() + 24 * 60 * 60 * 1000);
+      const soldItems = await tx.salesOrderItem.findMany({
+        where: {
+          salesOrder: {
+            status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+            deletedAt: null,
+            orderDate: { gte: logDate, lt: nextDay },
+          },
+        },
+        select: { productId: true, quantity: true },
+      });
+      const soldByProduct = new Map<string, number>();
+      for (const si of soldItems) {
+        soldByProduct.set(si.productId, (soldByProduct.get(si.productId) ?? 0) + Number(si.quantity));
+      }
+      for (const [productId, qty] of soldByProduct) {
+        await tx.dailyLogItem.updateMany({
+          where: { dailyLogId: logId, productId },
+          data:  { soldQty: qty },
+        });
+      }
 
       // Unlock log
       await tx.dailyLog.update({
