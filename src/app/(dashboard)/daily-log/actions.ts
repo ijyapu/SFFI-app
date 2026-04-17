@@ -512,13 +512,13 @@ export async function reopenDailyLog(logId: string): Promise<void> {
 
       // Re-populate soldQty from confirmed sales orders for this log's date.
       // Since close no longer creates DAILY_OUT for sold, soldQty must reflect actual sales.
-      const nextDay = new Date(logDate.getTime() + 24 * 60 * 60 * 1000);
+      const nextDay = new Date(log.logDate.getTime() + 24 * 60 * 60 * 1000);
       const soldItems = await tx.salesOrderItem.findMany({
         where: {
           salesOrder: {
             status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
             deletedAt: null,
-            orderDate: { gte: logDate, lt: nextDay },
+            orderDate: { gte: log.logDate, lt: nextDay },
           },
         },
         select: { productId: true, quantity: true },
