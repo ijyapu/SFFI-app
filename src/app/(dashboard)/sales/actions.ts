@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { applyStockMovement } from "@/lib/stock";
 import { StockMovementType } from "@prisma/client";
@@ -91,42 +91,109 @@ export async function createSalesOrder(values: CreateSoValues) {
   const userId = await requireSalesAccess();
   const data = createSoSchema.parse(values);
 
-  // Snapshot the customer's commission rate at dispatch time
+  // Snapshot the customer's commission rate
   const customer = await prisma.salesman.findUnique({
     where: { id: data.customerId },
     select: { commissionPct: true },
   });
-  const commissionPct    = Number(customer?.commissionPct ?? 25);
-  const orderNumber      = await generateSoNumber();
-  const subtotal         = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
-  const commissionAmount = Math.round(subtotal * commissionPct) / 100;
-  const factoryAmount    = subtotal - commissionAmount;
+  const commissionPct = Number(customer?.commissionPct ?? 25);
+  const orderNumber   = await generateSoNumber();
+  const subtotal      = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
 
-  await prisma.salesOrder.create({
-    data: {
-      orderNumber,
-      customerId:      data.customerId,
-      dueDate:         data.dueDate ? new Date(data.dueDate) : null,
-      notes:           data.notes || null,
-      subtotal,
-      taxAmount:       0,
-      totalAmount:     subtotal,
-      commissionPct,
-      commissionAmount,
-      factoryAmount,
-      createdBy:       userId,
-      items: {
-        create: data.items.map((item) => ({
-          productId:  item.productId,
-          quantity:   item.quantity,
-          unitPrice:  item.unitPrice,
-          totalPrice: item.quantity * item.unitPrice,
-        })),
+  // Check stock availability before touching anything
+  for (const item of data.items) {
+    const product = await prisma.product.findUnique({
+      where: { id: item.productId },
+      select: { name: true, currentStock: true },
+    });
+    if (!product) throw new Error("Product not found");
+    if (Number(product.currentStock) < item.quantity) {
+      throw new Error(
+        `Insufficient stock for "${product.name}". Available: ${Number(product.currentStock).toLocaleString(undefined, { maximumFractionDigits: 3 })}, needed: ${item.quantity.toLocaleString(undefined, { maximumFractionDigits: 3 })}`
+      );
+    }
+  }
+
+  // Factor in any immediate waste returns
+  const validReturnItems = (data.returnItems ?? []).filter(
+    (i) => i.productId && i.quantity > 0 && i.unitPrice >= 0
+  );
+  const hasReturn   = validReturnItems.length > 0;
+  const returnTotal = hasReturn
+    ? validReturnItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0)
+    : 0;
+
+  const netAmount        = subtotal - returnTotal;
+  const commissionAmount = Math.round(netAmount * commissionPct) / 100;
+  const factoryAmount    = netAmount - commissionAmount;
+
+  const returnNumber = hasReturn ? await generateReturnNumber() : null;
+
+  await prisma.$transaction(async (tx) => {
+    const so = await tx.salesOrder.create({
+      data: {
+        orderNumber,
+        customerId:      data.customerId,
+        dueDate:         data.dueDate ? new Date(data.dueDate) : null,
+        notes:           data.notes || null,
+        subtotal,
+        taxAmount:       0,
+        totalAmount:     subtotal,
+        commissionPct,
+        commissionAmount,
+        factoryAmount,
+        status:          "CONFIRMED",
+        createdBy:       userId,
+        items: {
+          create: data.items.map((item) => ({
+            productId:  item.productId,
+            quantity:   item.quantity,
+            unitPrice:  item.unitPrice,
+            totalPrice: item.quantity * item.unitPrice,
+          })),
+        },
       },
-    },
+    });
+
+    // Deduct stock immediately
+    for (const item of data.items) {
+      await applyStockMovement(
+        {
+          productId:     item.productId,
+          type:          StockMovementType.SALE,
+          quantity:      item.quantity,
+          unitCost:      item.unitPrice,
+          notes:         `Sale via ${orderNumber}`,
+          referenceId:   so.id,
+          referenceType: "SalesOrder",
+          createdBy:     userId,
+        },
+        tx as Parameters<typeof applyStockMovement>[1]
+      );
+    }
+
+    if (hasReturn && returnNumber) {
+      await tx.salesReturn.create({
+        data: {
+          returnNumber,
+          salesOrderId: so.id,
+          notes:        data.returnNotes || null,
+          totalAmount:  returnTotal,
+          createdBy:    userId,
+          items: {
+            create: validReturnItems.map((item) => ({
+              productId: item.productId,
+              quantity:  item.quantity,
+              unitPrice: item.unitPrice,
+            })),
+          },
+        },
+      });
+    }
   });
 
   revalidatePath("/sales");
+  revalidatePath("/inventory");
 }
 
 export async function confirmSalesOrder(id: string) {
@@ -199,26 +266,47 @@ export async function cancelSalesOrder(id: string) {
 }
 
 export async function deleteSalesOrder(id: string) {
-  await requireSalesAccess();
+  const userId = await requireSalesAccess();
 
   const so = await prisma.salesOrder.findUnique({
     where: { id },
-    select: { status: true, amountPaid: true },
+    select: {
+      status:      true,
+      orderNumber: true,
+      items:       { select: { productId: true, quantity: true } },
+    },
   });
   if (!so) throw new Error("Sales order not found");
-  if (so.status !== "DRAFT" && so.status !== "CANCELLED") {
-    throw new Error("Only draft or cancelled orders can be deleted");
-  }
-  if (Number(so.amountPaid) > 0) {
-    throw new Error("Cannot delete an order with recorded payments");
-  }
 
-  await prisma.salesOrder.update({
-    where: { id },
-    data: { deletedAt: new Date() },
+  // For confirmed/paid orders, reverse stock movements
+  const needsReversal = !["DRAFT", "CANCELLED"].includes(so.status);
+
+  await prisma.$transaction(async (tx) => {
+    if (needsReversal) {
+      for (const item of so.items) {
+        await applyStockMovement(
+          {
+            productId:     item.productId,
+            type:          StockMovementType.ADJUSTMENT_IN,
+            quantity:      Number(item.quantity),
+            notes:         `Sale deleted: ${so.orderNumber}`,
+            referenceId:   id,
+            referenceType: "SalesOrder",
+            createdBy:     userId,
+          },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      }
+    }
+
+    await tx.salesOrder.update({
+      where: { id },
+      data:  { deletedAt: new Date() },
+    });
   });
 
   revalidatePath("/sales");
+  revalidatePath("/inventory");
 }
 
 // ─── Salesman Payments ────────────────────────

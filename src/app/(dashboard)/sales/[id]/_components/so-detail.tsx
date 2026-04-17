@@ -2,10 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { DateDisplay } from "@/components/ui/date-display";
 import {
-  CheckCircle, XCircle, CreditCard, RotateCcw, Loader2,
+  CheckCircle, XCircle, CreditCard, Loader2,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -16,8 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SortButton } from "@/components/ui/sort-icon";
 import { useSortable, compareValues } from "@/hooks/use-sortable";
-import { SoPaymentForm } from "./so-payment-form";
-import { ReturnForm }    from "./return-form";
+import { SoPaymentForm }    from "./so-payment-form";
+import { ReturnFormInline } from "./return-form-inline";
 import { confirmSalesOrder, cancelSalesOrder } from "../../actions";
 
 const STATUS_CONFIG = {
@@ -69,11 +68,7 @@ type SalesReturn = {
   items: ReturnItem[];
 };
 
-type Product = {
-  id: string;
-  name: string;
-  unitName: string;
-};
+type Product = { id: string; name: string; unitName: string };
 
 type Props = {
   id: string;
@@ -103,7 +98,6 @@ export function SoDetail(props: Props) {
   } = props;
 
   const [paymentOpen, setPaymentOpen] = useState(false);
-  const [returnOpen,  setReturnOpen]  = useState(false);
   const [confirming,  setConfirming]  = useState(false);
   const [cancelling,  setCancelling]  = useState(false);
   const { sortKey, sortDir, toggle }  = useSortable("productName");
@@ -121,6 +115,9 @@ export function SoDetail(props: Props) {
   const netAmount   = totalAmount - totalWaste;
   const outstanding = factoryAmount - amountPaid;
   const cfg = STATUS_CONFIG[status];
+
+  // Whether waste recording is allowed (any active confirmed order)
+  const canRecordWaste = status === "CONFIRMED" || status === "PARTIALLY_PAID" || status === "PAID";
 
   async function handleConfirm() {
     setConfirming(true);
@@ -178,24 +175,10 @@ export function SoDetail(props: Props) {
               </Button>
             </>
           )}
-          {(status === "CONFIRMED" || status === "PARTIALLY_PAID") && (
-            <>
-              <Button variant="outline" onClick={() => setReturnOpen(true)}>
-                <RotateCcw className="h-4 w-4" />
-                Record Waste
-              </Button>
-              {outstanding > 0.001 && (
-                <Button onClick={() => setPaymentOpen(true)}>
-                  <CreditCard className="h-4 w-4" />
-                  Record Payment
-                </Button>
-              )}
-            </>
-          )}
-          {status === "PAID" && (
-            <Button variant="outline" onClick={() => setReturnOpen(true)}>
-              <RotateCcw className="h-4 w-4" />
-              Record Waste
+          {(status === "CONFIRMED" || status === "PARTIALLY_PAID") && outstanding > 0.001 && (
+            <Button onClick={() => setPaymentOpen(true)}>
+              <CreditCard className="h-4 w-4" />
+              Record Payment
             </Button>
           )}
         </div>
@@ -268,13 +251,11 @@ export function SoDetail(props: Props) {
               <CardTitle className="text-sm font-medium text-muted-foreground">Summary</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
-              {/* Gross */}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Taken</span>
                 <span>Rs {totalAmount.toFixed(2)}</span>
               </div>
 
-              {/* Waste deduction — only shown if there are any returns */}
               {totalWaste > 0.001 && (
                 <div className="flex justify-between text-orange-600">
                   <span>Waste Deducted</span>
@@ -282,7 +263,6 @@ export function SoDetail(props: Props) {
                 </div>
               )}
 
-              {/* Net after waste */}
               {totalWaste > 0.001 && (
                 <>
                   <Separator />
@@ -293,7 +273,6 @@ export function SoDetail(props: Props) {
                 </>
               )}
 
-              {/* Commission calculation */}
               <div className="flex justify-between text-amber-600">
                 <span className="flex items-center gap-1">
                   Commission
@@ -306,7 +285,6 @@ export function SoDetail(props: Props) {
 
               <Separator />
 
-              {/* Factory amount */}
               <div className="flex justify-between font-semibold">
                 <span>Factory Amount</span>
                 <span>Rs {factoryAmount.toFixed(2)}</span>
@@ -390,18 +368,21 @@ export function SoDetail(props: Props) {
         </div>
       </div>
 
+      {/* Waste return form — always visible for active orders */}
+      {canRecordWaste && (
+        <ReturnFormInline
+          soId={id}
+          products={products}
+          previousReturns={returns}
+        />
+      )}
+
       <SoPaymentForm
         soId={id}
         factoryAmount={factoryAmount}
         outstanding={outstanding}
         open={paymentOpen}
         onClose={() => setPaymentOpen(false)}
-      />
-      <ReturnForm
-        soId={id}
-        products={products}
-        open={returnOpen}
-        onClose={() => setReturnOpen(false)}
       />
     </div>
   );

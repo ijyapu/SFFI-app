@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth";
 import { SettingsCrudTable } from "../_components/settings-crud-table";
 import { createUnit, renameUnit, deleteUnit } from "./actions";
 
 export const metadata = { title: "Units — Settings" };
 
 export default async function UnitsPage() {
+  await requirePermission("settings");
   const units = await prisma.unit.findMany({
     orderBy: { name: "asc" },
     include: { _count: { select: { products: { where: { deletedAt: null } } } } },

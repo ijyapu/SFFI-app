@@ -1,17 +1,20 @@
 "use client";
 
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, RotateCcw } from "lucide-react";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { createSoSchema, type CreateSoValues } from "@/lib/validators/sales";
 import { createSalesOrder } from "../../actions";
 
@@ -25,6 +28,8 @@ type Product  = {
   unit: { name: string };
 };
 
+type WasteLine = { key: number; productId: string; quantity: number | ""; unitPrice: number | "" };
+
 type Props = {
   salesmen: Salesman[];
   products:  Product[];
@@ -32,6 +37,11 @@ type Props = {
 
 export function SoForm({ salesmen, products }: Props) {
   const router = useRouter();
+  const wasteKeyRef = useRef(0);
+
+  // Waste return state (independent from react-hook-form)
+  const [wasteLines, setWasteLines] = useState<WasteLine[]>([]);
+  const [wasteNotes, setWasteNotes] = useState("");
 
   const form = useForm<CreateSoValues>({
     resolver: zodResolver(createSoSchema),
@@ -51,11 +61,13 @@ export function SoForm({ salesmen, products }: Props) {
   const watchItems      = form.watch("items");
   const watchSalesmanId = form.watch("customerId");
 
-  const subtotal        = watchItems.reduce((sum, i) => sum + (i.quantity || 0) * (i.unitPrice || 0), 0);
+  const subtotal         = watchItems.reduce((sum, i) => sum + (i.quantity || 0) * (i.unitPrice || 0), 0);
+  const wasteTotal       = wasteLines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
   const selectedSalesman = salesmen.find((c) => c.id === watchSalesmanId);
   const commissionPct    = selectedSalesman?.commissionPct ?? 25;
-  const commissionAmount = Math.round(subtotal * commissionPct) / 100;
-  const factoryAmount    = subtotal - commissionAmount;
+  const netAmount        = subtotal - wasteTotal;
+  const commissionAmount = Math.round(netAmount * commissionPct) / 100;
+  const factoryAmount    = netAmount - commissionAmount;
 
   function handleProductChange(index: number, productId: string) {
     const product = products.find((p) => p.id === productId);
@@ -65,9 +77,34 @@ export function SoForm({ salesmen, products }: Props) {
     }
   }
 
+  function addWasteLine() {
+    setWasteLines((prev) => [...prev, { key: wasteKeyRef.current++, productId: "", quantity: "", unitPrice: "" }]);
+  }
+
+  function removeWasteLine(key: number) {
+    setWasteLines((prev) => prev.filter((l) => l.key !== key));
+  }
+
+  function updateWasteLine(key: number, patch: Partial<WasteLine>) {
+    setWasteLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+  }
+
   async function onSubmit(values: CreateSoValues) {
+    const validWaste = wasteLines.filter(
+      (l) => l.productId && Number(l.quantity) > 0 && Number(l.unitPrice) >= 0
+    );
     try {
-      await createSalesOrder(values);
+      await createSalesOrder({
+        ...values,
+        returnItems: validWaste.length > 0
+          ? validWaste.map((l) => ({
+              productId: l.productId,
+              quantity:  Number(l.quantity),
+              unitPrice: Number(l.unitPrice),
+            }))
+          : undefined,
+        returnNotes: wasteNotes.trim() || undefined,
+      });
       toast.success("Sales order created");
       router.push("/sales");
     } catch (e) {
@@ -87,7 +124,7 @@ export function SoForm({ salesmen, products }: Props) {
                 <FormLabel>Salesman *</FormLabel>
                 <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
                   <FormControl>
-                    <SelectTrigger>
+                    <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select salesman">
                         {salesmen.find(c => c.id === field.value)?.name}
                       </SelectValue>
@@ -130,7 +167,7 @@ export function SoForm({ salesmen, products }: Props) {
           )}
         />
 
-        {/* Line items */}
+        {/* ── Order Items ── */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="font-medium text-sm">Order Items</h3>
@@ -178,7 +215,7 @@ export function SoForm({ salesmen, products }: Props) {
                           onValueChange={(v) => v && handleProductChange(index, v)}
                         >
                           <FormControl>
-                            <SelectTrigger className="h-8 text-sm">
+                            <SelectTrigger className="h-10 w-full text-sm">
                               <SelectValue placeholder="Select product">
                                 {products.find(p => p.id === f.value)?.name}
                               </SelectValue>
@@ -262,14 +299,29 @@ export function SoForm({ salesmen, products }: Props) {
               );
             })}
 
+            {/* Summary footer */}
             <div className="px-3 py-2 bg-muted/30 space-y-1 text-sm">
               <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2">
                 <div className="col-span-3 text-right text-muted-foreground">Total Taken</div>
                 <div className="text-right font-semibold">Rs {subtotal.toFixed(2)}</div>
                 <div />
               </div>
+              {wasteTotal > 0.001 && (
+                <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 text-orange-600">
+                  <div className="col-span-3 text-right">Waste Deducted</div>
+                  <div className="text-right">− Rs {wasteTotal.toFixed(2)}</div>
+                  <div />
+                </div>
+              )}
               {subtotal > 0 && (
                 <>
+                  {wasteTotal > 0.001 && (
+                    <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 text-muted-foreground">
+                      <div className="col-span-3 text-right">Net Amount</div>
+                      <div className="text-right">Rs {netAmount.toFixed(2)}</div>
+                      <div />
+                    </div>
+                  )}
                   <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 text-amber-600">
                     <div className="col-span-3 text-right">Commission ({commissionPct}%)</div>
                     <div className="text-right">Rs {commissionAmount.toFixed(2)}</div>
@@ -286,12 +338,137 @@ export function SoForm({ salesmen, products }: Props) {
           </div>
         </div>
 
+        {/* ── Waste Return ── */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-orange-500" />
+              <h3 className="font-medium text-sm">Waste Return</h3>
+              <span className="text-xs text-muted-foreground">(optional) — expired or damaged goods not restocked</span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-orange-600 border-orange-200 hover:bg-orange-50 hover:border-orange-300"
+              onClick={addWasteLine}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Item
+            </Button>
+          </div>
+
+          <div className="rounded-lg border border-orange-200 divide-y bg-orange-50/20">
+            <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-orange-100/40">
+              <span>Product</span>
+              <span>Qty</span>
+              <span>Unit Price (Rs)</span>
+              <span className="text-right">Total</span>
+              <span />
+            </div>
+
+            {wasteLines.length === 0 ? (
+              <div className="px-3 py-6 text-center text-sm text-muted-foreground/50">
+                No waste items — click &quot;Add Item&quot; to record returns
+              </div>
+            ) : (
+              wasteLines.map((line) => {
+                const lineTotal = (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0);
+                return (
+                  <div
+                    key={line.key}
+                    className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 items-start"
+                  >
+                    <Select
+                      value={line.productId}
+                      onValueChange={(v) => v && updateWasteLine(line.key, { productId: v })}
+                    >
+                      <SelectTrigger className="h-10 w-full text-sm">
+                        <SelectValue placeholder="Select product">
+                          {products.find((p) => p.id === line.productId)?.name}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((p) => (
+                          <SelectItem key={p.id} value={p.id} label={p.name}>
+                            {p.name}
+                            <span className="ml-1 text-xs text-muted-foreground">({p.unit.name})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      placeholder="0"
+                      value={line.quantity}
+                      onChange={(e) => updateWasteLine(line.key, {
+                        quantity: e.target.value === "" ? "" : parseFloat(e.target.value),
+                      })}
+                      className="h-8 text-sm"
+                    />
+                    <Input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={line.unitPrice}
+                      onChange={(e) => updateWasteLine(line.key, {
+                        unitPrice: e.target.value === "" ? "" : parseFloat(e.target.value),
+                      })}
+                      className="h-8 text-sm"
+                    />
+                    <div className="text-right text-sm font-medium pt-1.5 text-orange-600">
+                      {lineTotal > 0 ? lineTotal.toFixed(2) : <span className="text-muted-foreground/30">—</span>}
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      className="mt-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => removeWasteLine(line.key)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                );
+              })
+            )}
+
+            {wasteLines.length > 0 && wasteTotal > 0.001 && (
+              <div className="px-3 py-2 bg-orange-100/40 text-sm">
+                <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2">
+                  <div className="col-span-3 text-right text-orange-700 font-medium">Total Waste Deducted</div>
+                  <div className="text-right font-bold text-orange-700">Rs {wasteTotal.toFixed(2)}</div>
+                  <div />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {wasteLines.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Waste Notes (optional)</Label>
+              <Textarea
+                value={wasteNotes}
+                onChange={(e) => setWasteNotes(e.target.value)}
+                rows={2}
+                placeholder="e.g. expired, damaged packaging..."
+                className="text-sm resize-none"
+              />
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={() => router.push("/sales")}>
             Cancel
           </Button>
           <Button type="submit" disabled={form.formState.isSubmitting}>
-            {form.formState.isSubmitting ? "Creating..." : "Create Draft Order"}
+            {form.formState.isSubmitting ? "Creating..." : "Create Sales Order"}
           </Button>
         </div>
       </form>

@@ -15,7 +15,7 @@ export default async function NewSalesOrderPage() {
     prisma.salesman.findMany({
       where: { deletedAt: null },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, email: true, phone: true, address: true, pan: true, openingBalance: true, commissionPct: true },
+      select: { id: true, name: true, openingBalance: true, commissionPct: true },
     }),
     prisma.product.findMany({
       where: { deletedAt: null },
@@ -25,9 +25,9 @@ export default async function NewSalesOrderPage() {
   ]);
 
   const salesmen = rawSalesmen.map((c) => ({
-    ...c,
-    openingBalance: Number(c.openingBalance),
-    commissionPct:  Number(c.commissionPct),
+    id:            c.id,
+    name:          c.name,
+    commissionPct: Number(c.commissionPct),
   }));
 
   const serialisedProducts = products.map((p) => ({
@@ -40,8 +40,8 @@ export default async function NewSalesOrderPage() {
   }));
 
   return (
-    <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center gap-2">
+    <div className="flex flex-col gap-4 h-full">
+      <div className="flex items-center gap-2 shrink-0">
         <Link
           href="/sales"
           className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
@@ -51,7 +51,7 @@ export default async function NewSalesOrderPage() {
         <div>
           <h1 className="text-2xl font-semibold">New Sales Order</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            Order saved as draft — confirming will deduct stock immediately.
+            Confirming will deduct stock immediately.
           </p>
         </div>
       </div>
@@ -64,7 +64,11 @@ export default async function NewSalesOrderPage() {
           </Link>
         </div>
       ) : (
-        <SoForm salesmen={salesmen} products={serialisedProducts} />
+        <div className="flex-1 min-h-0 overflow-y-auto pb-6">
+          <div className="max-w-4xl">
+            <SoForm salesmen={salesmen} products={serialisedProducts} />
+          </div>
+        </div>
       )}
     </div>
   );

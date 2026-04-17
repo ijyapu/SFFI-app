@@ -1,5 +1,6 @@
 import { format } from "date-fns";
 import { Suspense } from "react";
+import { requirePermission } from "@/lib/auth";
 import { getAllSuppliers, getVendorLedger } from "./actions";
 import { getCurrentNepalFYYear, getNepalFYDates } from "./nepal-fy";
 import { LedgerFilters } from "./_components/ledger-filters";
@@ -17,6 +18,7 @@ interface PageProps {
 }
 
 export default async function VendorLedgerPage({ searchParams }: PageProps) {
+  await requirePermission("purchases");
   const params = await searchParams;
 
   // Default date range: current Nepal FY

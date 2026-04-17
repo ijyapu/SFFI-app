@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
+import { requirePermission } from "@/lib/auth";
 import { AuditLogTable, type AuditEntry } from "./_components/audit-log-table";
 
 export const metadata = { title: "Audit Log — Settings" };
@@ -11,6 +12,7 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  await requirePermission("settings");
   const { page: rawPage } = await searchParams;
   const page = Math.max(1, parseInt(rawPage ?? "1", 10));
 

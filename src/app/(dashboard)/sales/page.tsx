@@ -19,47 +19,39 @@ export default async function SalesPage() {
   });
 
   const serialised = orders.map((o) => ({
-    id:           o.id,
-    orderNumber:  o.orderNumber,
-    status:       o.status,
-    customerName: o.salesman.name,
-    orderDate:    o.orderDate.toISOString(),
-    totalAmount:  Number(o.totalAmount),
-    amountPaid:   Number(o.amountPaid),
+    id:            o.id,
+    orderNumber:   o.orderNumber,
+    status:        o.status,
+    customerName:  o.salesman.name,
+    orderDate:     o.orderDate.toISOString(),
+    totalAmount:   Number(o.totalAmount),
+    factoryAmount: Number(o.factoryAmount),
+    amountPaid:    Number(o.amountPaid),
   }));
 
-  const draftCount       = serialised.filter((o) => o.status === "DRAFT").length;
-  const unpaidCount      = serialised.filter((o) => o.status === "CONFIRMED" || o.status === "PARTIALLY_PAID").length;
+  const activeCount      = serialised.filter((o) => o.status === "CONFIRMED" || o.status === "PARTIALLY_PAID").length;
   const totalRevenue     = serialised
-    .filter((o) => o.status !== "CANCELLED")
-    .reduce((sum, o) => sum + o.totalAmount, 0);
-  const totalOutstanding = serialised.reduce(
-    (sum, o) => sum + Math.max(0, o.totalAmount - o.amountPaid),
-    0
-  );
+    .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT")
+    .reduce((sum, o) => sum + o.factoryAmount, 0);
+  const totalOutstanding = serialised
+    .filter((o) => o.status === "CONFIRMED" || o.status === "PARTIALLY_PAID")
+    .reduce((sum, o) => sum + Math.max(0, o.factoryAmount - o.amountPaid), 0);
+  const totalCollected   = serialised.reduce((sum, o) => sum + o.amountPaid, 0);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-4 h-full">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-2xl font-semibold">Sales</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {serialised.length} orders total
-          </p>
+          <p className="text-muted-foreground text-sm mt-0.5">{serialised.length} orders total</p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/sales/salesmen"
-            className={cn(buttonVariants({ variant: "outline" }))}
-          >
+          <Link href="/sales/salesmen" className={cn(buttonVariants({ variant: "outline" }))}>
             <Users className="h-4 w-4" />
             Salesmen
           </Link>
-          <Link
-            href="/sales/new"
-            className={cn(buttonVariants({}))}
-          >
+          <Link href="/sales/new" className={cn(buttonVariants({}))}>
             <Plus className="h-4 w-4" />
             New Order
           </Link>
@@ -67,59 +59,59 @@ export default async function SalesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Draft Orders</CardTitle>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 shrink-0">
+        <Card className="py-3">
+          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Active Orders</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${draftCount > 0 ? "text-amber-600" : ""}`}>
-              {draftCount}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting confirmation</p>
+          <CardContent className="px-4 pb-0">
+            <p className={`text-2xl font-bold ${activeCount > 0 ? "text-blue-600" : ""}`}>{activeCount}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Confirmed, awaiting payment</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Unpaid Orders</CardTitle>
+        <Card className="py-3">
+          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Factory Revenue</CardTitle>
+            <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${unpaidCount > 0 ? "text-blue-600" : ""}`}>
-              {unpaidCount}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Confirmed, awaiting payment</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Revenue</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-0">
             <p className="text-2xl font-bold">
               Rs {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">All non-cancelled orders</p>
+            <p className="text-xs text-muted-foreground mt-0.5">After commission deductions</p>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Receivables</CardTitle>
-            <AlertCircle className="h-4 w-4 text-muted-foreground" />
+        <Card className="py-3">
+          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collected</CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${totalOutstanding > 0 ? "text-destructive" : ""}`}>
+          <CardContent className="px-4 pb-0">
+            <p className="text-2xl font-bold text-green-600">
+              Rs {totalCollected.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">Payments received</p>
+          </CardContent>
+        </Card>
+
+        <Card className="py-3">
+          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
+            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Outstanding</CardTitle>
+            <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+          </CardHeader>
+          <CardContent className="px-4 pb-0">
+            <p className={`text-2xl font-bold ${totalOutstanding > 0 ? "text-destructive" : "text-green-600"}`}>
               Rs {totalOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">Uncollected payments</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Pending collection</p>
           </CardContent>
         </Card>
       </div>
 
-      <SoTable orders={serialised} />
+      <div className="flex-1 min-h-0">
+        <SoTable orders={serialised} />
+      </div>
     </div>
   );
 }

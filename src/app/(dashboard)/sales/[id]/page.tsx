@@ -51,9 +51,7 @@ export default async function SalesOrderDetailPage({
 
   if (!so) notFound();
 
-  const products = rawProducts.map((p) => ({
-    id: p.id, name: p.name, unitName: p.unit.name,
-  }));
+  const products = rawProducts.map((p) => ({ id: p.id, name: p.name, unitName: p.unit.name }));
 
   const serialised = {
     id:           so.id,

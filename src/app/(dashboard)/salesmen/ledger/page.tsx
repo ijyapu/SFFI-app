@@ -1,10 +1,11 @@
 import { format } from "date-fns";
 import { Suspense } from "react";
+import { requirePermission } from "@/lib/auth";
 import { getAllCustomers, getCustomerLedger } from "./actions";
 import { getNepalFYDates, getCurrentNepalFYYear } from "@/app/(dashboard)/vendors/ledger/nepal-fy";
 import { LedgerFilters } from "./_components/ledger-filters";
 import { LedgerTable } from "./_components/ledger-table";
-import { TaxSummary } from "./_components/tax-summary";
+import { CommissionSummary } from "./_components/commission-summary";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import { BookMarked } from "lucide-react";
 import { COMPANY } from "@/lib/company";
@@ -16,6 +17,7 @@ interface PageProps {
 }
 
 export default async function CustomerLedgerPage({ searchParams }: PageProps) {
+  await requirePermission("sales");
   const params = await searchParams;
 
   const currentFYYear = getCurrentNepalFYYear();
@@ -107,9 +109,9 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
           {ledgerData && (
             <div className="text-right">
               <p className="text-sm font-semibold">{ledgerData.salesman.name}</p>
-              {ledgerData.salesman.pan && (
-                <p className="text-xs text-muted-foreground">PAN: {ledgerData.salesman.pan}</p>
-              )}
+              <p className="text-xs text-muted-foreground">
+                Commission: <span className="font-mono font-bold text-amber-700">{ledgerData.salesman.commissionPct}%</span>
+              </p>
             </div>
           )}
         </div>
@@ -154,9 +156,9 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
                   <p className="text-xs text-gray-400">Tel: {COMPANY.phone}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-base font-bold">CUSTOMER LEDGER</p>
+                  <p className="text-base font-bold">SALESMAN LEDGER</p>
                   <p className="text-sm">{ledgerData.salesman.name}</p>
-                  {ledgerData.salesman.pan && <p className="text-xs text-gray-500">Salesman PAN: {ledgerData.salesman.pan}</p>}
+                  <p className="text-xs text-gray-500">Commission: {ledgerData.salesman.commissionPct}%</p>
                   <p className="text-xs text-gray-500">
                     {format(new Date(from), "d MMM yyyy")} – {format(new Date(to), "d MMM yyyy")}
                   </p>
@@ -177,16 +179,18 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
               <div className="rounded-lg border p-4 space-y-1">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Invoiced</p>
                 <p className="text-xl font-bold tabular-nums">
-                  Rs {ledgerData.taxSummary.totalInvoiced.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  Rs {ledgerData.commissionSummary.totalInvoiced.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-xs text-muted-foreground">{ledgerData.taxSummary.invoiceCount} invoice{ledgerData.taxSummary.invoiceCount !== 1 ? "s" : ""}</p>
+                <p className="text-xs text-muted-foreground">{ledgerData.commissionSummary.invoiceCount} invoice{ledgerData.commissionSummary.invoiceCount !== 1 ? "s" : ""}</p>
               </div>
               <div className="rounded-lg border p-4 space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Received</p>
-                <p className="text-xl font-bold tabular-nums text-emerald-600">
-                  Rs {ledgerData.taxSummary.totalReceived.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                <p className="text-xs text-muted-foreground uppercase tracking-wide">Commission Deducted</p>
+                <p className="text-xl font-bold tabular-nums text-amber-600">
+                  Rs {ledgerData.commissionSummary.totalCommission.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-xs text-muted-foreground">Payments collected</p>
+                <p className="text-xs text-muted-foreground">
+                  {ledgerData.salesman.commissionPct}% rate
+                </p>
               </div>
               <div className={`rounded-lg border p-4 space-y-1 ${ledgerData.closingBalance > 0.005 ? "border-blue-500/40 bg-blue-50/30 dark:bg-blue-950/10" : "border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/10"}`}>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Closing Balance</p>
@@ -210,9 +214,9 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
               />
             </div>
 
-            {/* ── Tax Summary ── */}
+            {/* ── Commission Summary ── */}
             <div className="print-break">
-              <TaxSummary data={ledgerData} />
+              <CommissionSummary data={ledgerData} />
             </div>
           </>
         )}

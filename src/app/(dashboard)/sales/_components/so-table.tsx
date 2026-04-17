@@ -38,6 +38,7 @@ type SO = {
   customerName: string;
   orderDate: string;
   totalAmount: number;
+  factoryAmount: number;
   amountPaid: number;
 };
 
@@ -57,7 +58,7 @@ export function SoTable({ orders }: { orders: SO[] }) {
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
     return [...filtered].sort((a, b) => {
-      const aVals: Record<string, string | number> = { orderNumber: a.orderNumber, customerName: a.customerName, orderDate: a.orderDate, status: a.status, totalAmount: a.totalAmount, outstanding: a.totalAmount - a.amountPaid };
+      const aVals: Record<string, string | number> = { orderNumber: a.orderNumber, customerName: a.customerName, orderDate: a.orderDate, status: a.status, totalAmount: a.totalAmount, outstanding: a.factoryAmount - a.amountPaid};
       const bVals: Record<string, string | number> = { orderNumber: b.orderNumber, customerName: b.customerName, orderDate: b.orderDate, status: b.status, totalAmount: b.totalAmount, outstanding: b.totalAmount - b.amountPaid };
       return compareValues(aVals[sortKey], bVals[sortKey], sortDir);
     });
@@ -103,8 +104,9 @@ export function SoTable({ orders }: { orders: SO[] }) {
               <TableHead><SortButton col="customerName" label="Salesman"     {...sp} /></TableHead>
               <TableHead><SortButton col="orderDate"    label="Date"         {...sp} /></TableHead>
               <TableHead><SortButton col="status"       label="Status"       {...sp} /></TableHead>
-              <TableHead numeric><SortButton col="totalAmount"  label="Total (Rs)"    {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric><SortButton col="totalAmount"  label="Gross (Rs)"    {...sp} className="justify-end" /></TableHead>
               <TableHead numeric><SortButton col="outstanding"  label="Outstanding"   {...sp} className="justify-end" /></TableHead>
+
               <TableHead className="w-20" />
             </TableRow>
             ); })()}
@@ -121,7 +123,7 @@ export function SoTable({ orders }: { orders: SO[] }) {
             )}
             {sorted.map((so) => {
               const cfg = STATUS_CONFIG[so.status];
-              const outstanding = so.totalAmount - so.amountPaid;
+              const outstanding = so.factoryAmount - so.amountPaid;
               return (
                 <TableRow key={so.id}>
                   <TableCell className="font-mono font-medium">{so.orderNumber}</TableCell>
@@ -152,27 +154,26 @@ export function SoTable({ orders }: { orders: SO[] }) {
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                       </Link>
-                      {(so.status === "DRAFT" || so.status === "CANCELLED") && (
-                        <AlertDialog>
-                          <AlertDialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
-                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete {so.orderNumber}?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Only draft or cancelled orders with no payments can be deleted.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(so.id, so.orderNumber)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger render={<Button variant="ghost" size="icon-sm" />}>
+                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete {so.orderNumber}?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will permanently remove the order.
+                              {!["DRAFT", "CANCELLED"].includes(so.status) && " Stock will be restored."}
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDelete(so.id, so.orderNumber)}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </TableCell>
                 </TableRow>

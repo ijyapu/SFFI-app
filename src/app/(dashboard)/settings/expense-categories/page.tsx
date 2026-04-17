@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth";
 import { SettingsCrudTable } from "../_components/settings-crud-table";
 import {
   createExpenseCategory,
@@ -9,6 +10,7 @@ import {
 export const metadata = { title: "Expense Categories — Settings" };
 
 export default async function ExpenseCategoriesPage() {
+  await requirePermission("settings");
   const cats = await prisma.expenseCategory.findMany({
     where: { deletedAt: null },
     orderBy: { name: "asc" },

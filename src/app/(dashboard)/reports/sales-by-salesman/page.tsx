@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { requirePermission } from "@/lib/auth";
 import { SalesmanSalesTable, type SalesmanSalesRow } from "./_components/salesman-sales-table";
 
 export const metadata = { title: "Sales by Salesman — Reports" };
@@ -9,6 +10,7 @@ export default async function SalesBySalesmanPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
+  await requirePermission("reports");
   const { from: rawFrom, to: rawTo } = await searchParams;
   const now  = new Date();
   const from = rawFrom ? parseISO(rawFrom) : startOfMonth(now);

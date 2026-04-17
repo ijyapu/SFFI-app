@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { requirePermission } from "@/lib/auth";
 import { COMPANY } from "@/lib/company";
 import { Building2, Phone, Hash, User, Calendar, MapPin, Quote, BadgeCheck } from "lucide-react";
 
@@ -16,7 +17,8 @@ function Row({ icon: Icon, label, value }: { icon: React.ElementType; label: str
   );
 }
 
-export default function CompanyPage() {
+export default async function CompanyPage() {
+  await requirePermission("settings");
   const age = new Date().getFullYear() - COMPANY.established;
 
   return (

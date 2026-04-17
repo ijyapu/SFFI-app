@@ -1,10 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { requirePermission } from "@/lib/auth";
 import { SettingsCrudTable } from "../_components/settings-crud-table";
 import { createCategory, renameCategory, deleteCategory } from "./actions";
 
 export const metadata = { title: "Categories — Settings" };
 
 export default async function CategoriesPage() {
+  await requirePermission("settings");
   const categories = await prisma.category.findMany({
     where: { deletedAt: null },
     orderBy: { name: "asc" },

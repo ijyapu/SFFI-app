@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Printer } from "lucide-react";
 
-type Salesman = { id: string; name: string; pan: string | null };
+type Salesman = { id: string; name: string };
 
 function getNepalFYPresets() {
   const today = new Date();
@@ -90,7 +90,6 @@ export function LedgerFilters({
             {salesmen.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 <span>{c.name}</span>
-                {c.pan && <span className="ml-2 text-xs text-muted-foreground">PAN: {c.pan}</span>}
               </SelectItem>
             ))}
           </SelectContent>

@@ -1,10 +1,12 @@
 import { clerkClient, auth } from "@clerk/nextjs/server";
+import { requirePermission } from "@/lib/auth";
 import { UserRoleTable, type UserRow } from "./_components/user-role-table";
 import type { AppRole } from "@/types/globals";
 
 export const metadata = { title: "Users & Roles — Settings" };
 
 export default async function UsersPage() {
+  await requirePermission("settings");
   const { userId: currentUserId } = await auth();
 
   const client = await clerkClient();

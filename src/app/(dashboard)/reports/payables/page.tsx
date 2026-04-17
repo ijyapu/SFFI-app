@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { differenceInDays } from "date-fns";
+import { requirePermission } from "@/lib/auth";
 import { AgingTable, type AgingRow } from "../_components/aging-table";
 
 export const metadata = { title: "Payables Aging — Reports" };
@@ -13,6 +14,7 @@ function ageBucket(days: number, dueDate: string | null): AgingRow["bucket"] {
 }
 
 export default async function PayablesPage() {
+  await requirePermission("reports");
   const now = new Date();
 
   const orders = await prisma.purchaseOrder.findMany({

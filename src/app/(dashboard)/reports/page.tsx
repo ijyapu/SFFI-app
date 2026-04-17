@@ -1,4 +1,7 @@
 import { redirect } from "next/navigation";
-export default function ReportsPage() {
+import { requirePermission } from "@/lib/auth";
+
+export default async function ReportsPage() {
+  await requirePermission("reports");
   redirect("/reports/stock-valuation");
 }

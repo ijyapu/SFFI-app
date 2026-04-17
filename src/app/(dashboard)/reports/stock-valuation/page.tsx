@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
+import { requirePermission } from "@/lib/auth";
 import { StockValuationTable, type StockCategory } from "./_components/stock-valuation-table";
 
 export const metadata = {
@@ -7,6 +8,7 @@ export const metadata = {
 };
 
 export default async function StockValuationPage() {
+  await requirePermission("reports");
   const products = await prisma.product.findMany({
     where: { deletedAt: null },
     include: { category: true, unit: true },
