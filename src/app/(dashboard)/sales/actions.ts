@@ -142,7 +142,8 @@ export async function createSalesOrder(values: CreateSoValues) {
         commissionPct,
         commissionAmount,
         factoryAmount,
-        status:          "CONFIRMED",
+        amountPaid:      factoryAmount,
+        status:          "PAID",
         createdBy:       userId,
         items: {
           create: data.items.map((item) => ({
@@ -152,6 +153,18 @@ export async function createSalesOrder(values: CreateSoValues) {
             totalPrice: item.quantity * item.unitPrice,
           })),
         },
+      },
+    });
+
+    // Auto-record payment (full factory amount, cash on delivery)
+    await tx.salesmanPayment.create({
+      data: {
+        salesOrderId: so.id,
+        customerId:   data.customerId,
+        amount:       factoryAmount,
+        method:       "CASH",
+        notes:        "Payment on delivery",
+        createdBy:    userId,
       },
     });
 
