@@ -16,7 +16,7 @@ export default async function RecipesPage() {
   const [recipes, products] = await Promise.all([
     getRecipes(),
     prisma.product.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, category: { name: { contains: "consumable", mode: "insensitive" } } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),

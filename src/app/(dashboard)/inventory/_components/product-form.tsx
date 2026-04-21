@@ -83,8 +83,15 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
   }, [open, product, form]);
 
   const watchedCategoryId = form.watch("categoryId");
+  const selectedCategory = categories.find((c) => c.id === watchedCategoryId);
+  const isConsumable = selectedCategory
+    ? selectedCategory.name.toLowerCase().includes("consumable")
+    : false;
+
   useEffect(() => {
-    if (isEdit || !watchedCategoryId) return;
+    if (!watchedCategoryId) return;
+    // In edit mode, only regenerate if the category actually changed from the original
+    if (isEdit && product && watchedCategoryId === product.categoryId) return;
     const cat = categories.find((c) => c.id === watchedCategoryId);
     if (!cat) return;
     getNextSkuPreview(cat.name).then((sku) => {
@@ -218,7 +225,7 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
 
               <FormField control={form.control} name="costPrice" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Cost Price (Rs)</FormLabel>
+                  <FormLabel>{isConsumable ? "Cost Price (Rs)" : "Purchase Price (Rs)"}</FormLabel>
                   <FormControl>
                     <Input type="number" step="0.01" min="0"
                       value={field.value === 0 ? "" : field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
@@ -229,18 +236,20 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
                 </FormItem>
               )} />
 
-              <FormField control={form.control} name="sellingPrice" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Selling Price (Rs)</FormLabel>
-                  <FormControl>
-                    <Input type="number" step="0.01" min="0"
-                      value={field.value === 0 ? "" : field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              {isConsumable && (
+                <FormField control={form.control} name="sellingPrice" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Selling Price (Rs)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0"
+                        value={field.value === 0 ? "" : field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
 
               <FormField control={form.control} name="reorderLevel" render={({ field }) => (
                 <FormItem>
@@ -262,31 +271,33 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
                 </FormItem>
               )} />
 
-              <FormField control={form.control} name="piecesPerPacket" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>
-                    Pieces per Packet{" "}
-                    <span className="text-muted-foreground font-normal text-xs">(optional)</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      step="1"
-                      min="1"
-                      placeholder="e.g. 12"
-                      value={field.value ?? ""}
-                      name={field.name}
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                      onChange={(e) => {
-                        const v = parseInt(e.target.value);
-                        field.onChange(isNaN(v) ? null : v);
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )} />
+              {isConsumable && (
+                <FormField control={form.control} name="piecesPerPacket" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Pieces per Packet{" "}
+                      <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="1"
+                        min="1"
+                        placeholder="e.g. 12"
+                        value={field.value ?? ""}
+                        name={field.name}
+                        ref={field.ref}
+                        onBlur={field.onBlur}
+                        onChange={(e) => {
+                          const v = parseInt(e.target.value);
+                          field.onChange(isNaN(v) ? null : v);
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
+              )}
 
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem className="col-span-2">
