@@ -43,7 +43,7 @@ export async function createProduct(values: ProductFormValues) {
   if (deleted) {
     await prisma.product.update({
       where: { id: deleted.id },
-      data: { ...data, deletedAt: null },
+      data: { ...data, reorderLevel: data.reorderLevel ?? 0, deletedAt: null },
     });
   } else {
     await prisma.product.create({
