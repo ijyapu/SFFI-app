@@ -47,7 +47,7 @@ export async function createProduct(values: ProductFormValues) {
     });
   } else {
     await prisma.product.create({
-      data: { ...data, currentStock: 0 },
+      data: { ...data, reorderLevel: data.reorderLevel ?? 0, currentStock: 0 },
     });
   }
 
