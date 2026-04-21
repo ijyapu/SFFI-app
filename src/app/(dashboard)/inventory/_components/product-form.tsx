@@ -271,33 +271,6 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
                 </FormItem>
               )} />
 
-              {isConsumable && (
-                <FormField control={form.control} name="piecesPerPacket" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Pieces per Packet{" "}
-                      <span className="text-muted-foreground font-normal text-xs">(optional)</span>
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        step="1"
-                        min="1"
-                        placeholder="e.g. 12"
-                        value={field.value ?? ""}
-                        name={field.name}
-                        ref={field.ref}
-                        onBlur={field.onBlur}
-                        onChange={(e) => {
-                          const v = parseInt(e.target.value);
-                          field.onChange(isNaN(v) ? null : v);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )} />
-              )}
 
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem className="col-span-2">
