@@ -75,7 +75,7 @@ export function ProductTable({ products, categories, units }: Props) {
   }, [filtered, sortKey, sortDir]);
 
   function isLowStock(p: Product) {
-    return Number(p.currentStock) <= Number(p.reorderLevel);
+    return p.reorderLevel != null && p.reorderLevel > 0 && Number(p.currentStock) <= Number(p.reorderLevel);
   }
 
   async function handleDelete(id: string, name: string) {

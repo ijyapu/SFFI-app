@@ -15,7 +15,16 @@ export default async function NewSalesOrderPage() {
     prisma.salesman.findMany({
       where: { deletedAt: null },
       orderBy: { name: "asc" },
-      select: { id: true, name: true, openingBalance: true, commissionPct: true },
+      select: {
+        id: true, name: true, openingBalance: true, commissionPct: true,
+        salesOrders: {
+          where: { deletedAt: null, status: { not: "CANCELLED" } },
+          select: {
+            factoryAmount: true,
+            payments: { select: { amount: true } },
+          },
+        },
+      },
     }),
     prisma.product.findMany({
       where: { deletedAt: null },
@@ -24,11 +33,18 @@ export default async function NewSalesOrderPage() {
     }),
   ]);
 
-  const salesmen = rawSalesmen.map((c) => ({
-    id:            c.id,
-    name:          c.name,
-    commissionPct: Number(c.commissionPct),
-  }));
+  const salesmen = rawSalesmen.map((c) => {
+    const outstanding = Number(c.openingBalance) + c.salesOrders.reduce((acc, o) => {
+      const collected = o.payments.reduce((sum, p) => sum + Number(p.amount), 0);
+      return acc + Number(o.factoryAmount) - collected;
+    }, 0);
+    return {
+      id:            c.id,
+      name:          c.name,
+      commissionPct: Number(c.commissionPct),
+      outstanding,
+    };
+  });
 
   const serialisedProducts = products.map((p) => ({
     id:           p.id,

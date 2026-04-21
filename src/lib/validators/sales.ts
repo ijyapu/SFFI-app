@@ -35,6 +35,7 @@ export const createSoSchema = z.object({
   items:       z.array(soItemSchema).min(1, "Add at least one item"),
   returnItems: z.array(returnItemSchema).optional(),
   returnNotes: z.string().optional(),
+  amountPaid:  z.number().min(0),
 });
 
 export type CreateSoValues = z.infer<typeof createSoSchema>;

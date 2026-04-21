@@ -27,7 +27,7 @@ type Product = {
   unitId: string;
   costPrice: number;
   sellingPrice: number;
-  reorderLevel: number;
+  reorderLevel: number | null;
   piecesPerPacket: number | null;
 };
 
@@ -55,7 +55,7 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
       unitId: "",
       costPrice: 0,
       sellingPrice: 0,
-      reorderLevel: 0,
+      reorderLevel: null,
       piecesPerPacket: null,
     },
   });
@@ -71,13 +71,13 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
         unitId: product.unitId,
         costPrice: Number(product.costPrice),
         sellingPrice: Number(product.sellingPrice),
-        reorderLevel: Number(product.reorderLevel),
+        reorderLevel: product.reorderLevel ? Number(product.reorderLevel) : null,
         piecesPerPacket: product.piecesPerPacket ?? null,
       });
     } else {
       form.reset({
         name: "", sku: "", description: "", categoryId: "",
-        unitId: "", costPrice: 0, sellingPrice: 0, reorderLevel: 0, piecesPerPacket: null,
+        unitId: "", costPrice: 0, sellingPrice: 0, reorderLevel: null, piecesPerPacket: null,
       });
     }
   }, [open, product, form]);
@@ -244,11 +244,18 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
 
               <FormField control={form.control} name="reorderLevel" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Reorder Level</FormLabel>
+                  <FormLabel>
+                    Reorder Level{" "}
+                    <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+                  </FormLabel>
                   <FormControl>
                     <Input type="number" step="0.001" min="0"
-                      value={field.value === 0 ? "" : field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      placeholder="Leave blank for no alert"
+                      value={field.value ?? ""} name={field.name} ref={field.ref} onBlur={field.onBlur}
+                      onChange={(e) => {
+                        const v = parseFloat(e.target.value);
+                        field.onChange(e.target.value === "" ? null : isNaN(v) ? null : v);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

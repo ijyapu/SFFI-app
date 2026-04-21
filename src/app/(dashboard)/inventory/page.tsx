@@ -34,7 +34,7 @@ export default async function InventoryPage() {
   }));
 
   const lowStockCount = serialised.filter(
-    (p) => p.currentStock > 0 && p.currentStock <= p.reorderLevel
+    (p) => p.reorderLevel > 0 && p.currentStock > 0 && p.currentStock <= p.reorderLevel
   ).length;
   const outOfStockCount = serialised.filter((p) => p.currentStock <= 0).length;
   const totalValue = serialised.reduce(

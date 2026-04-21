@@ -129,6 +129,11 @@ export async function createSalesOrder(values: CreateSoValues) {
 
   const returnNumber = hasReturn ? await generateReturnNumber() : null;
 
+  const paidNow = Math.min(data.amountPaid, factoryAmount);
+  const status  = paidNow >= factoryAmount - 0.001 ? "PAID"
+                : paidNow > 0                       ? "PARTIALLY_PAID"
+                :                                     "CONFIRMED";
+
   await prisma.$transaction(async (tx) => {
     const so = await tx.salesOrder.create({
       data: {
@@ -142,8 +147,8 @@ export async function createSalesOrder(values: CreateSoValues) {
         commissionPct,
         commissionAmount,
         factoryAmount,
-        amountPaid:      factoryAmount,
-        status:          "PAID",
+        amountPaid:      paidNow,
+        status,
         createdBy:       userId,
         items: {
           create: data.items.map((item) => ({
@@ -156,17 +161,19 @@ export async function createSalesOrder(values: CreateSoValues) {
       },
     });
 
-    // Auto-record payment (full factory amount, cash on delivery)
-    await tx.salesmanPayment.create({
-      data: {
-        salesOrderId: so.id,
-        customerId:   data.customerId,
-        amount:       factoryAmount,
-        method:       "CASH",
-        notes:        "Payment on delivery",
-        createdBy:    userId,
-      },
-    });
+    // Record payment only if something was paid
+    if (paidNow > 0) {
+      await tx.salesmanPayment.create({
+        data: {
+          salesOrderId: so.id,
+          customerId:   data.customerId,
+          amount:       paidNow,
+          method:       "CASH",
+          notes:        paidNow >= factoryAmount - 0.001 ? "Payment on delivery" : "Partial payment on delivery",
+          createdBy:    userId,
+        },
+      });
+    }
 
     // Deduct stock immediately
     for (const item of data.items) {

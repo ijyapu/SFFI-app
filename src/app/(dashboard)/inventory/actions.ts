@@ -73,7 +73,7 @@ export async function updateProduct(id: string, values: ProductFormValues) {
       unitId:          data.unitId,
       costPrice:       data.costPrice,
       sellingPrice:    data.sellingPrice,
-      reorderLevel:    data.reorderLevel,
+      reorderLevel:    data.reorderLevel ?? 0,
       piecesPerPacket: data.piecesPerPacket ?? null,
     },
   });

@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2, RotateCcw } from "lucide-react";
+import { Plus, Trash2, RotateCcw, Wallet } from "lucide-react";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
@@ -18,7 +18,7 @@ import { Separator } from "@/components/ui/separator";
 import { createSoSchema, type CreateSoValues } from "@/lib/validators/sales";
 import { createSalesOrder } from "../../actions";
 
-type Salesman = { id: string; name: string; commissionPct: number };
+type Salesman = { id: string; name: string; commissionPct: number; outstanding: number };
 type Product  = {
   id: string;
   name: string;
@@ -43,6 +43,10 @@ export function SoForm({ salesmen, products }: Props) {
   const [wasteLines, setWasteLines] = useState<WasteLine[]>([]);
   const [wasteNotes, setWasteNotes] = useState("");
 
+  // Payment state — defaults to factory amount, user can lower it for partial payment
+  const [amountPaid, setAmountPaid] = useState(0);
+  const paymentTouchedRef = useRef(false);
+
   const form = useForm<CreateSoValues>({
     resolver: zodResolver(createSoSchema),
     defaultValues: {
@@ -50,6 +54,7 @@ export function SoForm({ salesmen, products }: Props) {
       dueDate:    "",
       notes:      "",
       items:      [{ productId: "", quantity: 1, unitPrice: 0 }],
+      amountPaid: 0,
     },
   });
 
@@ -68,6 +73,13 @@ export function SoForm({ salesmen, products }: Props) {
   const netAmount        = subtotal - wasteTotal;
   const commissionAmount = Math.round(netAmount * commissionPct) / 100;
   const factoryAmount    = netAmount - commissionAmount;
+
+  // Keep amountPaid in sync with factoryAmount unless user has manually edited it
+  useEffect(() => {
+    if (!paymentTouchedRef.current) {
+      setAmountPaid(factoryAmount);
+    }
+  }, [factoryAmount]);
 
   function handleProductChange(index: number, productId: string) {
     const product = products.find((p) => p.id === productId);
@@ -96,6 +108,7 @@ export function SoForm({ salesmen, products }: Props) {
     try {
       await createSalesOrder({
         ...values,
+        amountPaid: Math.min(amountPaid, factoryAmount),
         returnItems: validWaste.length > 0
           ? validWaste.map((l) => ({
               productId: l.productId,
@@ -460,6 +473,86 @@ export function SoForm({ salesmen, products }: Props) {
             </div>
           )}
         </div>
+
+        {/* ── Payment ── */}
+        {selectedSalesman && factoryAmount > 0 && (
+          <div className="rounded-lg border bg-muted/20 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Wallet className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-medium text-sm">Payment Received</h3>
+            </div>
+
+            {selectedSalesman.outstanding !== 0 && (
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Current outstanding balance</span>
+                <span className={selectedSalesman.outstanding > 0 ? "font-medium text-amber-600" : "font-medium text-green-600"}>
+                  Rs {Math.abs(selectedSalesman.outstanding).toFixed(2)}
+                  {selectedSalesman.outstanding > 0 ? " owed" : " credit"}
+                </span>
+              </div>
+            )}
+
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <Label className="text-xs text-muted-foreground mb-1.5 block">
+                  Amount paid now (Rs)
+                </Label>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={amountPaid === 0 ? "" : amountPaid}
+                  onChange={(e) => {
+                    paymentTouchedRef.current = true;
+                    setAmountPaid(parseFloat(e.target.value) || 0);
+                  }}
+                  placeholder="0.00"
+                />
+              </div>
+              <div className="pt-5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    paymentTouchedRef.current = false;
+                    setAmountPaid(factoryAmount);
+                  }}
+                >
+                  Full amount
+                </Button>
+              </div>
+            </div>
+
+            <div className="border-t pt-3 space-y-1 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">This order (factory amount)</span>
+                <span>Rs {factoryAmount.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground">Paid now</span>
+                <span className="text-green-600">− Rs {Math.min(amountPaid, factoryAmount).toFixed(2)}</span>
+              </div>
+              {selectedSalesman.outstanding > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-muted-foreground">Previous balance</span>
+                  <span className="text-amber-600">+ Rs {selectedSalesman.outstanding.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between font-semibold border-t pt-1 mt-1">
+                <span>Closing balance</span>
+                {(() => {
+                  const closing = selectedSalesman.outstanding + factoryAmount - Math.min(amountPaid, factoryAmount);
+                  return (
+                    <span className={closing > 0.005 ? "text-amber-600" : "text-green-600"}>
+                      Rs {closing.toFixed(2)} {closing > 0.005 ? "owed" : "settled"}
+                    </span>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
 
         <Separator />
 
