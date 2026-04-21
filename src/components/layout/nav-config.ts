@@ -15,6 +15,7 @@ import {
   BookOpen,
   BookMarked,
   Building2,
+  FlaskConical,
   type LucideIcon,
 } from "lucide-react";
 import type { PermissionKey } from "@/lib/roles";
@@ -126,6 +127,12 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/costing",
         icon: Calculator,
         permission: "costing",
+      },
+      {
+        title: "Recipes",
+        href: "/costing/recipes",
+        icon: FlaskConical,
+        permission: "adminOverride",
       },
       {
         title: "Profit & Loss",

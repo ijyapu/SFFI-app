@@ -35,6 +35,7 @@ type Product = {
   sellingPrice: number;
   reorderLevel: number;
   currentStock: number;
+  piecesPerPacket: number | null;
   category: { name: string };
   unit: { name: string };
 };
@@ -221,6 +222,11 @@ export function ProductTable({ products, categories, units }: Props) {
                       </span>
                       <span className="text-xs text-muted-foreground">{product.unit.name}</span>
                     </div>
+                    {product.piecesPerPacket && (
+                      <div className="text-xs text-muted-foreground text-right">
+                        {(Number(product.currentStock) * product.piecesPerPacket).toLocaleString()} pcs · 1 pkt = {product.piecesPerPacket} pcs
+                      </div>
+                    )}
                     {low && (
                       <div className="text-xs text-amber-500 text-right">
                         reorder ≤ {Number(product.reorderLevel)}

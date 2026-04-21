@@ -99,6 +99,9 @@ model Product {
   costPrice    Decimal @default(0) @db.Decimal(10, 2)
   sellingPrice Decimal @default(0) @db.Decimal(10, 2)
 
+  // Packaging — how many pieces are in one packet (null = not applicable)
+  piecesPerPacket Int?
+
   // Stock — updated ONLY via StockMovement, never directly
   currentStock Decimal @default(0) @db.Decimal(10, 3)
   reorderLevel Decimal @default(0) @db.Decimal(10, 3)
@@ -112,6 +115,8 @@ model Product {
   salesReturnItems    SalesReturnItem[]
   purchaseLineItems   PurchaseLineItem[]
   dailyLogItems       DailyLogItem[]
+  recipe              Recipe?
+  recipeIngredients   RecipeIngredient[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -119,6 +124,34 @@ model Product {
 
   @@index([categoryId])
   @@index([sku])
+}
+
+model Recipe {
+  id        String   @id @default(cuid())
+  productId String   @unique
+  yieldQty  Decimal  @default(1) @db.Decimal(10, 3)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  product     Product            @relation(fields: [productId], references: [id])
+  ingredients RecipeIngredient[]
+
+  @@index([productId])
+}
+
+model RecipeIngredient {
+  id         String  @id @default(cuid())
+  recipeId   String
+  productId  String
+  quantity   Decimal @db.Decimal(10, 3)
+
+  recipe  Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([recipeId, productId])
+  @@index([recipeId])
+  @@index([productId])
 }
 
 model StockMovement {

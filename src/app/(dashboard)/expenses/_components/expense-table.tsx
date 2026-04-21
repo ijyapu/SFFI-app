@@ -24,7 +24,7 @@ import { approveExpense, rejectExpense, deleteExpense } from "../actions";
 
 const STATUS_CONFIG = {
   SUBMITTED: { label: "Pending",  className: "bg-amber-100 text-amber-700" },
-  APPROVED:  { label: "Approved", className: "bg-green-100 text-green-700" },
+  APPROVED:  { label: "Paid",     className: "bg-green-100 text-green-700" },
   REJECTED:  { label: "Rejected", className: "bg-red-100 text-red-700" },
 } as const;
 
@@ -80,7 +80,7 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
   async function handleApprove(id: string) {
     try {
       await approveExpense(id);
-      toast.success("Expense approved");
+      toast.success("Expense marked as paid");
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to approve");
     }
@@ -226,7 +226,7 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
                             variant="ghost"
                             size="icon-sm"
                             onClick={() => handleApprove(expense.id)}
-                            title="Approve"
+                            title="Mark as Paid"
                           >
                             <CheckCircle className="h-3.5 w-3.5 text-green-600" />
                           </Button>
@@ -298,7 +298,7 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
             </span>
             {statusFilter !== "REJECTED" && (
               <span className="text-muted-foreground">
-                Approved:{" "}
+                Paid:{" "}
                 <span className="font-medium text-green-600">
                   Rs {totalApproved.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>

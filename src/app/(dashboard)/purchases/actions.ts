@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { applyStockMovement } from "@/lib/stock";
+import { recalcRecipesUsingIngredient } from "@/lib/recipe-cost";
 import { StockMovementType } from "@prisma/client";
 import {
   supplierSchema, createPoSchema, receiveGoodsSchema, paymentSchema,
@@ -222,12 +223,14 @@ export async function receiveGoods(poId: string, values: ReceiveGoodsValues) {
       // Update received qty on the item
       await tx.purchaseOrderItem.update({
         where: { id: entry.itemId },
-        data: {
-          receivedQty: {
-            increment: entry.receiveQty,
-          },
-        },
+        data:  { receivedQty: { increment: entry.receiveQty } },
       });
+
+      await tx.product.update({
+        where: { id: poItem.productId },
+        data:  { costPrice: Number(poItem.unitCost) },
+      });
+      await recalcRecipesUsingIngredient(poItem.productId, tx);
     }
 
     // Recompute PO status based on updated received quantities
@@ -255,6 +258,7 @@ export async function receiveGoods(poId: string, values: ReceiveGoodsValues) {
   revalidatePath(`/purchases/${poId}`);
   revalidatePath("/purchases");
   revalidatePath("/inventory");
+  revalidatePath("/costing");
 }
 
 // ─── Supplier Payments ────────────────────────
@@ -439,7 +443,7 @@ export async function createPurchase(values: CreatePurchaseValues) {
       },
     });
 
-    // Update inventory stock for all resolved items
+    // Update inventory stock and costPrice for all resolved items
     for (const item of resolvedItems) {
       if (!item.productId) continue;
       await applyStockMovement(
@@ -455,11 +459,17 @@ export async function createPurchase(values: CreatePurchaseValues) {
         },
         tx as Parameters<typeof applyStockMovement>[1]
       );
+      await tx.product.update({
+        where: { id: item.productId },
+        data:  { costPrice: item.unitPrice },
+      });
+      await recalcRecipesUsingIngredient(item.productId, tx);
     }
   });
 
   revalidatePath("/purchases");
   revalidatePath("/inventory");
+  revalidatePath("/costing");
 }
 
 export async function updatePurchase(id: string, values: CreatePurchaseValues) {
@@ -568,7 +578,7 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
       },
     });
 
-    // Apply new stock movements
+    // Apply new stock movements and update costPrice
     for (const item of resolvedItems) {
       if (!item.productId) continue;
       await applyStockMovement(
@@ -584,11 +594,17 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
         },
         tx as Parameters<typeof applyStockMovement>[1]
       );
+      await tx.product.update({
+        where: { id: item.productId },
+        data:  { costPrice: item.unitPrice },
+      });
+      await recalcRecipesUsingIngredient(item.productId, tx);
     }
   });
 
   revalidatePath("/purchases");
   revalidatePath("/inventory");
+  revalidatePath("/costing");
 }
 
 export async function deletePurchase(id: string) {

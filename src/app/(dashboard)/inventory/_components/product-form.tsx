@@ -1,5 +1,5 @@
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,6 +28,7 @@ type Product = {
   costPrice: number;
   sellingPrice: number;
   reorderLevel: number;
+  piecesPerPacket: number | null;
 };
 
 type Props = {
@@ -42,7 +43,6 @@ type Props = {
 
 export function ProductForm({ open, onClose, product, categories, units, onOpenCategories, onOpenUnits }: Props) {
   const isEdit = !!product;
-  const skuTouched = useRef(false);
   const router = useRouter();
 
   const form = useForm<ProductFormValues>({
@@ -56,13 +56,13 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
       costPrice: 0,
       sellingPrice: 0,
       reorderLevel: 0,
+      piecesPerPacket: null,
     },
   });
 
   useEffect(() => {
     if (!open) return;
     if (product) {
-      skuTouched.current = true;
       form.reset({
         name: product.name,
         sku: product.sku,
@@ -72,19 +72,19 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
         costPrice: Number(product.costPrice),
         sellingPrice: Number(product.sellingPrice),
         reorderLevel: Number(product.reorderLevel),
+        piecesPerPacket: product.piecesPerPacket ?? null,
       });
     } else {
-      skuTouched.current = false;
       form.reset({
         name: "", sku: "", description: "", categoryId: "",
-        unitId: "", costPrice: 0, sellingPrice: 0, reorderLevel: 0,
+        unitId: "", costPrice: 0, sellingPrice: 0, reorderLevel: 0, piecesPerPacket: null,
       });
     }
   }, [open, product, form]);
 
   const watchedCategoryId = form.watch("categoryId");
   useEffect(() => {
-    if (isEdit || skuTouched.current || !watchedCategoryId) return;
+    if (isEdit || !watchedCategoryId) return;
     const cat = categories.find((c) => c.id === watchedCategoryId);
     if (!cat) return;
     getNextSkuPreview(cat.name).then((sku) => {
@@ -182,15 +182,13 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
 
               <FormField control={form.control} name="sku" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>SKU {!isEdit && <span className="text-muted-foreground font-normal text-xs">(auto-generated)</span>}</FormLabel>
+                  <FormLabel>SKU <span className="text-muted-foreground font-normal text-xs">(auto-generated)</span></FormLabel>
                   <FormControl>
                     <Input
                       placeholder="Select a category first"
+                      readOnly
+                      className="bg-muted/50 cursor-default select-none"
                       {...field}
-                      onChange={(e) => {
-                        skuTouched.current = true;
-                        field.onChange(e.target.value.toUpperCase());
-                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -251,6 +249,32 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
                     <Input type="number" step="0.001" min="0"
                       value={field.value === 0 ? "" : field.value} name={field.name} ref={field.ref} onBlur={field.onBlur}
                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
+
+              <FormField control={form.control} name="piecesPerPacket" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Pieces per Packet{" "}
+                    <span className="text-muted-foreground font-normal text-xs">(optional)</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      type="number"
+                      step="1"
+                      min="1"
+                      placeholder="e.g. 12"
+                      value={field.value ?? ""}
+                      name={field.name}
+                      ref={field.ref}
+                      onBlur={field.onBlur}
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value);
+                        field.onChange(isNaN(v) ? null : v);
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

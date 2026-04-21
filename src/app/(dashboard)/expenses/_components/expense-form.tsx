@@ -91,7 +91,7 @@ export function ExpenseForm({ open, onClose, expense, categories }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{expense ? "Edit Expense" : "Submit Expense"}</DialogTitle>
         </DialogHeader>
@@ -105,7 +105,7 @@ export function ExpenseForm({ open, onClose, expense, categories }: Props) {
                   <FormLabel>Category *</FormLabel>
                   <Select value={field.value} onValueChange={(v) => v && field.onChange(v)}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select category">
                           {categories.find(c => c.id === field.value)?.name}
                         </SelectValue>

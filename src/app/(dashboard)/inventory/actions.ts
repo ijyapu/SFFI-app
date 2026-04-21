@@ -35,15 +35,21 @@ export async function createProduct(values: ProductFormValues) {
   await requireInventoryAccess();
   const data = productSchema.parse(values);
 
-  const existing = await prisma.product.findUnique({ where: { sku: data.sku } });
-  if (existing) throw new Error(`SKU "${data.sku}" is already in use`);
+  const active = await prisma.product.findFirst({ where: { sku: data.sku, deletedAt: null } });
+  if (active) throw new Error(`SKU "${data.sku}" is already in use`);
 
-  await prisma.product.create({
-    data: {
-      ...data,
-      currentStock: 0,
-    },
-  });
+  // If a soft-deleted product has the same SKU, restore it rather than violating the unique constraint
+  const deleted = await prisma.product.findFirst({ where: { sku: data.sku, deletedAt: { not: null } } });
+  if (deleted) {
+    await prisma.product.update({
+      where: { id: deleted.id },
+      data: { ...data, deletedAt: null },
+    });
+  } else {
+    await prisma.product.create({
+      data: { ...data, currentStock: 0 },
+    });
+  }
 
   revalidatePath("/inventory");
 }
@@ -53,21 +59,22 @@ export async function updateProduct(id: string, values: ProductFormValues) {
   const data = productSchema.parse(values);
 
   const existing = await prisma.product.findFirst({
-    where: { sku: data.sku, NOT: { id } },
+    where: { sku: data.sku, deletedAt: null, NOT: { id } },
   });
   if (existing) throw new Error(`SKU "${data.sku}" is already in use by another product`);
 
   await prisma.product.update({
     where: { id },
     data: {
-      name: data.name,
-      sku: data.sku,
-      description: data.description,
-      categoryId: data.categoryId,
-      unitId: data.unitId,
-      costPrice: data.costPrice,
-      sellingPrice: data.sellingPrice,
-      reorderLevel: data.reorderLevel,
+      name:            data.name,
+      sku:             data.sku,
+      description:     data.description,
+      categoryId:      data.categoryId,
+      unitId:          data.unitId,
+      costPrice:       data.costPrice,
+      sellingPrice:    data.sellingPrice,
+      reorderLevel:    data.reorderLevel,
+      piecesPerPacket: data.piecesPerPacket ?? null,
     },
   });
 
@@ -105,7 +112,7 @@ export async function deleteCategory(id: string) {
   await requireInventoryAccess();
 
   const productCount = await prisma.product.count({
-    where: { categoryId: id, deletedAt: null },
+    where: { categoryId: id },
   });
   if (productCount > 0) {
     throw new Error(`Cannot delete — ${productCount} product(s) still use this category`);
@@ -138,7 +145,7 @@ export async function createUnit(name: string) {
 export async function deleteUnit(id: string) {
   await requireInventoryAccess();
 
-  const productCount = await prisma.product.count({ where: { unitId: id, deletedAt: null } });
+  const productCount = await prisma.product.count({ where: { unitId: id } });
   if (productCount > 0) {
     throw new Error(`Cannot delete — ${productCount} product(s) still use this unit`);
   }

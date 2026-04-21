@@ -37,6 +37,7 @@ export const ROLE_PROTECTED_ROUTES: { pattern: RegExp; allowed: AppRole[] }[] = 
   { pattern: /^\/payroll(\/.*)?$/, allowed: ROLE_PERMISSIONS.payroll },
   { pattern: /^\/profit-loss(\/.*)?$/, allowed: ROLE_PERMISSIONS.profitLoss },
   { pattern: /^\/employees(\/.*)?$/, allowed: ROLE_PERMISSIONS.employees },
+  { pattern: /^\/costing\/recipes(\/.*)?$/, allowed: ROLE_PERMISSIONS.adminOverride },
   { pattern: /^\/costing(\/.*)?$/, allowed: ROLE_PERMISSIONS.costing },
   { pattern: /^\/purchases(\/.*)?$/, allowed: ROLE_PERMISSIONS.purchases },
   { pattern: /^\/sales(\/.*)?$/, allowed: ROLE_PERMISSIONS.sales },

@@ -8,7 +8,8 @@ export const productSchema = z.object({
   unitId: z.string().min(1, "Unit is required"),
   costPrice: z.number({ error: "Enter a valid number" }).min(0, "Cost price must be 0 or more"),
   sellingPrice: z.number({ error: "Enter a valid number" }).min(0, "Selling price must be 0 or more"),
-  reorderLevel: z.number({ error: "Enter a valid number" }).min(0, "Reorder level must be 0 or more"),
+  reorderLevel:    z.number({ error: "Enter a valid number" }).min(0, "Reorder level must be 0 or more"),
+  piecesPerPacket: z.number().int().min(1).optional().nullable(),
 });
 
 export const categorySchema = z.object({
