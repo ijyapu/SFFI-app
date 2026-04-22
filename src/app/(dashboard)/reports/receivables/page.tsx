@@ -28,7 +28,7 @@ export default async function ReceivablesPage() {
 
   const rows: AgingRow[] = orders
     .map((o) => {
-      const outstanding = Number(o.totalAmount) - Number(o.amountPaid);
+      const outstanding = Number(o.factoryAmount) - Number(o.amountPaid);
       if (outstanding <= 0) return null;
 
       const dueDate  = o.dueDate?.toISOString() ?? null;
@@ -41,7 +41,7 @@ export default async function ReceivablesPage() {
         partyName:   o.salesman.name,
         orderDate:   o.orderDate.toISOString(),
         dueDate,
-        totalAmount: Number(o.totalAmount),
+        totalAmount: Number(o.factoryAmount),
         amountPaid:  Number(o.amountPaid),
         outstanding,
         ageDays,

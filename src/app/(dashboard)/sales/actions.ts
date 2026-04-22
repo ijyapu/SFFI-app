@@ -52,7 +52,7 @@ export async function createSalesman(values: SalesmanFormValues) {
       address:       data.address || null,
       citizenshipNo: data.citizenshipNo || null,
       openingBalance: data.openingBalance ?? 0,
-      commissionPct:  data.commissionPct ?? 25,
+      commissionPct:  data.commissionPct ?? 0,
     },
   });
   revalidatePath("/sales/salesmen");
@@ -70,7 +70,7 @@ export async function updateSalesman(id: string, values: SalesmanFormValues) {
       address:       data.address || null,
       citizenshipNo: data.citizenshipNo || null,
       openingBalance: data.openingBalance ?? 0,
-      commissionPct:  data.commissionPct ?? 25,
+      commissionPct:  data.commissionPct ?? 0,
     },
   });
   revalidatePath("/sales/salesmen");
@@ -96,7 +96,7 @@ export async function createSalesOrder(values: CreateSoValues) {
     where: { id: data.customerId },
     select: { commissionPct: true },
   });
-  const commissionPct = Number(customer?.commissionPct ?? 25);
+  const commissionPct = Number(customer?.commissionPct ?? 0);
   const orderNumber   = await generateSoNumber();
   const subtotal      = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
 

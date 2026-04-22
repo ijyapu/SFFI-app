@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2, RotateCcw, Wallet } from "lucide-react";
+import { Plus, Trash2, RotateCcw, Wallet, ChevronsUpDown, Check } from "lucide-react";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
@@ -15,6 +15,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
 import { createSoSchema, type CreateSoValues } from "@/lib/validators/sales";
 import { createSalesOrder } from "../../actions";
 
@@ -47,6 +50,9 @@ export function SoForm({ salesmen, products }: Props) {
   const [amountPaid, setAmountPaid] = useState(0);
   const paymentTouchedRef = useRef(false);
 
+  // Track open state for each product combobox by field index
+  const [openCombobox, setOpenCombobox] = useState<Record<number, boolean>>({});
+
   const form = useForm<CreateSoValues>({
     resolver: zodResolver(createSoSchema),
     defaultValues: {
@@ -69,7 +75,7 @@ export function SoForm({ salesmen, products }: Props) {
   const subtotal         = watchItems.reduce((sum, i) => sum + (i.quantity || 0) * (i.unitPrice || 0), 0);
   const wasteTotal       = wasteLines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
   const selectedSalesman = salesmen.find((c) => c.id === watchSalesmanId);
-  const commissionPct    = selectedSalesman?.commissionPct ?? 25;
+  const commissionPct    = selectedSalesman?.commissionPct ?? 0;
   const netAmount        = subtotal - wasteTotal;
   const commissionAmount = Math.round(netAmount * commissionPct) / 100;
   const factoryAmount    = netAmount - commissionAmount;
@@ -200,7 +206,7 @@ export function SoForm({ salesmen, products }: Props) {
           )}
 
           <div className="rounded-lg border divide-y">
-            <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
+            <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
               <span>Product</span>
               <span>Qty</span>
               <span>Unit Price (Rs)</span>
@@ -217,34 +223,62 @@ export function SoForm({ salesmen, products }: Props) {
               );
 
               return (
-                <div key={field.id} className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 items-start">
+                <div key={field.id} className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 px-3 py-2 items-start">
                   <FormField
                     control={form.control}
                     name={`items.${index}.productId`}
                     render={({ field: f }) => (
                       <FormItem className="space-y-0">
-                        <Select
-                          value={f.value}
-                          onValueChange={(v) => v && handleProductChange(index, v)}
+                        <Popover
+                          open={!!openCombobox[index]}
+                          onOpenChange={(o) => setOpenCombobox((prev) => ({ ...prev, [index]: o }))}
                         >
-                          <FormControl>
-                            <SelectTrigger className="h-10 w-full text-sm">
-                              <SelectValue placeholder="Select product">
-                                {products.find(p => p.id === f.value)?.name}
-                              </SelectValue>
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {products.map((p) => (
-                              <SelectItem key={p.id} value={p.id} label={p.name}>
-                                {p.name}
-                                <span className="ml-1 text-xs text-muted-foreground">
-                                  ({p.currentStock.toLocaleString(undefined, { maximumFractionDigits: 3 })} {p.unit.name})
+                          <PopoverTrigger
+                            render={
+                              <div
+                                role="combobox"
+                                aria-expanded={!!openCombobox[index]}
+                                className={cn(
+                                  "flex h-10 w-full cursor-pointer items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm hover:bg-accent",
+                                  !f.value && "text-muted-foreground"
+                                )}
+                              >
+                                <span className="truncate">
+                                  {products.find(p => p.id === f.value)?.name ?? "Select product"}
                                 </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                                <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
+                              </div>
+                            }
+                          />
+                          <PopoverContent className="w-96 p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search products..." className="h-9" />
+                              <CommandList>
+                                <CommandEmpty>No products found.</CommandEmpty>
+                                <CommandGroup>
+                                  {products.map((p) => (
+                                    <CommandItem
+                                      key={p.id}
+                                      value={p.name}
+                                      onSelect={() => {
+                                        handleProductChange(index, p.id);
+                                        setOpenCombobox((prev) => ({ ...prev, [index]: false }));
+                                      }}
+                                    >
+                                      <Check className={cn("mr-2 h-3.5 w-3.5 shrink-0", f.value === p.id ? "opacity-100" : "opacity-0")} />
+                                      <div className="flex-1 min-w-0">
+                                        <span className="truncate">{p.name}</span>
+                                        <span className="ml-1.5 text-xs text-muted-foreground">
+                                          {p.currentStock.toLocaleString(undefined, { maximumFractionDigits: 3 })} {p.unit.name}
+                                        </span>
+                                      </div>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                         {selectedProduct && (
                           <p className="text-xs text-muted-foreground pt-0.5">
                             {selectedProduct.currentStock <= 0
@@ -314,13 +348,13 @@ export function SoForm({ salesmen, products }: Props) {
 
             {/* Summary footer */}
             <div className="px-3 py-2 bg-muted/30 space-y-1 text-sm">
-              <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2">
+              <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2">
                 <div className="col-span-3 text-right text-muted-foreground">Total Taken</div>
                 <div className="text-right font-semibold">Rs {subtotal.toFixed(2)}</div>
                 <div />
               </div>
               {wasteTotal > 0.001 && (
-                <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 text-orange-600">
+                <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 text-orange-600">
                   <div className="col-span-3 text-right">Waste Deducted</div>
                   <div className="text-right">− Rs {wasteTotal.toFixed(2)}</div>
                   <div />
@@ -329,18 +363,18 @@ export function SoForm({ salesmen, products }: Props) {
               {subtotal > 0 && (
                 <>
                   {wasteTotal > 0.001 && (
-                    <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 text-muted-foreground">
+                    <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 text-muted-foreground">
                       <div className="col-span-3 text-right">Net Amount</div>
                       <div className="text-right">Rs {netAmount.toFixed(2)}</div>
                       <div />
                     </div>
                   )}
-                  <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 text-amber-600">
+                  <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 text-amber-600">
                     <div className="col-span-3 text-right">Commission ({commissionPct}%)</div>
                     <div className="text-right">Rs {commissionAmount.toFixed(2)}</div>
                     <div />
                   </div>
-                  <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 text-green-700 font-semibold">
+                  <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 text-green-700 font-semibold">
                     <div className="col-span-3 text-right">Factory Amount</div>
                     <div className="text-right">Rs {factoryAmount.toFixed(2)}</div>
                     <div />
@@ -372,7 +406,7 @@ export function SoForm({ salesmen, products }: Props) {
           </div>
 
           <div className="rounded-lg border border-orange-200 divide-y bg-orange-50/20">
-            <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-orange-100/40">
+            <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-orange-100/40">
               <span>Product</span>
               <span>Qty</span>
               <span>Unit Price (Rs)</span>
@@ -390,7 +424,7 @@ export function SoForm({ salesmen, products }: Props) {
                 return (
                   <div
                     key={line.key}
-                    className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2 px-3 py-2 items-start"
+                    className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 px-3 py-2 items-start"
                   >
                     <Select
                       value={line.productId}
@@ -451,7 +485,7 @@ export function SoForm({ salesmen, products }: Props) {
 
             {wasteLines.length > 0 && wasteTotal > 0.001 && (
               <div className="px-3 py-2 bg-orange-100/40 text-sm">
-                <div className="grid grid-cols-[1fr_110px_110px_80px_32px] gap-2">
+                <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2">
                   <div className="col-span-3 text-right text-orange-700 font-medium">Total Waste Deducted</div>
                   <div className="text-right font-bold text-orange-700">Rs {wasteTotal.toFixed(2)}</div>
                   <div />

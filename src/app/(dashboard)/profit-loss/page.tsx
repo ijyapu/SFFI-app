@@ -39,7 +39,7 @@ export default async function ProfitLossPage({
         orderDate: { gte: fromDate, lte: toDate },
         deletedAt: null,
       },
-      select: { totalAmount: true },
+      select: { factoryAmount: true },
     }),
 
     // COGS: stock movements of type PURCHASE in period (goods actually received)
@@ -94,7 +94,7 @@ export default async function ProfitLossPage({
   ]);
 
   // Aggregate revenue
-  const revenue = salesOrders.reduce((s, o) => s + Number(o.totalAmount), 0);
+  const revenue = salesOrders.reduce((s, o) => s + Number(o.factoryAmount), 0);
 
   // Aggregate COGS
   const cogs = purchaseMovements.reduce((s, m) => {

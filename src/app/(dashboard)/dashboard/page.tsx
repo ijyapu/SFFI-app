@@ -74,7 +74,7 @@ export default async function DashboardPage() {
     }),
     prisma.salesOrder.aggregate({
       where: { status: { notIn: ["CANCELLED", "DRAFT"] }, deletedAt: null },
-      _sum: { totalAmount: true, amountPaid: true },
+      _sum: { factoryAmount: true, amountPaid: true },
     }),
     prisma.purchaseOrder.aggregate({
       where: { status: { notIn: ["CANCELLED", "DRAFT"] }, deletedAt: null },
@@ -116,7 +116,7 @@ export default async function DashboardPage() {
   const revPct       = pctChange(revenue, lastRevenue);
   const purPct       = pctChange(purchases, lastPurchases);
 
-  const totalReceivables = Number(receivables._sum.totalAmount ?? 0) - Number(receivables._sum.amountPaid ?? 0);
+  const totalReceivables = Number(receivables._sum.factoryAmount ?? 0) - Number(receivables._sum.amountPaid ?? 0);
   const totalPayables    = Number(payables._sum.totalAmount ?? 0)    - Number(payables._sum.amountPaid ?? 0);
   const netPosition      = totalReceivables - totalPayables;
 

@@ -191,8 +191,8 @@ export function SalesmanForm({ open, onClose, salesman }: Props) {
                         max={100}
                         step="0.5"
                         placeholder="25"
-                        value={field.value ?? ""}
-                        onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                        value={field.value === 0 ? "0" : (field.value ?? "")}
+                        onChange={(e) => field.onChange(e.target.value === "" ? 0 : parseFloat(e.target.value) || 0)}
                       />
                     </FormControl>
                     <FormMessage />
