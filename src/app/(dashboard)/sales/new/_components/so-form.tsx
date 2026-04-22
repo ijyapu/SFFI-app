@@ -234,6 +234,7 @@ export function SoForm({ salesmen, products }: Props) {
                           onOpenChange={(o) => setOpenCombobox((prev) => ({ ...prev, [index]: o }))}
                         >
                           <PopoverTrigger
+                            nativeButton={false}
                             render={
                               <div
                                 role="combobox"
