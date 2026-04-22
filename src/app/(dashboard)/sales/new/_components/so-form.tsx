@@ -358,37 +358,32 @@ export function SoForm({ salesmen, products }: Props) {
             </button>
 
             {/* Summary footer */}
-            <div className="px-3 py-2 bg-muted/30 space-y-1 text-sm">
-              <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2">
-                <div className="col-span-3 text-right text-muted-foreground">Total Taken</div>
-                <div className="text-right font-semibold">Rs {subtotal.toFixed(2)}</div>
-                <div />
+            <div className="px-4 py-3 bg-muted/30 space-y-1.5 text-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Total Taken</span>
+                <span className="font-semibold tabular-nums">Rs {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               {wasteTotal > 0.001 && (
-                <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 text-orange-600">
-                  <div className="col-span-3 text-right">Waste Deducted</div>
-                  <div className="text-right">− Rs {wasteTotal.toFixed(2)}</div>
-                  <div />
+                <div className="flex justify-between gap-4 text-orange-600">
+                  <span>Waste Deducted</span>
+                  <span className="tabular-nums">− Rs {wasteTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               )}
               {subtotal > 0 && (
                 <>
                   {wasteTotal > 0.001 && (
-                    <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 text-muted-foreground">
-                      <div className="col-span-3 text-right">Net Amount</div>
-                      <div className="text-right">Rs {netAmount.toFixed(2)}</div>
-                      <div />
+                    <div className="flex justify-between gap-4 text-muted-foreground">
+                      <span>Net Amount</span>
+                      <span className="tabular-nums">Rs {netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   )}
-                  <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 text-amber-600">
-                    <div className="col-span-3 text-right">Commission ({commissionPct}%)</div>
-                    <div className="text-right">Rs {commissionAmount.toFixed(2)}</div>
-                    <div />
+                  <div className="flex justify-between gap-4 text-amber-600">
+                    <span>Commission ({commissionPct}%)</span>
+                    <span className="tabular-nums">Rs {commissionAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 text-green-700 font-semibold">
-                    <div className="col-span-3 text-right">Factory Amount</div>
-                    <div className="text-right">Rs {factoryAmount.toFixed(2)}</div>
-                    <div />
+                  <div className="flex justify-between gap-4 text-green-700 font-semibold border-t pt-1.5">
+                    <span>Factory Amount</span>
+                    <span className="tabular-nums">Rs {factoryAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                 </>
               )}
