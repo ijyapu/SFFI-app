@@ -6,7 +6,7 @@ import { requirePermission } from "@/lib/auth";
 export type CustomerLedgerEntry = {
   id:            string;
   date:          string;
-  type:          "INVOICE" | "PAYMENT" | "RETURN";
+  type:          "INVOICE" | "PAYMENT" | "RETURN" | "COMMISSION";
   reference:     string;
   description:   string;
   invoiceAmount: number;
@@ -92,25 +92,31 @@ export async function getCustomerLedger(
     orderBy: { createdAt: "asc" },
   });
 
-  // Opening balance
+  // Build pre-period returns per order (for accurate opening balance)
+  const preFromReturnsMap = new Map<string, number>();
+  for (const r of allReturns) {
+    if (r.createdAt < from && r.salesOrderId) {
+      preFromReturnsMap.set(r.salesOrderId, (preFromReturnsMap.get(r.salesOrderId) ?? 0) + Number(r.totalAmount));
+    }
+  }
+
+  // Opening balance — use factory amount (after commission & pre-period returns) not gross
   const baseOpening = Number(salesman.openingBalance);
   let computedOpening = baseOpening;
 
   for (const o of allOrders) {
     if (o.orderDate < from && o.status !== "CANCELLED") {
-      computedOpening += Number(o.totalAmount);
-      computedOpening -= Number(o.amountPaid);
-    }
-  }
-  for (const r of allReturns) {
-    if (r.createdAt < from) {
-      computedOpening -= Number(r.totalAmount);
+      const preReturns   = preFromReturnsMap.get(o.id) ?? 0;
+      const net          = Number(o.totalAmount) - preReturns;
+      const commPct      = Number(o.commissionPct) / 100;
+      const factoryAtFrom = net * (1 - commPct);
+      computedOpening += factoryAtFrom - Number(o.amountPaid);
     }
   }
 
   // Build ledger entries within period
   const rawEntries: {
-    id: string; date: Date; type: "INVOICE" | "PAYMENT" | "RETURN";
+    id: string; date: Date; type: "INVOICE" | "PAYMENT" | "RETURN" | "COMMISSION";
     reference: string; description: string;
     invoiceAmount: number; paymentAmount: number;
     paymentMethod: string; salesOrderId: string | null;
@@ -131,6 +137,22 @@ export async function getCustomerLedger(
       paymentMethod: "",
       salesOrderId:  o.id,
     });
+
+    // Commission is the salesman's share — deduct it from what they owe
+    const commAmt = Number(o.commissionAmount);
+    if (commAmt > 0.001) {
+      rawEntries.push({
+        id:            `comm-${o.id}`,
+        date:          o.orderDate,
+        type:          "COMMISSION",
+        reference:     o.orderNumber,
+        description:   `Commission (${Number(o.commissionPct)}%) on ${o.orderNumber}`,
+        invoiceAmount: 0,
+        paymentAmount: commAmt,
+        paymentMethod: "",
+        salesOrderId:  o.id,
+      });
+    }
 
     for (const p of o.payments) {
       if (p.paidAt < from || p.paidAt > to) continue;
@@ -163,12 +185,11 @@ export async function getCustomerLedger(
     });
   }
 
+  const typeOrder = { INVOICE: 0, COMMISSION: 1, RETURN: 2, PAYMENT: 3 };
   rawEntries.sort((a, b) => {
     const diff = a.date.getTime() - b.date.getTime();
     if (diff !== 0) return diff;
-    if (a.type === "INVOICE" && b.type !== "INVOICE") return -1;
-    if (a.type !== "INVOICE" && b.type === "INVOICE") return 1;
-    return 0;
+    return (typeOrder[a.type] ?? 9) - (typeOrder[b.type] ?? 9);
   });
 
   let balance = computedOpening;

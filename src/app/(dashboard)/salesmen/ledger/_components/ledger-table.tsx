@@ -71,6 +71,8 @@ export function LedgerTable({
               className={
                 e.type === "INVOICE"
                   ? "hover:bg-blue-50/30 dark:hover:bg-blue-950/10"
+                  : e.type === "COMMISSION"
+                  ? "hover:bg-amber-50/30 dark:hover:bg-amber-950/10"
                   : e.type === "RETURN"
                   ? "hover:bg-orange-50/30 dark:hover:bg-orange-950/10"
                   : "hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10"
@@ -102,6 +104,11 @@ export function LedgerTable({
                     Invoice
                   </Badge>
                 )}
+                {e.type === "COMMISSION" && (
+                  <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-700 bg-amber-50 dark:bg-amber-950/30">
+                    Commission
+                  </Badge>
+                )}
                 {e.type === "PAYMENT" && (
                   <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30">
                     Payment
@@ -116,7 +123,7 @@ export function LedgerTable({
               <TableCell numeric className="tabular-nums text-sm">
                 {e.invoiceAmount > 0 ? fmt(e.invoiceAmount) : "—"}
               </TableCell>
-              <TableCell numeric className="tabular-nums text-sm text-emerald-700">
+              <TableCell numeric className={`tabular-nums text-sm ${e.type === "COMMISSION" ? "text-amber-600" : "text-emerald-700"}`}>
                 {e.paymentAmount > 0 ? fmt(e.paymentAmount) : "—"}
               </TableCell>
               <TableCell numeric className={`tabular-nums text-sm font-medium ${e.balance > 0.005 ? "text-blue-600" : e.balance < -0.005 ? "text-orange-600" : "text-emerald-600"}`}>

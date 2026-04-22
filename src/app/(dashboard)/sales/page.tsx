@@ -12,11 +12,17 @@ export const metadata = { title: "Sales" };
 export default async function SalesPage() {
   await requirePermission("sales");
 
-  const orders = await prisma.salesOrder.findMany({
-    where: { deletedAt: null },
-    include: { salesman: true },
-    orderBy: { createdAt: "desc" },
-  });
+  const [orders, salesmen] = await Promise.all([
+    prisma.salesOrder.findMany({
+      where: { deletedAt: null },
+      include: { salesman: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.salesman.findMany({
+      where: { deletedAt: null },
+      select: { openingBalance: true },
+    }),
+  ]);
 
   const serialised = orders.map((o) => ({
     id:            o.id,
@@ -36,9 +42,12 @@ export default async function SalesPage() {
   const totalRevenue     = serialised
     .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT")
     .reduce((sum, o) => sum + o.factoryAmount, 0);
-  const totalOutstanding = serialised
-    .filter((o) => o.status === "CONFIRMED" || o.status === "PARTIALLY_PAID")
-    .reduce((sum, o) => sum + Math.max(0, o.factoryAmount - o.amountPaid), 0);
+  const openingBalanceTotal = salesmen.reduce((sum, s) => sum + Number(s.openingBalance), 0);
+  const totalOutstanding =
+    openingBalanceTotal +
+    serialised
+      .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT")
+      .reduce((sum, o) => sum + (o.factoryAmount - o.amountPaid), 0);
   const totalCollected   = serialised.reduce((sum, o) => sum + o.amountPaid, 0);
 
   return (
@@ -109,7 +118,7 @@ export default async function SalesPage() {
             <p className={`text-2xl font-bold ${totalOutstanding > 0 ? "text-destructive" : "text-green-600"}`}>
               Rs {totalOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Pending collection</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Incl. opening balances</p>
           </CardContent>
         </Card>
       </div>
