@@ -91,7 +91,7 @@ export function AdjustmentForm({ products, isAdmin }: Props) {
                       </SelectValue>
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent searchable>
                     {products.map((p) => (
                       <SelectItem key={p.id} value={p.id} label={p.name}>
                         <span className="font-mono text-xs mr-2 text-muted-foreground">{p.sku}</span>

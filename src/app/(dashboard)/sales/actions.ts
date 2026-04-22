@@ -388,16 +388,34 @@ export async function recordSalesmanPayment(soId: string, values: SalesmanPaymen
   if (so.status === "DRAFT") throw new Error("Confirm the order before recording a payment");
   if (so.status === "CANCELLED") throw new Error("Cannot record payment for a cancelled order");
 
-  const factoryDue  = Number(so.factoryAmount);
-  const outstanding = factoryDue - Number(so.amountPaid);
-  if (data.amount > outstanding + 0.001) {
+  // Validate against the salesman's TOTAL outstanding (not just this order), so they can
+  // pay more than this order's balance to reduce previous debt.
+  const salesman = await prisma.salesman.findUnique({
+    where: { id: so.customerId },
+    select: {
+      openingBalance: true,
+      salesOrders: {
+        where: { deletedAt: null, status: { notIn: ["CANCELLED", "DRAFT"] } },
+        select: { factoryAmount: true, amountPaid: true },
+      },
+    },
+  });
+  const salesmanTotalOutstanding =
+    Number(salesman?.openingBalance ?? 0) +
+    (salesman?.salesOrders ?? []).reduce(
+      (sum, o) => sum + Number(o.factoryAmount) - Number(o.amountPaid),
+      0
+    );
+
+  if (data.amount > salesmanTotalOutstanding + 0.001) {
     throw new Error(
-      `Payment of Rs ${data.amount.toFixed(2)} exceeds the factory outstanding balance of Rs ${outstanding.toFixed(2)}`
+      `Payment of Rs ${data.amount.toFixed(2)} exceeds the total outstanding balance of Rs ${salesmanTotalOutstanding.toFixed(2)}`
     );
   }
 
-  const newPaid   = Number(so.amountPaid) + data.amount;
-  const newStatus = newPaid >= factoryDue - 0.001 ? "PAID" : "PARTIALLY_PAID";
+  const factoryDue = Number(so.factoryAmount);
+  const newPaid    = Number(so.amountPaid) + data.amount;
+  const newStatus  = newPaid >= factoryDue - 0.001 ? "PAID" : "PARTIALLY_PAID";
 
   await prisma.$transaction(async (tx) => {
     await tx.salesmanPayment.create({

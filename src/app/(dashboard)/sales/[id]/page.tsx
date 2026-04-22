@@ -30,7 +30,14 @@ export default async function SalesOrderDetailPage({
     prisma.salesOrder.findUnique({
       where: { id, deletedAt: null },
       include: {
-        salesman: true,
+        salesman: {
+          include: {
+            salesOrders: {
+              where: { deletedAt: null, status: { notIn: ["CANCELLED", "DRAFT"] } },
+              select: { factoryAmount: true, amountPaid: true },
+            },
+          },
+        },
         items: {
           include: { product: { include: { unit: true } } },
           orderBy: { product: { name: "asc" } },
@@ -50,6 +57,13 @@ export default async function SalesOrderDetailPage({
   ]);
 
   if (!so) notFound();
+
+  const salesmanTotalOutstanding =
+    Number(so.salesman.openingBalance) +
+    so.salesman.salesOrders.reduce(
+      (sum, o) => sum + Number(o.factoryAmount) - Number(o.amountPaid),
+      0
+    );
 
   const products = rawProducts.map((p) => ({ id: p.id, name: p.name, unitName: p.unit.name }));
 
@@ -100,6 +114,7 @@ export default async function SalesOrderDetailPage({
       })),
     })),
     products,
+    salesmanTotalOutstanding,
   };
 
   return (

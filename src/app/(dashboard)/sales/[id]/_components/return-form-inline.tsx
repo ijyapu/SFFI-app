@@ -228,7 +228,7 @@ export function ReturnFormInline({
                           {products.find((p) => p.id === line.productId)?.name}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent searchable>
                         {products.map((p) => (
                           <SelectItem key={p.id} value={p.id} label={p.name}>
                             {p.name}{" "}

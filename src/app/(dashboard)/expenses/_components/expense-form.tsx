@@ -111,7 +111,7 @@ export function ExpenseForm({ open, onClose, expense, categories }: Props) {
                         </SelectValue>
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent searchable>
                       {categories.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}

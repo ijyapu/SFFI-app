@@ -4,7 +4,7 @@ import * as React from "react"
 import { Select as SelectPrimitive } from "@base-ui/react/select"
 
 import { cn } from "@/lib/utils"
-import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react"
+import { ChevronDownIcon, CheckIcon, ChevronUpIcon, SearchIcon } from "lucide-react"
 
 const Select = SelectPrimitive.Root
 
@@ -56,6 +56,9 @@ function SelectTrigger({
   )
 }
 
+// Context to share search term with SelectItem children
+const SelectSearchContext = React.createContext<string>("")
+
 function SelectContent({
   className,
   children,
@@ -64,34 +67,59 @@ function SelectContent({
   align = "center",
   alignOffset = 0,
   alignItemWithTrigger = true,
+  searchable = false,
+  searchPlaceholder = "Search...",
   ...props
 }: SelectPrimitive.Popup.Props &
   Pick<
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
-  >) {
+  > & {
+    searchable?: boolean
+    searchPlaceholder?: string
+  }) {
+  const [search, setSearch] = React.useState("")
+
   return (
-    <SelectPrimitive.Portal>
-      <SelectPrimitive.Positioner
-        side={side}
-        sideOffset={sideOffset}
-        align={align}
-        alignOffset={alignOffset}
-        alignItemWithTrigger={alignItemWithTrigger}
-        className="isolate z-50"
-      >
-        <SelectPrimitive.Popup
-          data-slot="select-content"
-          data-align-trigger={alignItemWithTrigger}
-          className={cn("relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95", className )}
-          {...props}
+    <SelectSearchContext.Provider value={searchable ? search : ""}>
+      <SelectPrimitive.Portal>
+        <SelectPrimitive.Positioner
+          side={side}
+          sideOffset={sideOffset}
+          align={align}
+          alignOffset={alignOffset}
+          alignItemWithTrigger={alignItemWithTrigger}
+          className="isolate z-50"
         >
-          <SelectScrollUpButton />
-          <SelectPrimitive.List>{children}</SelectPrimitive.List>
-          <SelectScrollDownButton />
-        </SelectPrimitive.Popup>
-      </SelectPrimitive.Positioner>
-    </SelectPrimitive.Portal>
+          <SelectPrimitive.Popup
+            data-slot="select-content"
+            data-align-trigger={alignItemWithTrigger}
+            className={cn(
+              "relative isolate z-50 max-h-(--available-height) w-(--anchor-width) min-w-36 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-lg bg-popover text-popover-foreground shadow-md ring-1 ring-foreground/10 duration-100 data-[align-trigger=true]:animate-none data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+              className
+            )}
+            {...props}
+          >
+            {searchable && (
+              <div className="sticky top-0 z-10 flex items-center gap-2 border-b bg-popover px-2 py-1.5">
+                <SearchIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                <input
+                  autoFocus
+                  placeholder={searchPlaceholder}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  onKeyDown={(e) => e.stopPropagation()}
+                  className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+            )}
+            <SelectScrollUpButton />
+            <SelectPrimitive.List>{children}</SelectPrimitive.List>
+            <SelectScrollDownButton />
+          </SelectPrimitive.Popup>
+        </SelectPrimitive.Positioner>
+      </SelectPrimitive.Portal>
+    </SelectSearchContext.Provider>
   )
 }
 
@@ -114,10 +142,18 @@ function SelectItem({
   label,
   ...props
 }: SelectPrimitive.Item.Props) {
-  // Base UI uses `label` to display the selected value in the trigger.
-  // If not provided, fall back to the string content of children so the
-  // trigger never shows the raw value/ID string.
-  const resolvedLabel = label ?? (typeof children === "string" ? children : undefined);
+  const search = React.useContext(SelectSearchContext)
+  const resolvedLabel = label ?? (typeof children === "string" ? children : undefined)
+
+  // Filter: hide item if it doesn't match the search term
+  if (
+    search &&
+    resolvedLabel &&
+    !resolvedLabel.toLowerCase().includes(search.toLowerCase())
+  ) {
+    return null
+  }
+
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -168,8 +204,7 @@ function SelectScrollUpButton({
       )}
       {...props}
     >
-      <ChevronUpIcon
-      />
+      <ChevronUpIcon />
     </SelectPrimitive.ScrollUpArrow>
   )
 }
@@ -187,8 +222,7 @@ function SelectScrollDownButton({
       )}
       {...props}
     >
-      <ChevronDownIcon
-      />
+      <ChevronDownIcon />
     </SelectPrimitive.ScrollDownArrow>
   )
 }

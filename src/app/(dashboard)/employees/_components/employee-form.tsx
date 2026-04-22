@@ -195,7 +195,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
                           </SelectValue>
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent searchable>
                         {departments.map((d) => (
                           <SelectItem key={d.id} value={d.id} label={d.name}>
                             {d.name}

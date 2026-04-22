@@ -292,7 +292,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                               </SelectValue>
                             </SelectTrigger>
                           </FormControl>
-                          <SelectContent className="min-w-72 max-h-64">
+                          <SelectContent className="min-w-72 max-h-64" searchable>
                             {suppliers.map((s) => (
                               <SelectItem key={s.id} value={s.id} label={s.name}>
                                 {s.name}
@@ -423,7 +423,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                                         {categories.find(c => c.id === cf.value)?.name}
                                       </SelectValue>
                                     </SelectTrigger>
-                                    <SelectContent className="min-w-40">
+                                    <SelectContent className="min-w-40" searchable>
                                       {categories.map((c) => (
                                         <SelectItem key={c.id} value={c.id} label={c.name}>{c.name}</SelectItem>
                                       ))}
@@ -441,7 +441,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                                         {units.find(u => u.id === uf.value)?.name}
                                       </SelectValue>
                                     </SelectTrigger>
-                                    <SelectContent className="min-w-24">
+                                    <SelectContent className="min-w-24" searchable>
                                       {units.map((u) => (
                                         <SelectItem key={u.id} value={u.id} label={u.name}>{u.name}</SelectItem>
                                       ))}
@@ -787,7 +787,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                           </SelectValue>
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent searchable>
                         {categories.map((c) => (
                           <SelectItem key={c.id} value={c.id} label={c.name}>{c.name}</SelectItem>
                         ))}
@@ -827,7 +827,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                           </SelectValue>
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent searchable>
                         {units.map((u) => (
                           <SelectItem key={u.id} value={u.id} label={u.name}>{u.name}</SelectItem>
                         ))}

@@ -149,7 +149,7 @@ export function SoForm({ salesmen, products }: Props) {
                       </SelectValue>
                     </SelectTrigger>
                   </FormControl>
-                  <SelectContent>
+                  <SelectContent searchable>
                     {salesmen.map((c) => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
@@ -347,6 +347,16 @@ export function SoForm({ salesmen, products }: Props) {
               );
             })}
 
+            {/* Add row button */}
+            <button
+              type="button"
+              onClick={() => append({ productId: "", quantity: 1, unitPrice: 0 })}
+              className="w-full flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add row
+            </button>
+
             {/* Summary footer */}
             <div className="px-3 py-2 bg-muted/30 space-y-1 text-sm">
               <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2">
@@ -429,14 +439,21 @@ export function SoForm({ salesmen, products }: Props) {
                   >
                     <Select
                       value={line.productId}
-                      onValueChange={(v) => v && updateWasteLine(line.key, { productId: v })}
+                      onValueChange={(v) => {
+                        if (!v) return;
+                        const p = products.find((p) => p.id === v);
+                        updateWasteLine(line.key, {
+                          productId: v,
+                          ...(p ? { unitPrice: p.sellingPrice } : {}),
+                        });
+                      }}
                     >
                       <SelectTrigger className="h-10 w-full text-sm">
                         <SelectValue placeholder="Select product">
                           {products.find((p) => p.id === line.productId)?.name}
                         </SelectValue>
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent searchable>
                         {products.map((p) => (
                           <SelectItem key={p.id} value={p.id} label={p.name}>
                             {p.name}

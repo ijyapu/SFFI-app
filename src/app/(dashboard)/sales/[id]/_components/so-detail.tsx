@@ -88,13 +88,14 @@ type Props = {
   payments: Payment[];
   returns: SalesReturn[];
   products: Product[];
+  salesmanTotalOutstanding: number;
 };
 
 export function SoDetail(props: Props) {
   const {
     id, orderNumber, status, customerName, orderDate, dueDate,
     notes, subtotal, totalAmount, commissionPct, commissionAmount, factoryAmount,
-    amountPaid, items, payments, returns, products,
+    amountPaid, items, payments, returns, products, salesmanTotalOutstanding,
   } = props;
 
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -175,7 +176,7 @@ export function SoDetail(props: Props) {
               </Button>
             </>
           )}
-          {(status === "CONFIRMED" || status === "PARTIALLY_PAID") && outstanding > 0.001 && (
+          {!["DRAFT", "CANCELLED"].includes(status) && salesmanTotalOutstanding > 0.001 && (
             <Button onClick={() => setPaymentOpen(true)}>
               <CreditCard className="h-4 w-4" />
               Record Payment
@@ -381,6 +382,7 @@ export function SoDetail(props: Props) {
         soId={id}
         factoryAmount={factoryAmount}
         outstanding={outstanding}
+        salesmanTotalOutstanding={salesmanTotalOutstanding}
         open={paymentOpen}
         onClose={() => setPaymentOpen(false)}
       />

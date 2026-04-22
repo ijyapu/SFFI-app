@@ -9,7 +9,12 @@
       "Bash(sed -i -e s/rawCustomers/rawSalesmen/g 'c:/Users/rider/Desktop/SSFI/erp-app/src/app/\\(dashboard\\)/sales/new/page.tsx')",
       "Bash(sed -i -e s/editCustomer/editSalesman/g -e s/setEditCustomer/setEditSalesman/g 'c:/Users/rider/Desktop/SSFI/erp-app/src/app/\\(dashboard\\)/sales/salesmen/_components/salesman-table.tsx')",
       "Bash(grep -n \"customer\\\\|Customer\" src/app/\\\\\\(dashboard\\\\\\)/sales/salesmen/[id]/ledger/page.tsx src/app/\\\\\\(dashboard\\\\\\)/sales/salesmen/[id]/ledger/_components/salesman-ledger.tsx)",
-      "Bash(ls src/components/ui/photo-upload*)"
+      "Bash(ls src/components/ui/photo-upload*)",
+      "Bash(node -e \"const s = require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui-components/react/dist/cjs/select/index.js'\\); console.log\\(Object.keys\\(s\\)\\)\")",
+      "Bash(node -e \"const d=require\\('/dev/stdin'\\); console.log\\(d.version\\)\")",
+      "Bash(node -e \"console.log\\(require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui/react/package.json'\\).version\\)\")",
+      "Bash(node -e \"const s = require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui/react/select'\\); console.log\\(Object.keys\\(s\\)\\)\")",
+      "Bash(node -e \"const s = require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui/react/select'\\); console.log\\(Object.keys\\(s.Select\\)\\)\")"
     ]
   }
 }

@@ -249,7 +249,7 @@ export function RecipeEditor({
                         {ing ? `${ing.name} (${ing.unitName})` : undefined}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent searchable>
                       {availableIngredients.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
                           {p.name}{" "}

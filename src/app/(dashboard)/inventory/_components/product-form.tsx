@@ -177,7 +177,7 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
                         </SelectValue>
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent searchable>
                       {categories.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
@@ -213,7 +213,7 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
                         </SelectValue>
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent searchable>
                       {units.map((u) => (
                         <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
                       ))}
