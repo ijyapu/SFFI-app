@@ -101,6 +101,7 @@ export default async function SalesOrderDetailPage({
     returns: so.returns.map((r) => ({
       id:           r.id,
       returnNumber: r.returnNumber,
+      returnType:   r.returnType as "WASTE" | "FRESH",
       notes:        r.notes,
       totalAmount:  Number(r.totalAmount),
       createdAt:    r.createdAt.toISOString(),

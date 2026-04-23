@@ -508,6 +508,7 @@ model SalesReturn {
   salesOrderId String
   notes        String?
   totalAmount  Decimal  @db.Decimal(10, 2)
+  returnType   String   @default("WASTE") // "WASTE" | "FRESH"
 
   salesOrder SalesOrder      @relation(fields: [salesOrderId], references: [id])
   items      SalesReturnItem[]

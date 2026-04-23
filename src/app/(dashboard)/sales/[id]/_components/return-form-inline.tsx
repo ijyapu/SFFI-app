@@ -3,7 +3,7 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Trash2, RotateCcw, AlertCircle } from "lucide-react";
+import { Plus, Trash2, RotateCcw, PackageCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,6 +29,7 @@ type PreviousReturnItem = {
 type PreviousReturn = {
   id: string;
   returnNumber: string;
+  returnType?: "WASTE" | "FRESH";
   notes: string | null;
   totalAmount: number;
   createdAt: string;
@@ -47,11 +48,14 @@ export function ReturnFormInline({
   soId,
   products,
   previousReturns = [],
+  returnType = "WASTE",
 }: {
   soId:            string;
   products:        Product[];
   previousReturns?: PreviousReturn[];
+  returnType?:     "WASTE" | "FRESH";
 }) {
+  const isFresh = returnType === "FRESH";
   const router = useRouter();
   const [lines,   setLines]   = useState<LineItem[]>(() => [emptyLine()]);
   const [notes,   setNotes]   = useState("");
@@ -107,8 +111,8 @@ export function ReturnFormInline({
       .map((l) => ({ productId: l.productId, quantity: Number(l.quantity), unitPrice: Number(l.unitPrice) }));
     setLoading(true);
     try {
-      await processSalesReturn(soId, { notes: notes.trim() || undefined, items: returnItems });
-      toast.success("Waste return recorded");
+      await processSalesReturn(soId, { notes: notes.trim() || undefined, returnType, items: returnItems });
+      toast.success(isFresh ? "Fresh return recorded — stock restocked" : "Waste return recorded");
       // Reset form for next entry
       setLines([emptyLine()]);
       setNotes("");
@@ -124,15 +128,31 @@ export function ReturnFormInline({
   const total     = lines.reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
   const hasErrors = Object.keys(errors).length > 0;
 
+  const accentBg   = isFresh ? "bg-green-50/30 dark:bg-green-950/10"   : "bg-orange-50/30 dark:bg-orange-950/10";
+  const accentHead = isFresh ? "bg-green-100/60 dark:bg-green-950/20"  : "bg-orange-100/60 dark:bg-orange-950/20";
+  const accentIcon = isFresh ? "text-green-600"  : "text-orange-600";
+  const accentText = isFresh ? "text-green-600"  : "text-orange-600";
+  const accentBtn  = isFresh
+    ? "bg-green-600 hover:bg-green-700 text-white"
+    : "bg-orange-600 hover:bg-orange-700 text-white";
+
   return (
-    <div className="rounded-lg border bg-orange-50/30 dark:bg-orange-950/10">
+    <div className={`rounded-lg border ${accentBg}`}>
 
       {/* Section header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b bg-orange-100/60 dark:bg-orange-950/20 rounded-t-lg">
-        <RotateCcw className="h-4 w-4 text-orange-600" />
-        <span className="font-semibold text-sm">Record Waste Return</span>
+      <div className={`flex items-center gap-2 px-4 py-3 border-b ${accentHead} rounded-t-lg`}>
+        {isFresh
+          ? <PackageCheck className={`h-4 w-4 ${accentIcon}`} />
+          : <RotateCcw className={`h-4 w-4 ${accentIcon}`} />
+        }
+        <span className="font-semibold text-sm">
+          {isFresh ? "Record Fresh Return" : "Record Waste Return"}
+        </span>
         <span className="text-xs text-muted-foreground">
-          — expired or damaged goods, deducted from invoice, not restocked
+          {isFresh
+            ? "— good condition goods returned to inventory, deducted from invoice"
+            : "— expired or damaged goods, deducted from invoice, not restocked"
+          }
         </span>
       </div>
 
@@ -155,7 +175,7 @@ export function ReturnFormInline({
                       <span className="text-xs text-muted-foreground italic">· {r.notes}</span>
                     )}
                   </div>
-                  <span className="text-sm font-bold text-orange-700 tabular-nums">
+                  <span className={`text-sm font-bold tabular-nums ${isFresh ? "text-green-700" : "text-orange-700"}`}>
                     − Rs {fmt(r.totalAmount)}
                   </span>
                 </div>
@@ -270,7 +290,7 @@ export function ReturnFormInline({
 
                   <div className="px-3 py-2 flex items-center justify-end min-h-10">
                     {lineTotal > 0 ? (
-                      <span className="text-sm tabular-nums font-semibold text-orange-600">{fmt(lineTotal)}</span>
+                      <span className={`text-sm tabular-nums font-semibold ${accentText}`}>{fmt(lineTotal)}</span>
                     ) : (
                       <span className="text-muted-foreground/30 text-sm">—</span>
                     )}
@@ -305,8 +325,8 @@ export function ReturnFormInline({
           <div className="p-4 space-y-3 flex-1">
             {/* Running total */}
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Total Deducted</span>
-              <span className={`text-base font-bold tabular-nums ${total > 0 ? "text-orange-600" : "text-muted-foreground/30"}`}>
+              <span className="text-sm text-muted-foreground">{isFresh ? "Total Returned" : "Total Deducted"}</span>
+              <span className={`text-base font-bold tabular-nums ${total > 0 ? accentText : "text-muted-foreground/30"}`}>
                 {total > 0 ? `Rs ${fmt(total)}` : "—"}
               </span>
             </div>
@@ -330,7 +350,7 @@ export function ReturnFormInline({
           <div className="p-4 space-y-2 border-t">
             {success && (
               <p className="flex items-center gap-1.5 text-xs text-green-600">
-                ✓ Return recorded — form reset for next entry
+                ✓ {isFresh ? "Fresh return recorded — stock restocked" : "Waste return recorded"} — form reset
               </p>
             )}
             {errors["_global"] && (
@@ -344,13 +364,16 @@ export function ReturnFormInline({
               </p>
             )}
             <Button
-              className="w-full gap-1.5 bg-orange-600 hover:bg-orange-700 text-white"
+              className={`w-full gap-1.5 ${accentBtn}`}
               size="sm"
               onClick={handleSubmit}
               disabled={loading}
             >
-              <RotateCcw className="h-3.5 w-3.5" />
-              {loading ? "Recording…" : "Record Return"}
+              {isFresh
+                ? <PackageCheck className="h-3.5 w-3.5" />
+                : <RotateCcw className="h-3.5 w-3.5" />
+              }
+              {loading ? "Recording…" : isFresh ? "Record Fresh Return" : "Record Waste Return"}
             </Button>
           </div>
         </div>

@@ -56,8 +56,8 @@ export default async function NewSalesOrderPage() {
   }));
 
   return (
-    <div className="flex flex-col gap-4 h-full">
-      <div className="flex items-center gap-2 shrink-0">
+    <div className="space-y-4 pb-10">
+      <div className="flex items-center gap-2">
         <Link
           href="/sales"
           className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
@@ -80,10 +80,8 @@ export default async function NewSalesOrderPage() {
           </Link>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 overflow-y-auto pb-6">
-          <div className="max-w-4xl">
-            <SoForm salesmen={salesmen} products={serialisedProducts} />
-          </div>
+        <div className="max-w-4xl">
+          <SoForm salesmen={salesmen} products={serialisedProducts} />
         </div>
       )}
     </div>

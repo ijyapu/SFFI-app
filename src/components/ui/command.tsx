@@ -70,10 +70,20 @@ function CommandInput({
   className,
   ...props
 }: React.ComponentProps<typeof CommandPrimitive.Input>) {
+  // Patch the element's own focus method so cmdk's auto-focus always uses
+  // preventScroll: true, preventing the page from jumping when the combobox
+  // opens inside a portal that's initially positioned at the top of the DOM.
+  const preventScrollRef = React.useCallback((el: HTMLInputElement | null) => {
+    if (!el) return;
+    const orig = el.focus.bind(el);
+    el.focus = (opts?: FocusOptions) => orig({ ...opts, preventScroll: true });
+  }, []);
+
   return (
     <div data-slot="command-input-wrapper" className="p-1 pb-0">
       <InputGroup className="h-8! rounded-lg! border-input/30 bg-input/30 shadow-none! *:data-[slot=input-group-addon]:pl-2!">
         <CommandPrimitive.Input
+          ref={preventScrollRef}
           data-slot="command-input"
           className={cn(
             "w-full text-sm outline-hidden disabled:cursor-not-allowed disabled:opacity-50",

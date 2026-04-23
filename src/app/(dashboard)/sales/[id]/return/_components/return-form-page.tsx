@@ -95,7 +95,7 @@ export function ReturnFormPage({
       }));
     setLoading(true);
     try {
-      await processSalesReturn(soId, { notes: notes.trim() || undefined, items: returnItems });
+      await processSalesReturn(soId, { notes: notes.trim() || undefined, returnType: "WASTE", items: returnItems });
       toast.success("Waste return recorded successfully");
       router.push(`/sales/${soId}`);
     } catch (e) {

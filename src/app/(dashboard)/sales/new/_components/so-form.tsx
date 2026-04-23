@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2, RotateCcw, Wallet, ChevronsUpDown, Check } from "lucide-react";
+import { Plus, Trash2, RotateCcw, PackageCheck, Wallet, ChevronsUpDown, Check } from "lucide-react";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
@@ -31,7 +31,7 @@ type Product  = {
   unit: { name: string };
 };
 
-type WasteLine = { key: number; productId: string; quantity: number | ""; unitPrice: number | "" };
+type ReturnLine = { key: number; productId: string; quantity: number | ""; unitPrice: number | "" };
 
 type Props = {
   salesmen: Salesman[];
@@ -40,10 +40,14 @@ type Props = {
 
 export function SoForm({ salesmen, products }: Props) {
   const router = useRouter();
-  const wasteKeyRef = useRef(0);
+  const returnKeyRef = useRef(0);
+
+  // Fresh return state
+  const [freshLines, setFreshLines] = useState<ReturnLine[]>([]);
+  const [freshNotes, setFreshNotes] = useState("");
 
   // Waste return state (independent from react-hook-form)
-  const [wasteLines, setWasteLines] = useState<WasteLine[]>([]);
+  const [wasteLines, setWasteLines] = useState<ReturnLine[]>([]);
   const [wasteNotes, setWasteNotes] = useState("");
 
   // Payment state — defaults to factory amount, user can lower it for partial payment
@@ -74,9 +78,10 @@ export function SoForm({ salesmen, products }: Props) {
 
   const subtotal         = watchItems.reduce((sum, i) => sum + (i.quantity || 0) * (i.unitPrice || 0), 0);
   const wasteTotal       = wasteLines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
+  const freshTotal       = freshLines.reduce((sum, l) => sum + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0);
   const selectedSalesman = salesmen.find((c) => c.id === watchSalesmanId);
   const commissionPct    = selectedSalesman?.commissionPct ?? 0;
-  const netAmount        = subtotal - wasteTotal;
+  const netAmount        = subtotal - wasteTotal - freshTotal;
   const commissionAmount = Math.round(netAmount * commissionPct) / 100;
   const factoryAmount    = netAmount - commissionAmount;
 
@@ -92,18 +97,30 @@ export function SoForm({ salesmen, products }: Props) {
     if (product) {
       form.setValue(`items.${index}.productId`, productId);
       form.setValue(`items.${index}.unitPrice`, product.sellingPrice);
+      // Auto-append a new empty row when the user fills the last row
+      if (index === fields.length - 1) {
+        append({ productId: "", quantity: 1, unitPrice: 0 });
+      }
     }
   }
 
-  function addWasteLine() {
-    setWasteLines((prev) => [...prev, { key: wasteKeyRef.current++, productId: "", quantity: "", unitPrice: "" }]);
+  function addFreshLine() {
+    setFreshLines((prev) => [...prev, { key: returnKeyRef.current++, productId: "", quantity: "", unitPrice: "" }]);
+  }
+  function removeFreshLine(key: number) {
+    setFreshLines((prev) => prev.filter((l) => l.key !== key));
+  }
+  function updateFreshLine(key: number, patch: Partial<ReturnLine>) {
+    setFreshLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
 
+  function addWasteLine() {
+    setWasteLines((prev) => [...prev, { key: returnKeyRef.current++, productId: "", quantity: "", unitPrice: "" }]);
+  }
   function removeWasteLine(key: number) {
     setWasteLines((prev) => prev.filter((l) => l.key !== key));
   }
-
-  function updateWasteLine(key: number, patch: Partial<WasteLine>) {
+  function updateWasteLine(key: number, patch: Partial<ReturnLine>) {
     setWasteLines((prev) => prev.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
 
@@ -111,18 +128,21 @@ export function SoForm({ salesmen, products }: Props) {
     const validWaste = wasteLines.filter(
       (l) => l.productId && Number(l.quantity) > 0 && Number(l.unitPrice) >= 0
     );
+    const validFresh = freshLines.filter(
+      (l) => l.productId && Number(l.quantity) > 0 && Number(l.unitPrice) >= 0
+    );
     try {
       await createSalesOrder({
         ...values,
         amountPaid: Math.min(amountPaid, factoryAmount),
         returnItems: validWaste.length > 0
-          ? validWaste.map((l) => ({
-              productId: l.productId,
-              quantity:  Number(l.quantity),
-              unitPrice: Number(l.unitPrice),
-            }))
+          ? validWaste.map((l) => ({ productId: l.productId, quantity: Number(l.quantity), unitPrice: Number(l.unitPrice) }))
           : undefined,
         returnNotes: wasteNotes.trim() || undefined,
+        freshReturnItems: validFresh.length > 0
+          ? validFresh.map((l) => ({ productId: l.productId, quantity: Number(l.quantity), unitPrice: Number(l.unitPrice) }))
+          : undefined,
+        freshReturnNotes: freshNotes.trim() || undefined,
       });
       toast.success("Sales order created");
       router.push("/sales");
@@ -133,7 +153,16 @@ export function SoForm({ salesmen, products }: Props) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        const filled = form.getValues("items").filter((i) => i.productId !== "");
+        if (filled.length === 0) {
+          form.setError("items", { type: "manual", message: "Add at least one item" });
+          return;
+        }
+        form.setValue("items", filled, { shouldValidate: false });
+        form.handleSubmit(onSubmit)();
+      }} className="space-y-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <FormField
             control={form.control}
@@ -369,9 +398,15 @@ export function SoForm({ salesmen, products }: Props) {
                   <span className="tabular-nums">− Rs {wasteTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               )}
+              {freshTotal > 0.001 && (
+                <div className="flex justify-between gap-4 text-green-600">
+                  <span>Fresh Return Deducted</span>
+                  <span className="tabular-nums">− Rs {freshTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              )}
               {subtotal > 0 && (
                 <>
-                  {wasteTotal > 0.001 && (
+                  {(wasteTotal > 0.001 || freshTotal > 0.001) && (
                     <div className="flex justify-between gap-4 text-muted-foreground">
                       <span>Net Amount</span>
                       <span className="tabular-nums">Rs {netAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -515,6 +550,118 @@ export function SoForm({ salesmen, products }: Props) {
                 onChange={(e) => setWasteNotes(e.target.value)}
                 rows={2}
                 placeholder="e.g. expired, damaged packaging..."
+                className="text-sm resize-none"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* ── Fresh Return ── */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PackageCheck className="h-4 w-4 text-green-600" />
+              <h3 className="font-medium text-sm">Fresh Return</h3>
+              <span className="text-xs text-muted-foreground">(optional) — good condition goods returned to inventory</span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="text-green-600 border-green-200 hover:bg-green-50 hover:border-green-300"
+              onClick={addFreshLine}
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add Item
+            </Button>
+          </div>
+
+          <div className="rounded-lg border border-green-200 divide-y bg-green-50/20">
+            <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-green-100/40">
+              <span>Product</span>
+              <span>Qty</span>
+              <span>Unit Price (Rs)</span>
+              <span className="text-right">Total</span>
+              <span />
+            </div>
+
+            {freshLines.length === 0 ? (
+              <div className="px-3 py-6 text-center text-sm text-muted-foreground/50">
+                No fresh returns — click &quot;Add Item&quot; to record
+              </div>
+            ) : (
+              freshLines.map((line) => {
+                const lineTotal = (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0);
+                return (
+                  <div key={line.key} className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 px-3 py-2 items-start">
+                    <Select
+                      value={line.productId}
+                      onValueChange={(v) => {
+                        if (!v) return;
+                        const p = products.find((p) => p.id === v);
+                        updateFreshLine(line.key, { productId: v, ...(p ? { unitPrice: p.sellingPrice } : {}) });
+                      }}
+                    >
+                      <SelectTrigger className="h-10 w-full text-sm">
+                        <SelectValue placeholder="Select product">
+                          {products.find((p) => p.id === line.productId)?.name}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent searchable>
+                        {products.map((p) => (
+                          <SelectItem key={p.id} value={p.id} label={p.name}>
+                            {p.name}
+                            <span className="ml-1 text-xs text-muted-foreground">({p.unit.name})</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number" min="0" step="0.001" placeholder="0"
+                      value={line.quantity}
+                      onChange={(e) => updateFreshLine(line.key, { quantity: e.target.value === "" ? "" : parseFloat(e.target.value) })}
+                      className="h-8 text-sm"
+                    />
+                    <Input
+                      type="number" min="0" step="0.01" placeholder="0.00"
+                      value={line.unitPrice}
+                      onChange={(e) => updateFreshLine(line.key, { unitPrice: e.target.value === "" ? "" : parseFloat(e.target.value) })}
+                      className="h-8 text-sm"
+                    />
+                    <div className="text-right text-sm font-medium pt-1.5 text-green-600">
+                      {lineTotal > 0 ? lineTotal.toFixed(2) : <span className="text-muted-foreground/30">—</span>}
+                    </div>
+                    <Button
+                      type="button" variant="ghost" size="icon-sm"
+                      className="mt-0.5 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10"
+                      onClick={() => removeFreshLine(line.key)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                );
+              })
+            )}
+
+            {freshLines.length > 0 && freshTotal > 0.001 && (
+              <div className="px-3 py-2 bg-green-100/40 text-sm">
+                <div className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2">
+                  <div className="col-span-3 text-right text-green-700 font-medium">Total Fresh Return</div>
+                  <div className="text-right font-bold text-green-700">Rs {freshTotal.toFixed(2)}</div>
+                  <div />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {freshLines.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-muted-foreground">Fresh Return Notes (optional)</Label>
+              <Textarea
+                value={freshNotes}
+                onChange={(e) => setFreshNotes(e.target.value)}
+                rows={2}
+                placeholder="e.g. customer rejected, wrong product..."
                 className="text-sm resize-none"
               />
             </div>

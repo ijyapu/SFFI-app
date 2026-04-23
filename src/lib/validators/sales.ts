@@ -29,16 +29,28 @@ export const returnItemSchema = z.object({
 // ─── Sales Order ──────────────────────────────
 
 export const createSoSchema = z.object({
-  customerId:  z.string().min(1, "Select a salesman"),
-  dueDate:     z.string().optional(),
-  notes:       z.string().optional(),
-  items:       z.array(soItemSchema).min(1, "Add at least one item"),
-  returnItems: z.array(returnItemSchema).optional(),
-  returnNotes: z.string().optional(),
-  amountPaid:  z.number().min(0),
+  customerId:        z.string().min(1, "Select a salesman"),
+  dueDate:           z.string().optional(),
+  notes:             z.string().optional(),
+  items:             z.array(soItemSchema).min(1, "Add at least one item"),
+  returnItems:       z.array(returnItemSchema).optional(),
+  returnNotes:       z.string().optional(),
+  freshReturnItems:  z.array(returnItemSchema).optional(),
+  freshReturnNotes:  z.string().optional(),
+  amountPaid:        z.number().min(0),
 });
 
 export type CreateSoValues = z.infer<typeof createSoSchema>;
+
+// ─── Sales Order Edit ─────────────────────────
+
+export const updateSoSchema = z.object({
+  dueDate: z.string().optional(),
+  notes:   z.string().optional(),
+  items:   z.array(soItemSchema).min(1, "Add at least one item"),
+});
+
+export type UpdateSoValues = z.infer<typeof updateSoSchema>;
 
 // ─── Salesman Payment ─────────────────────────
 
@@ -54,8 +66,9 @@ export type SalesmanPaymentValues = z.infer<typeof salesmanPaymentSchema>;
 // ─── Sales Return ─────────────────────────────
 
 export const salesReturnSchema = z.object({
-  notes: z.string().optional(),
-  items: z.array(returnItemSchema).min(1, "Add at least one item"),
+  notes:      z.string().optional(),
+  returnType: z.enum(["WASTE", "FRESH"]).default("WASTE"),
+  items:      z.array(returnItemSchema).min(1, "Add at least one item"),
 });
 
 export type SalesReturnValues = z.infer<typeof salesReturnSchema>;

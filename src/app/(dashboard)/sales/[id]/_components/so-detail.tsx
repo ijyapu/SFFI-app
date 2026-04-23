@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { DateDisplay } from "@/components/ui/date-display";
 import {
-  CheckCircle, XCircle, CreditCard, Loader2,
+  CheckCircle, XCircle, CreditCard, Loader2, Pencil,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -15,6 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SortButton } from "@/components/ui/sort-icon";
 import { useSortable, compareValues } from "@/hooks/use-sortable";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { cn } from "@/lib/utils";
 import { SoPaymentForm }    from "./so-payment-form";
 import { ReturnFormInline } from "./return-form-inline";
 import { confirmSalesOrder, cancelSalesOrder } from "../../actions";
@@ -62,6 +65,7 @@ type ReturnItem = {
 type SalesReturn = {
   id: string;
   returnNumber: string;
+  returnType: "WASTE" | "FRESH";
   notes: string | null;
   totalAmount: number;
   createdAt: string;
@@ -112,13 +116,15 @@ export function SoDetail(props: Props) {
     });
   }, [items, sortKey, sortDir]);
 
-  const totalWaste  = returns.reduce((sum, r) => sum + r.totalAmount, 0);
-  const netAmount   = totalAmount - totalWaste;
-  const outstanding = factoryAmount - amountPaid;
+  const wasteReturns  = returns.filter((r) => r.returnType !== "FRESH");
+  const freshReturns  = returns.filter((r) => r.returnType === "FRESH");
+  const totalReturns  = returns.reduce((sum, r) => sum + r.totalAmount, 0);
+  const netAmount     = totalAmount - totalReturns;
+  const outstanding   = factoryAmount - amountPaid;
   const cfg = STATUS_CONFIG[status];
 
-  // Whether waste recording is allowed (any active confirmed order)
-  const canRecordWaste = status === "CONFIRMED" || status === "PARTIALLY_PAID" || status === "PAID";
+  // Whether return recording is allowed (any active confirmed order)
+  const canRecordReturn = status === "CONFIRMED" || status === "PARTIALLY_PAID" || status === "PAID";
 
   async function handleConfirm() {
     setConfirming(true);
@@ -164,6 +170,15 @@ export function SoDetail(props: Props) {
         </div>
 
         <div className="flex gap-2">
+          {status !== "CANCELLED" && (
+            <Link
+              href={`/sales/${id}/edit`}
+              className={cn(buttonVariants({ variant: "outline" }))}
+            >
+              <Pencil className="h-4 w-4" />
+              Edit Order
+            </Link>
+          )}
           {status === "DRAFT" && (
             <>
               <Button variant="outline" onClick={handleCancel} disabled={cancelling}>
@@ -257,14 +272,14 @@ export function SoDetail(props: Props) {
                 <span>Rs {totalAmount.toFixed(2)}</span>
               </div>
 
-              {totalWaste > 0.001 && (
+              {totalReturns > 0.001 && (
                 <div className="flex justify-between text-orange-600">
-                  <span>Waste Deducted</span>
-                  <span>− Rs {totalWaste.toFixed(2)}</span>
+                  <span>Returns Deducted</span>
+                  <span>− Rs {totalReturns.toFixed(2)}</span>
                 </div>
               )}
 
-              {totalWaste > 0.001 && (
+              {totalReturns > 0.001 && (
                 <>
                   <Separator />
                   <div className="flex justify-between text-muted-foreground">
@@ -337,45 +352,57 @@ export function SoDetail(props: Props) {
                 <CardTitle className="text-sm font-medium text-muted-foreground">Returns from Market</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {returns.map((r) => (
-                  <div key={r.id} className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-medium">{r.returnNumber}</span>
-                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-orange-100 text-orange-700">
-                        Waste
-                      </span>
+                {returns.map((r) => {
+                  const isFresh = r.returnType === "FRESH";
+                  return (
+                    <div key={r.id} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-medium">{r.returnNumber}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${isFresh ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"}`}>
+                          {isFresh ? "Fresh" : "Waste"}
+                        </span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <DateDisplay date={r.createdAt} />
+                        {r.notes && ` · ${r.notes}`}
+                      </div>
+                      <div className="rounded border divide-y text-xs">
+                        {r.items.map((i) => (
+                          <div key={i.id} className="flex justify-between px-2 py-1">
+                            <span>{i.productName} <span className="text-muted-foreground">({i.unitName})</span></span>
+                            <span className="tabular-nums">×{i.quantity.toLocaleString(undefined, { maximumFractionDigits: 3 })} = Rs {i.totalPrice.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between text-xs font-medium">
+                        <span className="text-muted-foreground">{isFresh ? "Restocked & deducted" : "Total deducted"}</span>
+                        <span>Rs {r.totalAmount.toFixed(2)}</span>
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      <DateDisplay date={r.createdAt} />
-                      {r.notes && ` · ${r.notes}`}
-                    </div>
-                    <div className="rounded border divide-y text-xs">
-                      {r.items.map((i) => (
-                        <div key={i.id} className="flex justify-between px-2 py-1">
-                          <span>{i.productName} <span className="text-muted-foreground">({i.unitName})</span></span>
-                          <span className="tabular-nums">×{i.quantity.toLocaleString(undefined, { maximumFractionDigits: 3 })} = Rs {i.totalPrice.toFixed(2)}</span>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex justify-between text-xs font-medium">
-                      <span className="text-muted-foreground">Total deducted</span>
-                      <span>Rs {r.totalAmount.toFixed(2)}</span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </CardContent>
             </Card>
           )}
         </div>
       </div>
 
-      {/* Waste return form — always visible for active orders */}
-      {canRecordWaste && (
-        <ReturnFormInline
-          soId={id}
-          products={products}
-          previousReturns={returns}
-        />
+      {/* Return forms — always visible for active orders */}
+      {canRecordReturn && (
+        <div className="space-y-4">
+          <ReturnFormInline
+            soId={id}
+            products={products}
+            previousReturns={wasteReturns}
+            returnType="WASTE"
+          />
+          <ReturnFormInline
+            soId={id}
+            products={products}
+            previousReturns={freshReturns}
+            returnType="FRESH"
+          />
+        </div>
       )}
 
       <SoPaymentForm

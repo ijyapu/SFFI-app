@@ -6,8 +6,8 @@ import { prisma } from "@/lib/prisma";
 import { applyStockMovement } from "@/lib/stock";
 import { StockMovementType } from "@prisma/client";
 import {
-  salesmanSchema, createSoSchema, salesmanPaymentSchema, salesReturnSchema,
-  type SalesmanFormValues, type CreateSoValues,
+  salesmanSchema, createSoSchema, updateSoSchema, salesmanPaymentSchema, salesReturnSchema,
+  type SalesmanFormValues, type CreateSoValues, type UpdateSoValues,
   type SalesmanPaymentValues, type SalesReturnValues,
 } from "@/lib/validators/sales";
 
@@ -123,11 +123,21 @@ export async function createSalesOrder(values: CreateSoValues) {
     ? validReturnItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0)
     : 0;
 
-  const netAmount        = subtotal - returnTotal;
+  // Factor in any immediate fresh returns (also reduce net, but get restocked)
+  const validFreshItems = (data.freshReturnItems ?? []).filter(
+    (i) => i.productId && i.quantity > 0 && i.unitPrice >= 0
+  );
+  const hasFreshReturn   = validFreshItems.length > 0;
+  const freshReturnTotal = hasFreshReturn
+    ? validFreshItems.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0)
+    : 0;
+
+  const netAmount        = subtotal - returnTotal - freshReturnTotal;
   const commissionAmount = Math.round(netAmount * commissionPct) / 100;
   const factoryAmount    = netAmount - commissionAmount;
 
-  const returnNumber = hasReturn ? await generateReturnNumber() : null;
+  const returnNumber      = hasReturn ? await generateReturnNumber() : null;
+  const freshReturnNumber = hasFreshReturn ? await generateReturnNumber() : null;
 
   const paidNow = Math.min(data.amountPaid, factoryAmount);
   const status  = paidNow >= factoryAmount - 0.001 ? "PAID"
@@ -197,6 +207,7 @@ export async function createSalesOrder(values: CreateSoValues) {
         data: {
           returnNumber,
           salesOrderId: so.id,
+          returnType:   "WASTE",
           notes:        data.returnNotes || null,
           totalAmount:  returnTotal,
           createdBy:    userId,
@@ -209,6 +220,43 @@ export async function createSalesOrder(values: CreateSoValues) {
           },
         },
       });
+    }
+
+    if (hasFreshReturn && freshReturnNumber) {
+      await tx.salesReturn.create({
+        data: {
+          returnNumber: freshReturnNumber,
+          salesOrderId: so.id,
+          returnType:   "FRESH",
+          notes:        data.freshReturnNotes || null,
+          totalAmount:  freshReturnTotal,
+          createdBy:    userId,
+          items: {
+            create: validFreshItems.map((item) => ({
+              productId: item.productId,
+              quantity:  item.quantity,
+              unitPrice: item.unitPrice,
+            })),
+          },
+        },
+      });
+
+      // Restock fresh return items
+      for (const item of validFreshItems) {
+        await applyStockMovement(
+          {
+            productId:     item.productId,
+            type:          StockMovementType.RETURN_IN,
+            quantity:      item.quantity,
+            unitCost:      item.unitPrice,
+            notes:         `Fresh return via ${orderNumber}`,
+            referenceId:   so.id,
+            referenceType: "SalesReturn",
+            createdBy:     userId,
+          },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      }
     }
   });
 
@@ -285,6 +333,142 @@ export async function confirmSalesOrder(id: string) {
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
   revalidatePath("/inventory");
+}
+
+export async function updateSalesOrder(id: string, values: UpdateSoValues) {
+  const userId = await requireSalesAccess();
+  const data = updateSoSchema.parse(values);
+
+  const so = await prisma.salesOrder.findUnique({
+    where: { id, deletedAt: null },
+    include: {
+      items:   true,
+      returns: { select: { totalAmount: true } },
+    },
+  });
+  if (!so) throw new Error("Sales order not found");
+  if (so.status === "CANCELLED") throw new Error("Cannot edit a cancelled order");
+
+  const subtotal             = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const existingReturnTotal  = so.returns.reduce((sum, r) => sum + Number(r.totalAmount), 0);
+  const netAmount            = subtotal - existingReturnTotal;
+  const commissionPct        = Number(so.commissionPct);
+  const commissionAmount     = Math.round(netAmount * commissionPct) / 100;
+  const factoryAmount        = netAmount - commissionAmount;
+  const amountPaid           = Number(so.amountPaid);
+  const newStatus            = so.status === "DRAFT"        ? "DRAFT"
+                             : amountPaid >= factoryAmount - 0.001 ? "PAID"
+                             : amountPaid > 0               ? "PARTIALLY_PAID"
+                             :                                "CONFIRMED";
+
+  const needsStock = so.status !== "DRAFT";
+
+  await prisma.$transaction(async (tx) => {
+    if (needsStock) {
+      // Restore old stock
+      for (const item of so.items) {
+        await applyStockMovement(
+          {
+            productId:     item.productId,
+            type:          StockMovementType.ADJUSTMENT_IN,
+            quantity:      Number(item.quantity),
+            notes:         `Edit reversal: ${so.orderNumber}`,
+            referenceId:   id,
+            referenceType: "SalesOrder",
+            createdBy:     userId,
+          },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      }
+
+      // Validate new stock (stock is now restored from reversals above)
+      for (const item of data.items) {
+        const product = await tx.product.findUnique({
+          where:  { id: item.productId },
+          select: { name: true, currentStock: true },
+        });
+        if (!product) throw new Error("Product not found");
+        if (Number(product.currentStock) < item.quantity) {
+          throw new Error(
+            `Insufficient stock for "${product.name}". Available: ${Number(product.currentStock).toLocaleString(undefined, { maximumFractionDigits: 3 })}, needed: ${item.quantity.toLocaleString(undefined, { maximumFractionDigits: 3 })}`
+          );
+        }
+      }
+    }
+
+    // Replace items
+    await tx.salesOrderItem.deleteMany({ where: { salesOrderId: id } });
+
+    await tx.salesOrder.update({
+      where: { id },
+      data: {
+        dueDate:          data.dueDate ? new Date(data.dueDate) : null,
+        notes:            data.notes || null,
+        subtotal,
+        totalAmount:      subtotal,
+        commissionAmount,
+        factoryAmount,
+        status:           newStatus,
+        items: {
+          create: data.items.map((item) => ({
+            productId:  item.productId,
+            quantity:   item.quantity,
+            unitPrice:  item.unitPrice,
+            totalPrice: item.quantity * item.unitPrice,
+          })),
+        },
+      },
+    });
+
+    if (needsStock) {
+      for (const item of data.items) {
+        await applyStockMovement(
+          {
+            productId:     item.productId,
+            type:          StockMovementType.SALE,
+            quantity:      item.quantity,
+            unitCost:      item.unitPrice,
+            notes:         `Sale via ${so.orderNumber} (edited)`,
+            referenceId:   id,
+            referenceType: "SalesOrder",
+            createdBy:     userId,
+          },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      }
+    }
+  });
+
+  // Best-effort: sync daily log soldQty
+  try {
+    const now = new Date();
+    const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const openLog = await prisma.dailyLog.findUnique({
+      where:  { logDate: todayUTC },
+      select: { id: true, status: true },
+    });
+    if (openLog?.status === "OPEN") {
+      for (const item of so.items) {
+        await prisma.dailyLogItem.updateMany({
+          where: { dailyLogId: openLog.id, productId: item.productId },
+          data:  { soldQty: { decrement: Number(item.quantity) } },
+        });
+      }
+      for (const item of data.items) {
+        await prisma.dailyLogItem.updateMany({
+          where: { dailyLogId: openLog.id, productId: item.productId },
+          data:  { soldQty: { increment: item.quantity } },
+        });
+      }
+    }
+  } catch {
+    // Best-effort
+  }
+
+  revalidatePath(`/sales/${id}`);
+  revalidatePath("/sales");
+  revalidatePath("/inventory");
+  revalidatePath("/daily-log");
 }
 
 export async function cancelSalesOrder(id: string) {
@@ -474,6 +658,7 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
         returnNumber,
         salesOrderId: soId,
         notes:        data.notes || null,
+        returnType:   data.returnType,
         totalAmount:  returnTotal,
         createdBy:    userId,
         items: {
@@ -491,7 +676,25 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
       where: { id: soId },
       data: { commissionAmount, factoryAmount },
     });
-    // Waste returns are not restocked — goods are expired/damaged
+
+    // Fresh returns: restock the items back into inventory
+    if (data.returnType === "FRESH") {
+      for (const item of data.items) {
+        await applyStockMovement(
+          {
+            productId:     item.productId,
+            type:          StockMovementType.RETURN_IN,
+            quantity:      item.quantity,
+            unitCost:      item.unitPrice,
+            notes:         `Fresh return via ${so.orderNumber}`,
+            referenceId:   soId,
+            referenceType: "SalesReturn",
+            createdBy:     userId,
+          },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      }
+    }
   });
 
   revalidatePath(`/sales/${soId}`);
