@@ -564,6 +564,8 @@ export async function recordSalesmanPayment(soId: string, values: SalesmanPaymen
   const userId = await requireSalesAccess();
   const data = salesmanPaymentSchema.parse(values);
 
+  if (data.amount === 0) return; // caller chose "no payment"
+
   const so = await prisma.salesOrder.findUnique({
     where: { id: soId },
     select: { customerId: true, factoryAmount: true, amountPaid: true, status: true },

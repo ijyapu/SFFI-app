@@ -49,6 +49,11 @@ export function SoPaymentForm({ soId, factoryAmount, outstanding, salesmanTotalO
   });
 
   async function onSubmit(values: SalesmanPaymentValues) {
+    if (values.amount === 0) {
+      form.reset();
+      onClose();
+      return;
+    }
     try {
       await recordSalesmanPayment(soId, values);
       toast.success(`Payment of Rs ${values.amount.toFixed(2)} recorded`);
@@ -104,11 +109,11 @@ export function SoPaymentForm({ soId, factoryAmount, outstanding, salesmanTotalO
                   <FormControl>
                     <Input
                       type="number"
-                      min="0.01"
+                      min="0"
                       step="0.01"
                       max={salesmanTotalOutstanding}
-                      value={field.value === 0 ? "" : field.value}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      value={field.value || ""}
+                      onChange={(e) => { const n = parseFloat(e.target.value); field.onChange(isNaN(n) ? 0 : n); }}
                     />
                   </FormControl>
                   {watchAmount > outstanding + 0.001 && (

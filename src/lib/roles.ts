@@ -16,6 +16,7 @@ export const ROLE_PERMISSIONS = {
   adminOverride:["admin"] as AppRole[],
   settings:     ["admin"] as AppRole[],
   reports:      ["admin", "manager", "accountant"] as AppRole[],
+  receipts:     ["admin", "manager", "accountant"] as AppRole[],
 } as const;
 
 export type PermissionKey = keyof typeof ROLE_PERMISSIONS;
@@ -45,4 +46,5 @@ export const ROLE_PROTECTED_ROUTES: { pattern: RegExp; allowed: AppRole[] }[] = 
   { pattern: /^\/api\/admin(\/.*)?$/, allowed: ROLE_PERMISSIONS.adminOverride },
   { pattern: /^\/settings(\/.*)?$/,  allowed: ROLE_PERMISSIONS.settings },
   { pattern: /^\/reports(\/.*)?$/,   allowed: ROLE_PERMISSIONS.reports },
+  { pattern: /^\/receipts(\/.*)?$/, allowed: ROLE_PERMISSIONS.receipts },
 ];

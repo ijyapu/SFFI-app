@@ -731,6 +731,28 @@ enum AccessRequestStatus {
 }
 
 // ─────────────────────────────────────────────
+// RECEIPTS (money borrowed / received by company)
+// ─────────────────────────────────────────────
+
+model Receipt {
+  id            String        @id @default(cuid())
+  receiptNumber String        @unique
+  receivedFrom  String        // name of person or entity
+  amount        Decimal       @db.Decimal(10, 2)
+  method        PaymentMethod
+  reference     String?       // cheque no, bank ref, etc.
+  notes         String?
+  receivedAt    DateTime      @default(now())
+
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([receivedAt])
+}
+
+// ─────────────────────────────────────────────
 // AUDIT LOG
 // ─────────────────────────────────────────────
 

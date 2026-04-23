@@ -16,6 +16,7 @@ import {
   BookMarked,
   Building2,
   FlaskConical,
+  Wallet,
   type LucideIcon,
 } from "lucide-react";
 import type { PermissionKey } from "@/lib/roles";
@@ -121,6 +122,12 @@ export const NAV_GROUPS: NavGroup[] = [
         href: "/expenses",
         icon: Receipt,
         permission: "expenses",
+      },
+      {
+        title: "Receipts",
+        href: "/receipts",
+        icon: Wallet,
+        permission: "receipts",
       },
       {
         title: "Costing",

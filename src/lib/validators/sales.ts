@@ -55,7 +55,7 @@ export type UpdateSoValues = z.infer<typeof updateSoSchema>;
 // ─── Salesman Payment ─────────────────────────
 
 export const salesmanPaymentSchema = z.object({
-  amount:    z.number().min(0.01, "Amount must be > 0"),
+  amount:    z.number().min(0, "Amount must be ≥ 0"),
   method:    z.enum(["CASH", "BANK_TRANSFER", "CHECK", "ESEWA", "KHALTI", "IME_PAY", "FONEPAY", "OTHER"]),
   reference: z.string().optional(),
   notes:     z.string().optional(),
