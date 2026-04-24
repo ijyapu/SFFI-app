@@ -39,6 +39,32 @@ async function generateReturnNumber(): Promise<string> {
   return `${prefix}${String(count + 1).padStart(4, "0")}`;
 }
 
+/** Best-effort: increment (+1) or decrement (-1) soldQty in today's open daily log. */
+async function syncDailyLogSoldQty(
+  items: Array<{ productId: string; quantity: number }>,
+  delta: 1 | -1,
+): Promise<void> {
+  try {
+    const now      = new Date();
+    const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+    const openLog  = await prisma.dailyLog.findUnique({
+      where:  { logDate: todayUTC },
+      select: { id: true, status: true },
+    });
+    if (openLog?.status !== "OPEN") return;
+    for (const item of items) {
+      await prisma.dailyLogItem.updateMany({
+        where: { dailyLogId: openLog.id, productId: item.productId },
+        data:  delta === 1
+          ? { soldQty: { increment: item.quantity } }
+          : { soldQty: { decrement: item.quantity } },
+      });
+    }
+  } catch {
+    // Best-effort — never fail the caller
+  }
+}
+
 // ─── Salesmen ─────────────────────────────────
 
 export async function createSalesman(values: SalesmanFormValues) {
@@ -258,28 +284,9 @@ export async function createSalesOrder(values: CreateSoValues) {
         );
       }
     }
-  });
+  }, { timeout: 30000 });
 
-  // Best-effort: update soldQty in today's open daily log.
-  // SALE movements already deducted stock — daily log close skips DAILY_OUT for sold to avoid double-deduction.
-  try {
-    const now = new Date();
-    const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-    const openLog = await prisma.dailyLog.findUnique({
-      where:  { logDate: todayUTC },
-      select: { id: true, status: true },
-    });
-    if (openLog?.status === "OPEN") {
-      for (const item of data.items) {
-        await prisma.dailyLogItem.updateMany({
-          where: { dailyLogId: openLog.id, productId: item.productId },
-          data:  { soldQty: { increment: item.quantity } },
-        });
-      }
-    }
-  } catch {
-    // Best-effort — don't fail order creation if daily log update fails
-  }
+  await syncDailyLogSoldQty(data.items, 1);
 
   revalidatePath("/sales");
   revalidatePath("/inventory");
@@ -328,11 +335,17 @@ export async function confirmSalesOrder(id: string) {
       where: { id },
       data: { status: "CONFIRMED" },
     });
-  });
+  }, { timeout: 30000 });
+
+  await syncDailyLogSoldQty(
+    so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
+    1,
+  );
 
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
   revalidatePath("/inventory");
+  revalidatePath("/daily-log");
 }
 
 export async function updateSalesOrder(id: string, values: UpdateSoValues) {
@@ -437,32 +450,14 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
         );
       }
     }
-  });
+  }, { timeout: 30000 });
 
-  // Best-effort: sync daily log soldQty
-  try {
-    const now = new Date();
-    const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-    const openLog = await prisma.dailyLog.findUnique({
-      where:  { logDate: todayUTC },
-      select: { id: true, status: true },
-    });
-    if (openLog?.status === "OPEN") {
-      for (const item of so.items) {
-        await prisma.dailyLogItem.updateMany({
-          where: { dailyLogId: openLog.id, productId: item.productId },
-          data:  { soldQty: { decrement: Number(item.quantity) } },
-        });
-      }
-      for (const item of data.items) {
-        await prisma.dailyLogItem.updateMany({
-          where: { dailyLogId: openLog.id, productId: item.productId },
-          data:  { soldQty: { increment: item.quantity } },
-        });
-      }
-    }
-  } catch {
-    // Best-effort
+  if (needsStock) {
+    await syncDailyLogSoldQty(
+      so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
+      -1,
+    );
+    await syncDailyLogSoldQty(data.items, 1);
   }
 
   revalidatePath(`/sales/${id}`);
@@ -476,19 +471,29 @@ export async function cancelSalesOrder(id: string) {
 
   const so = await prisma.salesOrder.findUnique({
     where: { id },
-    select: { status: true },
+    select: { status: true, items: { select: { productId: true, quantity: true } } },
   });
   if (!so) throw new Error("Sales order not found");
   if (so.status === "PAID") throw new Error("Cannot cancel a fully paid order");
   if (so.status === "CANCELLED") throw new Error("Order is already cancelled");
+
+  const wasConfirmed = ["CONFIRMED", "PARTIALLY_PAID"].includes(so.status);
 
   await prisma.salesOrder.update({
     where: { id },
     data: { status: "CANCELLED" },
   });
 
+  if (wasConfirmed) {
+    await syncDailyLogSoldQty(
+      so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
+      -1,
+    );
+  }
+
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
+  revalidatePath("/daily-log");
 }
 
 export async function deleteSalesOrder(id: string) {
@@ -529,28 +534,13 @@ export async function deleteSalesOrder(id: string) {
       where: { id },
       data:  { deletedAt: new Date() },
     });
-  });
+  }, { timeout: 30000 });
 
-  // Best-effort: reverse soldQty in today's open daily log
   if (needsReversal) {
-    try {
-      const now = new Date();
-      const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-      const openLog = await prisma.dailyLog.findUnique({
-        where:  { logDate: todayUTC },
-        select: { id: true, status: true },
-      });
-      if (openLog?.status === "OPEN") {
-        for (const item of so.items) {
-          await prisma.dailyLogItem.updateMany({
-            where: { dailyLogId: openLog.id, productId: item.productId },
-            data:  { soldQty: { decrement: Number(item.quantity) } },
-          });
-        }
-      }
-    } catch {
-      // Best-effort
-    }
+    await syncDailyLogSoldQty(
+      so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
+      -1,
+    );
   }
 
   revalidatePath("/sales");

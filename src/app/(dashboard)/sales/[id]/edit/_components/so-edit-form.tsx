@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +44,7 @@ type Product = {
 export function SoEditForm({ so, products }: { so: SoData; products: Product[] }) {
   const router = useRouter();
   const [openCombobox, setOpenCombobox] = useState<Record<number, boolean>>({});
+  const savedScrollY = useRef(0);
 
   const form = useForm<UpdateSoValues>({
     resolver: zodResolver(updateSoSchema),
@@ -188,7 +189,15 @@ export function SoEditForm({ so, products }: { so: SoData; products: Product[] }
                       <FormItem className="space-y-0">
                         <Popover
                           open={!!openCombobox[index]}
-                          onOpenChange={(o) => setOpenCombobox((prev) => ({ ...prev, [index]: o }))}
+                          onOpenChange={(o) => {
+                            if (o) savedScrollY.current = window.scrollY;
+                            setOpenCombobox((prev) => ({ ...prev, [index]: o }));
+                            if (o) requestAnimationFrame(() =>
+                              requestAnimationFrame(() =>
+                                window.scrollTo({ top: savedScrollY.current, behavior: "instant" as ScrollBehavior })
+                              )
+                            );
+                          }}
                         >
                           <PopoverTrigger
                             nativeButton={false}

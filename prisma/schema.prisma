@@ -200,12 +200,13 @@ model DailyLogItem {
   dailyLogId String
   productId  String
 
-  openingQty  Decimal @default(0) @db.Decimal(10, 3) // snapshot of currentStock at log creation
-  producedQty Decimal @default(0) @db.Decimal(10, 3)
-  usedQty     Decimal @default(0) @db.Decimal(10, 3)
-  soldQty     Decimal @default(0) @db.Decimal(10, 3)
-  wasteQty    Decimal @default(0) @db.Decimal(10, 3)
-  damagedQty  Decimal @default(0) @db.Decimal(10, 3)
+  openingQty     Decimal @default(0) @db.Decimal(10, 3) // snapshot of currentStock at log creation
+  producedQty    Decimal @default(0) @db.Decimal(10, 3)
+  usedQty        Decimal @default(0) @db.Decimal(10, 3)
+  soldQty        Decimal @default(0) @db.Decimal(10, 3)
+  freshReturnQty Decimal @default(0) @db.Decimal(10, 3) // FRESH sales returns restocked today
+  wasteQty       Decimal @default(0) @db.Decimal(10, 3)
+  damagedQty     Decimal @default(0) @db.Decimal(10, 3)
   closingQty  Decimal @default(0) @db.Decimal(10, 3) // stored when day is closed
   actualQty   Decimal? @db.Decimal(10, 3)            // physical count (optional)
   varianceQty Decimal? @db.Decimal(10, 3)            // actualQty − closingQty

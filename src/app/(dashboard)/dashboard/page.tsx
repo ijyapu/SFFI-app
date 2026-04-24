@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { RevenueChart } from "./_components/revenue-chart";
 import { RecentActivity } from "./_components/recent-activity";
+import { ProductInsights } from "./_components/product-insights";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import { COMPANY } from "@/lib/company";
 
@@ -157,6 +158,67 @@ export default async function DashboardPage() {
     const pt = chartData.find((d) => d.monthNum === po.orderDate.getMonth() + 1 && d.year === po.orderDate.getFullYear());
     if (pt) pt.purchases += Number(po.totalAmount);
   }
+
+  // Product insights — top sellers, most/fewest returned this month
+  const [soldGroupBy, returnedGroupBy] = await Promise.all([
+    prisma.salesOrderItem.groupBy({
+      by: ["productId"],
+      where: {
+        salesOrder: {
+          status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+          deletedAt: null,
+          orderDate: { gte: monthStart },
+        },
+      },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: "desc" } },
+    }),
+    prisma.salesReturnItem.groupBy({
+      by: ["productId"],
+      where: {
+        salesReturn: {
+          salesOrder: { deletedAt: null },
+          createdAt:  { gte: monthStart },
+        },
+      },
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: "desc" } },
+    }),
+  ]);
+
+  const insightIds = [...new Set([
+    ...soldGroupBy.map((s) => s.productId),
+    ...returnedGroupBy.map((r) => r.productId),
+  ])];
+  const insightProducts = insightIds.length > 0
+    ? await prisma.product.findMany({
+        where:  { id: { in: insightIds } },
+        select: { id: true, name: true, unit: { select: { name: true } } },
+      })
+    : [];
+  const pMap = new Map(insightProducts.map((p) => [p.id, { name: p.name, unit: p.unit.name }]));
+
+  const topSellers = soldGroupBy.slice(0, 5).map((s) => ({
+    name: pMap.get(s.productId)?.name ?? "Unknown",
+    unit: pMap.get(s.productId)?.unit ?? "",
+    qty:  Number(s._sum.quantity ?? 0),
+  }));
+
+  const mostReturned = returnedGroupBy.slice(0, 5).map((r) => ({
+    name: pMap.get(r.productId)?.name ?? "Unknown",
+    unit: pMap.get(r.productId)?.unit ?? "",
+    qty:  Number(r._sum.quantity ?? 0),
+  }));
+
+  const returnQtyMap = new Map(returnedGroupBy.map((r) => [r.productId, Number(r._sum.quantity ?? 0)]));
+  const fewestReturned = soldGroupBy
+    .map((s) => ({
+      name: pMap.get(s.productId)?.name ?? "Unknown",
+      unit: pMap.get(s.productId)?.unit ?? "",
+      qty:  returnQtyMap.get(s.productId) ?? 0,
+    }))
+    .sort((a, b) => a.qty - b.qty)
+    .slice(0, 5);
 
   return (
     <div className="space-y-6 pb-8">
@@ -426,6 +488,14 @@ export default async function DashboardPage() {
           <RevenueChart data={chartData.map(({ month, revenue, purchases }) => ({ month, revenue, purchases }))} />
         </CardContent>
       </Card>
+
+      {/* ── Product Insights ── */}
+      <ProductInsights
+        topSellers={topSellers}
+        mostReturned={mostReturned}
+        fewestReturned={fewestReturned}
+        monthLabel={format(now, "MMM")}
+      />
 
       {/* ── Recent Activity ── */}
       <RecentActivity

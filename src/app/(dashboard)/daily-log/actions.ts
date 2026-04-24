@@ -51,10 +51,12 @@ export type DailyLogItemRow = {
   categoryName: string;
   unitName: string;
   openingQty: number;
-  purchasedQty: number;   // computed from PurchaseLineItem, not stored
+  purchasedQty: number;    // computed from PurchaseLineItem, not stored
   producedQty: number;
   usedQty: number;
   soldQty: number;
+  freshReturnQty: number;   // computed from FRESH SalesReturn records
+  wasteReturnQty: number;  // computed from WASTE SalesReturn records (read-only, not deducted)
   wasteQty: number;
   damagedQty: number;
   closingQty: number;
@@ -105,6 +107,59 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
       .map((s) => [s.productId!, Number(s._sum.quantity ?? 0)])
   );
 
+  // For open logs, compute soldQty and freshReturnQty live so the table
+  // always reflects actual activity regardless of async sync functions.
+  let confirmedSoldMap     = new Map<string, number>();
+  let freshReturnMap       = new Map<string, number>();
+  if (log.status === "OPEN") {
+    const [soldSums, freshReturnSums] = await Promise.all([
+      prisma.salesOrderItem.groupBy({
+        by: ["productId"],
+        where: {
+          salesOrder: {
+            status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+            deletedAt: null,
+            orderDate: { gte: logDate, lt: nextDay },
+          },
+        },
+        _sum: { quantity: true },
+      }),
+      prisma.salesReturnItem.groupBy({
+        by: ["productId"],
+        where: {
+          salesReturn: {
+            returnType: "FRESH",
+            salesOrder: { deletedAt: null },
+            createdAt:  { gte: logDate, lt: nextDay },
+          },
+        },
+        _sum: { quantity: true },
+      }),
+    ]);
+    confirmedSoldMap = new Map(
+      soldSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
+    );
+    freshReturnMap = new Map(
+      freshReturnSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
+    );
+  }
+
+  // Always compute wasteReturnQty from WASTE sales returns (read-only, informational)
+  const wasteReturnSums = await prisma.salesReturnItem.groupBy({
+    by: ["productId"],
+    where: {
+      salesReturn: {
+        returnType: "WASTE",
+        salesOrder: { deletedAt: null },
+        createdAt:  { gte: logDate, lt: nextDay },
+      },
+    },
+    _sum: { quantity: true },
+  });
+  const wasteReturnMap = new Map(
+    wasteReturnSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
+  );
+
   const items: DailyLogItemRow[] = log.items.map((item) => ({
     id: item.id,
     productId: item.productId,
@@ -117,7 +172,15 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
     purchasedQty: purchaseMap.get(item.productId) ?? 0,
     producedQty: Number(item.producedQty),
     usedQty: Number(item.usedQty),
-    soldQty: Number(item.soldQty),
+    soldQty: log.status === "OPEN"
+      ? (confirmedSoldMap.get(item.productId) ?? Number(item.soldQty))
+      : Number(item.soldQty),
+    freshReturnQty: log.status === "OPEN"
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? (freshReturnMap.get(item.productId) ?? Number((item as any).freshReturnQty ?? 0))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      : Number((item as any).freshReturnQty ?? 0),
+    wasteReturnQty: wasteReturnMap.get(item.productId) ?? 0,
     wasteQty: Number(item.wasteQty),
     damagedQty: Number(item.damagedQty),
     closingQty: Number(item.closingQty),
@@ -202,6 +265,29 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
     },
   });
 
+  // Backfill soldQty from any sales that were confirmed before the log was opened
+  const nextDay = new Date(logDate.getTime() + 24 * 60 * 60 * 1000);
+  const soldItems = await prisma.salesOrderItem.findMany({
+    where: {
+      salesOrder: {
+        status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+        deletedAt: null,
+        orderDate: { gte: logDate, lt: nextDay },
+      },
+    },
+    select: { productId: true, quantity: true },
+  });
+  const soldByProduct = new Map<string, number>();
+  for (const si of soldItems) {
+    soldByProduct.set(si.productId, (soldByProduct.get(si.productId) ?? 0) + Number(si.quantity));
+  }
+  for (const [productId, qty] of soldByProduct) {
+    await prisma.dailyLogItem.updateMany({
+      where: { dailyLogId: log.id, productId },
+      data:  { soldQty: qty },
+    });
+  }
+
   revalidatePath("/daily-log");
   return { id: log.id };
 }
@@ -214,6 +300,7 @@ export type UpdateItemValues = {
   producedQty: number;
   usedQty: number;
   soldQty: number;
+  freshReturnQty: number;
   wasteQty: number;
   damagedQty: number;
   actualQty: number | null;
@@ -237,13 +324,14 @@ export async function updateDailyLogItem(
   await prisma.dailyLogItem.update({
     where: { id: itemId },
     data: {
-      producedQty: values.producedQty,
-      usedQty: values.usedQty,
-      soldQty: values.soldQty,
-      wasteQty: values.wasteQty,
-      damagedQty: values.damagedQty,
-      actualQty: values.actualQty,
-      notes: values.notes,
+      producedQty:    values.producedQty,
+      usedQty:        values.usedQty,
+      soldQty:        values.soldQty,
+      freshReturnQty: values.freshReturnQty,
+      wasteQty:       values.wasteQty,
+      damagedQty:     values.damagedQty,
+      actualQty:      values.actualQty,
+      notes:          values.notes,
     },
   });
   // No revalidatePath here — client manages its own state for speed
@@ -314,16 +402,38 @@ export async function closeDailyLog(logId: string): Promise<void> {
   const pendingMovements: PendingMovement[] = [];
   const itemUpdates: Array<{ id: string; closingQty: number; actualQty: number | null; varianceQty: number | null }> = [];
 
+  // Sync soldQty from confirmed sales before calculating, so closing qty
+  // uses the same value that was shown to the user in the table.
+  const confirmedSoldSums = await prisma.salesOrderItem.groupBy({
+    by: ["productId"],
+    where: {
+      salesOrder: {
+        status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+        deletedAt: null,
+        orderDate: { gte: logDate, lt: nextDay },
+      },
+    },
+    _sum: { quantity: true },
+  });
+  const confirmedSoldMap = new Map(
+    confirmedSoldSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
+  );
+
   for (const item of log.items) {
     const opening   = Number(item.openingQty);
     const purchased = purchaseMap.get(item.productId) ?? 0;
     const produced  = Number(item.producedQty);
     const used      = Number(item.usedQty);
-    const sold      = Number(item.soldQty);
-    const waste     = Number(item.wasteQty);
-    const damaged   = Number(item.damagedQty);
+    // Use confirmed sales qty; fall back to stored soldQty if user manually overrode it
+    const confirmedSold  = confirmedSoldMap.get(item.productId) ?? 0;
+    const storedSold     = Number(item.soldQty);
+    const sold           = storedSold > confirmedSold ? storedSold : confirmedSold;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const freshReturn    = Number((item as any).freshReturnQty ?? 0);
+    const waste          = Number(item.wasteQty);
+    const damaged        = Number(item.damagedQty);
 
-    const closing  = opening + purchased + produced - used - sold - waste - damaged;
+    const closing  = opening + purchased + produced + freshReturn - used - sold - waste - damaged;
     const actual   = item.actualQty != null ? Number(item.actualQty) : null;
     const variance = actual != null ? actual - closing : null;
 
@@ -498,15 +608,16 @@ export async function reopenDailyLog(logId: string): Promise<void> {
       await tx.dailyLogItem.updateMany({
         where: { dailyLogId: logId },
         data: {
-          producedQty: 0,
-          usedQty: 0,
-          soldQty: 0,
-          wasteQty: 0,
-          damagedQty: 0,
-          closingQty: 0,
-          actualQty: null,
-          varianceQty: null,
-          notes: null,
+          producedQty:    0,
+          usedQty:        0,
+          soldQty:        0,
+          freshReturnQty: 0,
+          wasteQty:       0,
+          damagedQty:     0,
+          closingQty:     0,
+          actualQty:      null,
+          varianceQty:    null,
+          notes:          null,
         },
       });
 

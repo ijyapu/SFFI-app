@@ -25,7 +25,8 @@ function calcClosing(row: RowState): number {
   return (
     row.openingQty +
     row.purchasedQty +
-    row.producedQty -
+    row.producedQty +
+    row.freshReturnQty -
     row.usedQty -
     row.soldQty -
     row.wasteQty -
@@ -67,6 +68,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
       try {
         await updateDailyLogItem(itemId, {
           producedQty: row.producedQty,
+          freshReturnQty: row.freshReturnQty,
           usedQty: row.usedQty,
           soldQty: row.soldQty,
           wasteQty: row.wasteQty,
@@ -100,7 +102,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
   function updateField<
     K extends keyof Pick<
       RowState,
-      "producedQty" | "usedQty" | "soldQty" | "wasteQty" | "damagedQty" | "actualQty" | "notes"
+      "producedQty" | "freshReturnQty" | "usedQty" | "soldQty" | "wasteQty" | "damagedQty" | "actualQty" | "notes"
     >,
   >(itemId: string, field: K, value: RowState[K]) {
     setRows((prev) =>
@@ -135,7 +137,8 @@ export function DailyLogTable({ items, isOpen }: Props) {
 
   function numInput(
     row: RowState,
-    field: keyof Pick<RowState, "producedQty" | "usedQty" | "soldQty" | "wasteQty" | "damagedQty">
+    field: keyof Pick<RowState, "producedQty" | "freshReturnQty" | "usedQty" | "soldQty" | "wasteQty" | "damagedQty">,
+    colorClass?: string
   ) {
     const val = row[field] as number;
     return (
@@ -148,16 +151,14 @@ export function DailyLogTable({ items, isOpen }: Props) {
         placeholder="—"
         defaultValue={val === 0 ? "" : val}
         onChange={(e) => {
-          // Update state immediately so closing recalculates live as you type
           const parsed = parseFloat(e.target.value) || 0;
           updateField(row.id, field, parsed);
         }}
         onBlur={(e) => {
-          // Ensure final value is saved (handles paste / autocomplete edge cases)
           const parsed = parseFloat(e.target.value) || 0;
           updateField(row.id, field, parsed);
         }}
-        className={numInputClass}
+        className={`${numInputClass}${colorClass ? ` ${colorClass}` : ""}`}
       />
     );
   }
@@ -176,6 +177,14 @@ export function DailyLogTable({ items, isOpen }: Props) {
             <TableHead className="w-22 text-right text-emerald-700 font-semibold">Produced</TableHead>
             <TableHead className="w-22 text-right text-orange-600 font-semibold">Used</TableHead>
             <TableHead className="w-22 text-right text-rose-600 font-semibold">Sold</TableHead>
+            <TableHead className="w-22 text-right text-emerald-600 font-semibold">
+              Fresh Ret.
+              <span className="block text-[10px] font-normal text-emerald-400 normal-case tracking-normal">returned</span>
+            </TableHead>
+            <TableHead className="w-22 text-right text-amber-600 font-semibold">
+              Waste Ret.
+              <span className="block text-[10px] font-normal text-amber-400 normal-case tracking-normal">auto</span>
+            </TableHead>
             <TableHead className="w-22 text-right text-rose-600 font-semibold">Waste</TableHead>
             <TableHead className="w-22 text-right text-rose-600 font-semibold">Damaged</TableHead>
             <TableHead className="w-22 text-right font-bold text-foreground border-l bg-muted/60">Closing</TableHead>
@@ -192,7 +201,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
         <TableBody>
           {rows.length === 0 && (
             <TableRow>
-              <TableCell colSpan={13} className="text-center py-10 text-muted-foreground">
+              <TableCell colSpan={15} className="text-center py-10 text-muted-foreground">
                 No products in this log
               </TableCell>
             </TableRow>
@@ -218,7 +227,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
                 {/* Category header */}
                 <TableRow className="bg-primary/8 hover:bg-primary/8 border-y border-primary/15">
                   <TableCell
-                    colSpan={13}
+                    colSpan={15}
                     className="py-2 px-3"
                   >
                     <div className="flex items-center gap-3">
@@ -257,7 +266,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
                 {/* Product rows */}
                 {catRows.map((row) => {
                   const closing = calcClosing(row);
-                  const hasActivity = row.producedQty + row.usedQty + row.soldQty + row.wasteQty + row.damagedQty > 0;
+                  const hasActivity = row.producedQty + row.freshReturnQty + row.usedQty + row.soldQty + row.wasteQty + row.damagedQty > 0;
                   const variance = row.actualQty != null ? row.actualQty - closing : null;
                   const hasVariance = variance != null && Math.abs(variance) > 0.001;
 
@@ -296,6 +305,14 @@ export function DailyLogTable({ items, isOpen }: Props) {
                       <TableCell className="text-right">{numInput(row, "usedQty")}</TableCell>
                       {/* Sold */}
                       <TableCell className="text-right">{numInput(row, "soldQty")}</TableCell>
+                      {/* Fresh Return */}
+                      <TableCell className="text-right">{numInput(row, "freshReturnQty", "text-emerald-700")}</TableCell>
+                      {/* Waste Return (read-only, auto from sales returns) */}
+                      <TableCell className="text-right tabular-nums text-sm text-amber-600">
+                        {row.wasteReturnQty > 0 ? fmt(row.wasteReturnQty) : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
+                      </TableCell>
                       {/* Waste */}
                       <TableCell className="text-right">{numInput(row, "wasteQty")}</TableCell>
                       {/* Damaged */}
@@ -406,7 +423,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
         </span>
         <span>
           <span className="font-medium">Closing</span>
-          {" = "}Opening + Purchased + Produced − Used − Sold − Waste − Damaged
+          {" = "}Opening + Purchased + Produced + Fresh Ret. − Used − Sold − Waste − Damaged
         </span>
       </div>
     </div>
