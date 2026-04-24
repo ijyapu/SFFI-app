@@ -22,6 +22,7 @@ async function requireInventoryAccess() {
 // ─────────────────────────────────────────────
 
 export async function getNextSkuPreview(categoryName: string): Promise<string> {
+  await requireInventoryAccess();
   const prefix = categoryName.replace(/[^a-zA-Z]/g, "").substring(0, 3).toUpperCase() || "XXX";
   const last = await prisma.product.findFirst({
     where: { sku: { startsWith: prefix + "-" }, deletedAt: null },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { toast } from "sonner";
 import { Trash2, ImageIcon } from "lucide-react";
 import {

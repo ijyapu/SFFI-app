@@ -92,6 +92,7 @@ export type RecipeRow = {
 };
 
 export async function getRecipes(): Promise<RecipeRow[]> {
+  await requireCostingAccess();
   const recipes = await prisma.recipe.findMany({
     include: {
       product: { include: { unit: true } },

@@ -22,6 +22,10 @@ const schema = z.object({
 export type CompanyInfo = z.infer<typeof schema>;
 
 export async function getCompanyInfo(): Promise<CompanyInfo> {
+  const user = await currentUser();
+  if (!user) throw new Error("Unauthenticated");
+  const role = user.publicMetadata?.role as string | undefined;
+  if (!role) throw new Error("Unauthorized");
   try {
     const row = await db.companySettings.findUnique({ where: { id: "main" } });
     if (row) return row;

@@ -190,6 +190,8 @@ export async function createWithdrawal(
 
 export async function deleteWithdrawal(id: string, employeeId: string) {
   await requirePayrollAccess();
+  const record = await prisma.salaryWithdrawal.findUnique({ where: { id } });
+  if (!record || record.employeeId !== employeeId) throw new Error("Not found");
   await prisma.salaryWithdrawal.delete({ where: { id } });
   revalidatePath(`/employees/${employeeId}`);
 }
@@ -327,9 +329,10 @@ export async function addPayrollDeduction(
 
   const item = await prisma.payrollItem.findUnique({
     where: { id: payrollItemId },
-    select: { basicSalary: true, carryoverIn: true, deductions: true, payrollRunId: true },
+    select: { basicSalary: true, carryoverIn: true, deductions: true, payrollRunId: true, payrollRun: { select: { status: true } } },
   });
   if (!item) throw new Error("Payroll item not found");
+  if (item.payrollRun.status === "FINALIZED") throw new Error("Cannot modify a finalized payroll run");
 
   const newDeductions = Number(item.deductions) + data.amount;
   const totalOwed     = Number(item.basicSalary) + Number(item.carryoverIn);
@@ -375,9 +378,10 @@ export async function deletePayrollDeduction(id: string, payrollItemId: string) 
 
   const item = await prisma.payrollItem.findUnique({
     where: { id: payrollItemId },
-    select: { basicSalary: true, carryoverIn: true, deductions: true, payrollRunId: true },
+    select: { basicSalary: true, carryoverIn: true, deductions: true, payrollRunId: true, payrollRun: { select: { status: true } } },
   });
   if (!item) throw new Error("Payroll item not found");
+  if (item.payrollRun.status === "FINALIZED") throw new Error("Cannot modify a finalized payroll run");
 
   const newDeductions = Math.max(0, Number(item.deductions) - Number(deduction.amount));
   const newNetPay     = calcNetPay(Number(item.basicSalary), Number(item.carryoverIn), newDeductions);

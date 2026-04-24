@@ -66,6 +66,7 @@ export type DailyLogItemRow = {
 };
 
 export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> {
+  await requireDailyLogAccess();
   const logDate = parseDateParam(dateStr);
   const nextDay = new Date(logDate.getTime() + 24 * 60 * 60 * 1000);
 
