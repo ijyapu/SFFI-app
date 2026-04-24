@@ -225,9 +225,11 @@ export function ReturnsByTypeChart({ data }: { data: ReturnTypeItem[] }) {
           outerRadius={80}
           innerRadius={48}
           paddingAngle={3}
-          label={({ type, amount }) =>
-            `${type === "FRESH" ? "Fresh" : "Waste"} ${total > 0 ? ((amount / total) * 100).toFixed(0) : 0}%`
-          }
+          label={(props) => {
+            const entry = props.payload as ReturnTypeItem | undefined;
+            if (!entry) return "";
+            return `${entry.type === "FRESH" ? "Fresh" : "Waste"} ${total > 0 ? ((entry.amount / total) * 100).toFixed(0) : 0}%`;
+          }}
           labelLine={false}
         >
           {data.map((entry) => (
