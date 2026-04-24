@@ -6,8 +6,6 @@ import { revalidatePath } from "next/cache";
 import { COMPANY } from "@/lib/company";
 import { z } from "zod";
 
-const db = prisma as any;
-
 const schema = z.object({
   name:        z.string().min(1),
   nameShort:   z.string().min(1),
@@ -27,7 +25,7 @@ export async function getCompanyInfo(): Promise<CompanyInfo> {
   const role = user.publicMetadata?.role as string | undefined;
   if (!role) throw new Error("Unauthorized");
   try {
-    const row = await db.companySettings.findUnique({ where: { id: "main" } });
+    const row = await prisma.companySettings.findUnique({ where: { id: "main" } });
     if (row) return row;
   } catch {}
   // Fall back to static config if DB row doesn't exist yet
@@ -51,7 +49,7 @@ export async function saveCompanyInfo(data: CompanyInfo): Promise<void> {
 
   const parsed = schema.parse(data);
 
-  await db.companySettings.upsert({
+  await prisma.companySettings.upsert({
     where:  { id: "main" },
     update: { ...parsed, updatedBy: user.id },
     create: { id: "main", ...parsed, updatedBy: user.id },

@@ -39,6 +39,13 @@ type Props = {
 
 export function ExpenseForm({ open, onClose, expense, categories }: Props) {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [prevOpen, setPrevOpen] = useState(open);
+
+  // Adjust photoUrl during render when open/expense changes (avoids setState-in-effect)
+  if (prevOpen !== open) {
+    setPrevOpen(open);
+    setPhotoUrl(open ? (expense?.attachmentUrl ?? null) : null);
+  }
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -70,7 +77,6 @@ export function ExpenseForm({ open, onClose, expense, categories }: Props) {
               notes:       "",
             }
       );
-      setPhotoUrl(expense?.attachmentUrl ?? null);
     }
   }, [open, expense, form]);
 

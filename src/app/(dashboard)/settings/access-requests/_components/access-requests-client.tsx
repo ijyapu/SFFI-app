@@ -143,7 +143,7 @@ function RequestCard({ req }: { req: AccessRequest }) {
               <div className="mt-3 flex items-start gap-1.5">
                 <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
                 <p className="text-xs text-muted-foreground leading-relaxed italic">
-                  "{req.reason}"
+                  &ldquo;{req.reason}&rdquo;
                 </p>
               </div>
             )}

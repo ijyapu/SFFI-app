@@ -5,6 +5,13 @@ import { getSupabaseAdmin } from "@/lib/supabase";
 const BUCKET   = "proofs";
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED  = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+const MIME_TO_EXT: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png":  "png",
+  "image/webp": "webp",
+  "image/heic": "heic",
+  "image/heif": "heif",
+};
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -21,7 +28,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "File too large (max 10 MB)" }, { status: 400 });
   }
 
-  const ext      = file.name.split(".").pop() ?? "jpg";
+  const ext      = MIME_TO_EXT[file.type] ?? "jpg";
   const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
   const buffer   = Buffer.from(await file.arrayBuffer());
 

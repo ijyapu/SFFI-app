@@ -43,6 +43,33 @@ function MarginBadge({ value }: { value: number | null }) {
   );
 }
 
+interface SortIconProps { col: SortKey; sortKey: SortKey; sortDir: "asc" | "desc" }
+function SortIcon({ col, sortKey, sortDir }: SortIconProps) {
+  if (sortKey !== col) return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />;
+  return sortDir === "asc"
+    ? <ArrowUp className="h-3.5 w-3.5" />
+    : <ArrowDown className="h-3.5 w-3.5" />;
+}
+
+interface ThProps {
+  col: SortKey; label: string; right?: boolean;
+  sortKey: SortKey; sortDir: "asc" | "desc";
+  toggleSort: (key: SortKey) => void;
+}
+function Th({ col, label, right, sortKey, sortDir, toggleSort }: ThProps) {
+  return (
+    <th
+      className={`px-4 py-3 text-xs font-medium text-muted-foreground whitespace-nowrap cursor-pointer select-none hover:text-foreground ${right ? "text-right" : "text-left"}`}
+      onClick={() => toggleSort(col)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />
+      </span>
+    </th>
+  );
+}
+
 export function ProductMarginTable({ rows }: Props) {
   const [sortKey, setSortKey]   = useState<SortKey>("revenue");
   const [sortDir, setSortDir]   = useState<"asc" | "desc">("desc");
@@ -84,24 +111,7 @@ export function ProductMarginTable({ rows }: Props) {
     else { setSortKey(key); setSortDir("desc"); }
   }
 
-  function SortIcon({ col }: { col: SortKey }) {
-    if (sortKey !== col) return <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />;
-    return sortDir === "asc"
-      ? <ArrowUp className="h-3.5 w-3.5" />
-      : <ArrowDown className="h-3.5 w-3.5" />;
-  }
-
-  const Th = ({ col, label, right }: { col: SortKey; label: string; right?: boolean }) => (
-    <th
-      className={`px-4 py-3 text-xs font-medium text-muted-foreground whitespace-nowrap cursor-pointer select-none hover:text-foreground ${right ? "text-right" : "text-left"}`}
-      onClick={() => toggleSort(col)}
-    >
-      <span className="inline-flex items-center gap-1">
-        {label}
-        <SortIcon col={col} />
-      </span>
-    </th>
-  );
+  const sp = { sortKey, sortDir, toggleSort };
 
   return (
     <Card>
@@ -138,16 +148,16 @@ export function ProductMarginTable({ rows }: Props) {
           <table className="w-full text-sm">
             <thead className="border-b border-border bg-muted/30">
               <tr>
-                <Th col="name"          label="Product" />
-                <Th col="category"      label="Category" />
+                <Th col="name"          label="Product" {...sp} />
+                <Th col="category"      label="Category" {...sp} />
                 <th className="px-4 py-3 text-xs font-medium text-muted-foreground text-right">Cost</th>
                 <th className="px-4 py-3 text-xs font-medium text-muted-foreground text-right">Price</th>
-                <Th col="staticMargin"  label="Static Margin" right />
-                <Th col="qtySold"       label="Units Sold" right />
-                <Th col="revenue"       label="Revenue" right />
-                <Th col="estimatedCogs" label="Est. COGS" right />
-                <Th col="grossProfit"   label="Gross Profit" right />
-                <Th col="actualMargin"  label="Act. Margin" right />
+                <Th col="staticMargin"  label="Static Margin" right {...sp} />
+                <Th col="qtySold"       label="Units Sold" right {...sp} />
+                <Th col="revenue"       label="Revenue" right {...sp} />
+                <Th col="estimatedCogs" label="Est. COGS" right {...sp} />
+                <Th col="grossProfit"   label="Gross Profit" right {...sp} />
+                <Th col="actualMargin"  label="Act. Margin" right {...sp} />
               </tr>
             </thead>
             <tbody>

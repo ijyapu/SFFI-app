@@ -15,7 +15,8 @@
       "Bash(node -e \"console.log\\(require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui/react/package.json'\\).version\\)\")",
       "Bash(node -e \"const s = require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui/react/select'\\); console.log\\(Object.keys\\(s\\)\\)\")",
       "Bash(node -e \"const s = require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui/react/select'\\); console.log\\(Object.keys\\(s.Select\\)\\)\")",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(grep -v \"^$\")"
     ]
   }
 }

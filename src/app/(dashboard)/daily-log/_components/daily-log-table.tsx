@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { Check, Loader2, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 import {
@@ -47,7 +47,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
 
   // Keep a ref in sync so setTimeout callbacks can read the latest state
   const rowsRef = useRef<RowState[]>(rows);
-  rowsRef.current = rows;
+  useEffect(() => { rowsRef.current = rows; });
 
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 

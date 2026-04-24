@@ -40,6 +40,19 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
     : <ChevronDown className="ml-1 h-3 w-3 inline" />;
 }
 
+interface SortableHeadProps {
+  col: SortKey; label: string; className?: string; numeric?: boolean;
+  sortKey: SortKey; sortDir: SortDir;
+  toggleSort: (key: SortKey) => void;
+}
+function SortableHead({ col, label, className, numeric, sortKey, sortDir, toggleSort }: SortableHeadProps) {
+  return (
+    <TableHead numeric={numeric} className={`cursor-pointer select-none whitespace-nowrap ${className ?? ""}`} onClick={() => toggleSort(col)}>
+      {label}<SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />
+    </TableHead>
+  );
+}
+
 export function PurchaseTable({
   purchases,
   suppliers,
@@ -95,13 +108,7 @@ export function PurchaseTable({
     }
   }
 
-  function SortableHead({ col, label, className, numeric }: { col: SortKey; label: string; className?: string; numeric?: boolean }) {
-    return (
-      <TableHead numeric={numeric} className={`cursor-pointer select-none whitespace-nowrap ${className ?? ""}`} onClick={() => toggleSort(col)}>
-        {label}<SortIcon col={col} sortKey={sortKey} sortDir={sortDir} />
-      </TableHead>
-    );
-  }
+  const sp = { sortKey, sortDir, toggleSort };
 
   return (
     <div className="flex gap-4 items-start">
@@ -164,9 +171,9 @@ export function PurchaseTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <SortableHead col="supplierName" label="Vendor" />
-                <SortableHead col="invoiceNo"    label="Invoice No." />
-                <SortableHead col="date"         label="Date" />
+                <SortableHead col="supplierName" label="Vendor" {...sp} />
+                <SortableHead col="invoiceNo"    label="Invoice No." {...sp} />
+                <SortableHead col="date"         label="Date" {...sp} />
                 <TableHead numeric>Total (Rs)</TableHead>
                 <TableHead className="w-20" />
               </TableRow>
