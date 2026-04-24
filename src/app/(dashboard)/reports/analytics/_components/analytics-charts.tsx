@@ -72,9 +72,9 @@ export function TrendChart({ data }: { data: MonthlyTrendPoint[] }) {
         <XAxis dataKey="month" tick={{ fontSize: 11 }} />
         <YAxis tickFormatter={fmtRs} tick={{ fontSize: 11 }} width={56} />
         <Tooltip
-          formatter={(v: number, name: string) => [
-            `Rs ${v.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
-            name.charAt(0).toUpperCase() + name.slice(1),
+          formatter={(v, name) => [
+            `Rs ${Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+            String(name).charAt(0).toUpperCase() + String(name).slice(1),
           ]}
         />
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 12 }} />
@@ -234,8 +234,8 @@ export function ReturnsByTypeChart({ data }: { data: ReturnTypeItem[] }) {
           ))}
         </Pie>
         <Tooltip
-          formatter={(v: number, name: string) => [
-            `Rs ${v.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
+          formatter={(v, name) => [
+            `Rs ${Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`,
             name === "FRESH" ? "Fresh Return" : "Waste Return",
           ]}
         />
