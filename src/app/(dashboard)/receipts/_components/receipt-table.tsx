@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, ImageIcon } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -44,6 +44,7 @@ type Receipt = {
   method:       string;
   reference:    string | null;
   notes:        string | null;
+  photoUrl:     string | null | undefined;
   receivedAt:   string;
 };
 
@@ -89,6 +90,7 @@ export function ReceiptTable({ receipts }: { receipts: Receipt[] }) {
             <TableHead>Reference</TableHead>
             <TableHead><SortButton col="receivedAt"  label="Date"        {...sp} /></TableHead>
             <TableHead>Notes</TableHead>
+            <TableHead>Photo</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -111,6 +113,19 @@ export function ReceiptTable({ receipts }: { receipts: Receipt[] }) {
               </TableCell>
               <TableCell className="text-muted-foreground text-sm max-w-45 truncate">
                 {r.notes ?? "—"}
+              </TableCell>
+              <TableCell>
+                {r.photoUrl ? (
+                  <a href={r.photoUrl} target="_blank" rel="noopener noreferrer" title="View photo">
+                    <img
+                      src={r.photoUrl}
+                      alt="Proof"
+                      className="h-8 w-8 rounded object-cover border border-border hover:opacity-80 transition-opacity"
+                    />
+                  </a>
+                ) : (
+                  <ImageIcon className="h-4 w-4 text-muted-foreground/30" />
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1">

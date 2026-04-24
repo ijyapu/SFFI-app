@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const SUB_NAV = [
+  { label: "Analytics",            href: "/reports/analytics" },
   { label: "Stock Valuation",      href: "/reports/stock-valuation" },
   { label: "Receivables Aging",    href: "/reports/receivables" },
   { label: "Payables Aging",       href: "/reports/payables" },

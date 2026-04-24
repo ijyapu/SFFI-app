@@ -743,6 +743,7 @@ model Receipt {
   method        PaymentMethod
   reference     String?       // cheque no, bank ref, etc.
   notes         String?
+  photoUrl      String?       // optional proof photo
   receivedAt    DateTime      @default(now())
 
   createdBy String

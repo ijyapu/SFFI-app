@@ -3,13 +3,20 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, format,
+  startOfDay, endOfDay, startOfMonth, endOfMonth, subMonths, startOfYear, endOfYear, format,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 const PRESETS = [
+  {
+    label: "Today",
+    getRange: () => {
+      const now = new Date();
+      return { from: startOfDay(now), to: endOfDay(now) };
+    },
+  },
   {
     label: "This Month",
     getRange: () => {

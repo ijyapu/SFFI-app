@@ -42,6 +42,25 @@ export default async function AuditLogPage({
     }
   }
 
+  // Collect all productIds referenced in before/after snapshots
+  const productIds = new Set<string>();
+  for (const l of logs) {
+    for (const snap of [l.before, l.after]) {
+      if (snap && typeof snap === "object" && "productId" in snap) {
+        const pid = (snap as Record<string, unknown>).productId;
+        if (typeof pid === "string") productIds.add(pid);
+      }
+    }
+  }
+  const productMap: Record<string, string> = {};
+  if (productIds.size > 0) {
+    const products = await prisma.product.findMany({
+      where: { id: { in: Array.from(productIds) } },
+      select: { id: true, name: true },
+    });
+    for (const p of products) productMap[p.id] = p.name;
+  }
+
   const entries: AuditEntry[] = logs.map((l) => ({
     id:         l.id,
     userId:     l.userId,
@@ -60,6 +79,7 @@ export default async function AuditLogPage({
       total={total}
       page={page}
       pageSize={PAGE_SIZE}
+      productMap={productMap}
     />
   );
 }

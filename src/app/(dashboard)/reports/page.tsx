@@ -3,5 +3,5 @@ import { requirePermission } from "@/lib/auth";
 
 export default async function ReportsPage() {
   await requirePermission("reports");
-  redirect("/reports/stock-valuation");
+  redirect("/reports/analytics");
 }

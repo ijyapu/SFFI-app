@@ -6,6 +6,7 @@ export const receiptSchema = z.object({
   method:       z.enum(["CASH", "BANK_TRANSFER", "CHECK", "ESEWA", "KHALTI", "IME_PAY", "FONEPAY", "OTHER"]),
   reference:    z.string().optional(),
   notes:        z.string().optional(),
+  photoUrl:     z.string().nullable().optional(),
   receivedAt:   z.string().min(1, "Date is required"),
 });
 

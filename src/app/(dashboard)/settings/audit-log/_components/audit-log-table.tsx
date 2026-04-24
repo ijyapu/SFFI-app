@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import { format } from "date-fns";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -25,6 +25,7 @@ interface Props {
   total: number;
   page: number;
   pageSize: number;
+  productMap?: Record<string, string>;
 }
 
 const ACTION_COLORS: Record<string, string> = {
@@ -44,31 +45,101 @@ function ActionBadge({ action }: { action: string }) {
   );
 }
 
-function DiffViewer({ before, after }: { before: unknown; after: unknown }) {
-  if (!before && !after) return <p className="text-xs text-muted-foreground">No snapshot recorded.</p>;
+function toLabel(key: string): string {
+  return key
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}
+
+function renderValue(key: string, value: unknown, productMap?: Record<string, string>): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (key === "productId" && typeof value === "string" && productMap?.[value]) {
+    return `${productMap[value]} (${value.slice(0, 8)}…)`;
+  }
+  if (key.toLowerCase().endsWith("id") && typeof value === "string" && value.length > 12) {
+    return `${value.slice(0, 8)}… (ID)`;
+  }
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function SnapshotTable({ data, label, highlight, productMap }: { data: Record<string, unknown>; label: string; highlight?: "red" | "green"; productMap?: Record<string, string> }) {
+  const entries = Object.entries(data);
+  const headerCls = highlight === "red" ? "text-red-600" : highlight === "green" ? "text-green-600" : "text-muted-foreground";
   return (
-    <div className="grid grid-cols-2 gap-3">
-      {before !== undefined && (
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">Before</p>
-          <pre className="text-xs bg-muted rounded p-2 overflow-auto max-h-40">
-            {JSON.stringify(before, null, 2)}
-          </pre>
-        </div>
-      )}
-      {after !== undefined && (
-        <div>
-          <p className="text-xs font-medium text-muted-foreground mb-1">After</p>
-          <pre className="text-xs bg-muted rounded p-2 overflow-auto max-h-40">
-            {JSON.stringify(after, null, 2)}
-          </pre>
-        </div>
-      )}
+    <div>
+      <p className={`text-xs font-semibold mb-1.5 ${headerCls}`}>{label}</p>
+      <table className="w-full text-xs border border-border rounded overflow-hidden">
+        <tbody>
+          {entries.map(([k, v]) => (
+            <tr key={k} className="border-b border-border last:border-0">
+              <td className="px-2 py-1 font-medium text-muted-foreground bg-muted/40 w-1/3 whitespace-nowrap">
+                {toLabel(k)}
+              </td>
+              <td className="px-2 py-1 break-all">{renderValue(k, v, productMap)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
-export function AuditLogTable({ entries, total, page, pageSize }: Props) {
+function DiffViewer({ before, after, productMap }: { before: unknown; after: unknown; productMap?: Record<string, string> }) {
+  const hasAfter  = after  !== null && after  !== undefined && typeof after  === "object";
+  const hasBefore = before !== null && before !== undefined && typeof before === "object";
+
+  if (!hasBefore && !hasAfter) {
+    return <p className="text-xs text-muted-foreground">No snapshot recorded.</p>;
+  }
+
+  // CREATE: only after exists
+  if (!hasBefore && hasAfter) {
+    return <SnapshotTable data={after as Record<string, unknown>} label="Created with" highlight="green" productMap={productMap} />;
+  }
+
+  // DELETE: only before exists
+  if (hasBefore && !hasAfter) {
+    return <SnapshotTable data={before as Record<string, unknown>} label="Deleted record" highlight="red" productMap={productMap} />;
+  }
+
+  // UPDATE: show changed fields side by side
+  const b = before as Record<string, unknown>;
+  const a = after  as Record<string, unknown>;
+  const allKeys = Array.from(new Set([...Object.keys(b), ...Object.keys(a)]));
+  const changedKeys = allKeys.filter((k) => JSON.stringify(b[k]) !== JSON.stringify(a[k]));
+  const displayKeys = changedKeys.length > 0 ? changedKeys : allKeys;
+
+  return (
+    <div className="space-y-2">
+      {changedKeys.length > 0 && (
+        <p className="text-xs text-muted-foreground">{changedKeys.length} field{changedKeys.length !== 1 ? "s" : ""} changed</p>
+      )}
+      <table className="w-full text-xs border border-border rounded overflow-hidden">
+        <thead>
+          <tr className="bg-muted/40 border-b border-border">
+            <th className="px-2 py-1 text-left font-medium text-muted-foreground w-1/4">Field</th>
+            <th className="px-2 py-1 text-left font-medium text-red-600 w-[37.5%]">Before</th>
+            <th className="px-2 py-1 text-left font-medium text-green-600 w-[37.5%]">After</th>
+          </tr>
+        </thead>
+        <tbody>
+          {displayKeys.map((k) => (
+            <tr key={k} className="border-b border-border last:border-0">
+              <td className="px-2 py-1 font-medium text-muted-foreground bg-muted/20 whitespace-nowrap">{toLabel(k)}</td>
+              <td className="px-2 py-1 break-all text-red-700">{renderValue(k, b[k], productMap)}</td>
+              <td className="px-2 py-1 break-all text-green-700">{renderValue(k, a[k], productMap)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+export function AuditLogTable({ entries, total, page, pageSize, productMap }: Props) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const { sortKey, sortDir, toggle: sortToggle } = useSortable("createdAt");
 
@@ -125,9 +196,8 @@ export function AuditLogTable({ entries, total, page, pageSize }: Props) {
                 const isExpanded = expanded.has(entry.id);
                 const hasDiff    = !!(entry.before || entry.after);
                 return (
-                  <>
+                  <Fragment key={entry.id}>
                     <tr
-                      key={entry.id}
                       className="border-b border-border hover:bg-muted/30 transition-colors"
                     >
                       <td className="pl-3 py-3">
@@ -160,14 +230,14 @@ export function AuditLogTable({ entries, total, page, pageSize }: Props) {
                       </td>
                     </tr>
                     {isExpanded && hasDiff && (
-                      <tr key={`${entry.id}-detail`} className="border-b border-border bg-muted/10">
+                      <tr className="border-b border-border bg-muted/10">
                         <td />
                         <td colSpan={4} className="px-4 py-3">
-                          <DiffViewer before={entry.before} after={entry.after} />
+                          <DiffViewer before={entry.before} after={entry.after} productMap={productMap} />
                         </td>
                       </tr>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </tbody>

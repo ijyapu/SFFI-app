@@ -11,6 +11,7 @@ import {
 import { RevenueChart } from "./_components/revenue-chart";
 import { RecentActivity } from "./_components/recent-activity";
 import { ProductInsights } from "./_components/product-insights";
+import { SalesmanInsights } from "./_components/salesman-insights";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import { COMPANY } from "@/lib/company";
 
@@ -159,8 +160,8 @@ export default async function DashboardPage() {
     if (pt) pt.purchases += Number(po.totalAmount);
   }
 
-  // Product insights — top sellers, most/fewest returned this month
-  const [soldGroupBy, returnedGroupBy] = await Promise.all([
+  // Product + salesman insights for this month
+  const [soldGroupBy, returnedGroupBy, salesmanSalesGroupBy, salesmanReturnsRaw] = await Promise.all([
     prisma.salesOrderItem.groupBy({
       by: ["productId"],
       where: {
@@ -183,6 +184,29 @@ export default async function DashboardPage() {
       },
       _sum: { quantity: true },
       orderBy: { _sum: { quantity: "desc" } },
+    }),
+    prisma.salesOrder.groupBy({
+      by: ["customerId"],
+      where: {
+        status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+        deletedAt: null,
+        orderDate: { gte: monthStart },
+      },
+      _sum: { totalAmount: true },
+      orderBy: { _sum: { totalAmount: "desc" } },
+      take: 5,
+    }),
+    prisma.salesReturn.findMany({
+      where: {
+        salesOrder: { deletedAt: null },
+        createdAt:  { gte: monthStart },
+      },
+      select: {
+        totalAmount: true,
+        salesOrder: {
+          select: { salesman: { select: { id: true, name: true } } },
+        },
+      },
     }),
   ]);
 
@@ -218,6 +242,35 @@ export default async function DashboardPage() {
       qty:  returnQtyMap.get(s.productId) ?? 0,
     }))
     .sort((a, b) => a.qty - b.qty)
+    .slice(0, 5);
+
+  // Salesman insights
+  const salesmanIds = salesmanSalesGroupBy.map((s) => s.customerId);
+  const salesmenNames = salesmanIds.length > 0
+    ? await prisma.salesman.findMany({
+        where:  { id: { in: salesmanIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const smMap = new Map(salesmenNames.map((s) => [s.id, s.name]));
+
+  const topSalesmenBySales = salesmanSalesGroupBy.map((s) => ({
+    name:   smMap.get(s.customerId) ?? "Unknown",
+    amount: Number(s._sum.totalAmount ?? 0),
+  }));
+
+  // Aggregate returns by salesman in memory
+  const smReturnAccum = new Map<string, { name: string; amount: number }>();
+  for (const ret of salesmanReturnsRaw) {
+    const sm = ret.salesOrder.salesman;
+    const prev = smReturnAccum.get(sm.id);
+    smReturnAccum.set(sm.id, {
+      name:   sm.name,
+      amount: (prev?.amount ?? 0) + Number(ret.totalAmount),
+    });
+  }
+  const topSalesmenByReturns = [...smReturnAccum.values()]
+    .sort((a, b) => b.amount - a.amount)
     .slice(0, 5);
 
   return (
@@ -494,6 +547,13 @@ export default async function DashboardPage() {
         topSellers={topSellers}
         mostReturned={mostReturned}
         fewestReturned={fewestReturned}
+        monthLabel={format(now, "MMM")}
+      />
+
+      {/* ── Salesman Insights ── */}
+      <SalesmanInsights
+        topBySales={topSalesmenBySales}
+        topByReturns={topSalesmenByReturns}
         monthLabel={format(now, "MMM")}
       />
 

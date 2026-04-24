@@ -1,7 +1,8 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Banknote, TrendingDown, Calendar } from "lucide-react";
+import { Banknote, TrendingDown, Calendar, BookOpen } from "lucide-react";
 import { ReceiptFormDialog } from "./_components/receipt-form-dialog";
 import { ReceiptTable } from "./_components/receipt-table";
 
@@ -23,6 +24,7 @@ export default async function ReceiptsPage() {
     method:        r.method,
     reference:     r.reference,
     notes:         r.notes,
+    photoUrl:      r.photoUrl,
     receivedAt:    r.receivedAt.toISOString(),
   }));
 
@@ -46,7 +48,16 @@ export default async function ReceiptsPage() {
             Track money borrowed or received to run the company
           </p>
         </div>
-        <ReceiptFormDialog mode="create" />
+        <div className="flex items-center gap-2">
+          <Link
+            href="/receipts/ledger"
+            className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-muted transition-colors"
+          >
+            <BookOpen className="h-4 w-4" />
+            Ledger
+          </Link>
+          <ReceiptFormDialog mode="create" />
+        </div>
       </div>
 
       {/* Summary cards */}

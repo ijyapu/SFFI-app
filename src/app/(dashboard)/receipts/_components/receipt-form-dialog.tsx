@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { Plus, Pencil } from "lucide-react";
+import { PhotoUpload } from "@/components/ui/photo-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -42,6 +43,7 @@ type Props = {
     method:       string;
     reference:    string | null;
     notes:        string | null;
+    photoUrl:     string | null | undefined;
     receivedAt:   string;
   };
 };
@@ -61,6 +63,7 @@ export function ReceiptFormDialog(props: Props) {
           method:       props.receipt.method as ReceiptFormValues["method"],
           reference:    props.receipt.reference ?? "",
           notes:        props.receipt.notes ?? "",
+          photoUrl:     props.receipt.photoUrl ?? null,
           receivedAt:   props.receipt.receivedAt.split("T")[0],
         }
       : {
@@ -69,6 +72,7 @@ export function ReceiptFormDialog(props: Props) {
           method:       "CASH",
           reference:    "",
           notes:        "",
+          photoUrl:     null,
           receivedAt:   today,
         },
   });
@@ -81,7 +85,7 @@ export function ReceiptFormDialog(props: Props) {
       } else {
         await createReceipt(values);
         toast.success("Receipt recorded");
-        form.reset({ receivedFrom: "", amount: 0, method: "CASH", reference: "", notes: "", receivedAt: today });
+        form.reset({ receivedFrom: "", amount: 0, method: "CASH", reference: "", notes: "", photoUrl: null, receivedAt: today });
       }
       setOpen(false);
     } catch (e) {
@@ -204,6 +208,23 @@ export function ReceiptFormDialog(props: Props) {
                   <FormLabel>Notes</FormLabel>
                   <FormControl>
                     <Textarea rows={2} placeholder="Optional notes…" className="resize-none" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="photoUrl"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <PhotoUpload
+                      value={field.value ?? null}
+                      onChange={field.onChange}
+                      label="Proof Photo (optional)"
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

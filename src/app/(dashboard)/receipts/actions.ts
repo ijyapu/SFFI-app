@@ -36,6 +36,7 @@ export async function createReceipt(values: ReceiptFormValues) {
       method:        data.method,
       reference:     data.reference || null,
       notes:         data.notes || null,
+      photoUrl:      data.photoUrl ?? null,
       receivedAt:    new Date(data.receivedAt),
       createdBy:     userId,
     },
@@ -56,6 +57,7 @@ export async function updateReceipt(id: string, values: ReceiptFormValues) {
       method:       data.method,
       reference:    data.reference || null,
       notes:        data.notes || null,
+      photoUrl:     data.photoUrl ?? null,
       receivedAt:   new Date(data.receivedAt),
     },
   });

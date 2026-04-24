@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { getCurrentRole } from "@/lib/auth";
@@ -53,11 +55,20 @@ export default async function AdjustmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">Stock Adjustments</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Manually adjust stock levels. All changes are logged and require a reason.
-        </p>
+      <div className="flex items-center gap-3">
+        <Link
+          href="/inventory"
+          className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+          aria-label="Back to Inventory"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-semibold">Stock Adjustments</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manually adjust stock levels. All changes are logged and require a reason.
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
