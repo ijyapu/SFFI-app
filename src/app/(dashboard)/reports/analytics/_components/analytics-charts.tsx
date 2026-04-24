@@ -100,7 +100,7 @@ function HBar({
   dataKey: string;
   color: string;
   tickFormatter: (v: number) => string;
-  tooltipFormatter: (v: number) => [string, string];
+  tooltipFormatter: (v: unknown) => [string, string];
   emptyText?: string;
 }) {
   if (!data.length) return <EmptyChart text={emptyText} />;
@@ -133,7 +133,7 @@ export function TopProductsSoldChart({ data }: { data: ProductSoldItem[] }) {
       dataKey="qty"
       color={COLORS.revenue}
       tickFormatter={fmtNum}
-      tooltipFormatter={(v) => [fmtNum(v), "Qty Sold"]}
+      tooltipFormatter={(v) => [fmtNum(Number(v)), "Qty Sold"]}
       emptyText="No confirmed sales this year"
     />
   );
@@ -148,7 +148,7 @@ export function TopPurchasedChart({ data }: { data: TopPurchasedItem[] }) {
       dataKey="qty"
       color={COLORS.purchases}
       tickFormatter={fmtNum}
-      tooltipFormatter={(v) => [fmtNum(v), "Qty Received"]}
+      tooltipFormatter={(v) => [fmtNum(Number(v)), "Qty Received"]}
       emptyText="No received purchases this year"
     />
   );
@@ -172,11 +172,12 @@ export function TopSalesmenChart({ data }: { data: SalesmanItem[] }) {
           tickFormatter={(v: string) => trunc(v)}
         />
         <Tooltip
-          formatter={(v: number, _name: string, props: { payload?: SalesmanItem }) => {
-            const orders = props.payload?.orders ?? 0;
-            const avg = orders > 0 ? v / orders : 0;
+          formatter={(v, _name, props) => {
+            const num = Number(v);
+            const orders = (props.payload as SalesmanItem | undefined)?.orders ?? 0;
+            const avg = orders > 0 ? num / orders : 0;
             return [
-              `${fmtRs(v)} · ${orders} order${orders !== 1 ? "s" : ""} · avg ${fmtRs(avg)}`,
+              `${fmtRs(num)} · ${orders} order${orders !== 1 ? "s" : ""} · avg ${fmtRs(avg)}`,
               "Revenue",
             ];
           }}
@@ -196,7 +197,7 @@ export function ExpensesByCategoryChart({ data }: { data: ExpenseCatItem[] }) {
       dataKey="amount"
       color={COLORS.expenses}
       tickFormatter={fmtRs}
-      tooltipFormatter={(v) => [`Rs ${v.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, "Amount"]}
+      tooltipFormatter={(v) => [`Rs ${Number(v).toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, "Amount"]}
       emptyText="No expenses this year"
     />
   );
