@@ -564,42 +564,48 @@ export async function recordSalesmanPayment(soId: string, values: SalesmanPaymen
 
   const so = await prisma.salesOrder.findUnique({
     where: { id: soId },
-    select: { customerId: true, factoryAmount: true, amountPaid: true, status: true },
+    select: { customerId: true, status: true },
   });
   if (!so) throw new Error("Sales order not found");
   if (so.status === "DRAFT") throw new Error("Confirm the order before recording a payment");
   if (so.status === "CANCELLED") throw new Error("Cannot record payment for a cancelled order");
 
-  // Validate against the salesman's TOTAL outstanding (not just this order), so they can
-  // pay more than this order's balance to reduce previous debt.
-  const salesman = await prisma.salesman.findUnique({
-    where: { id: so.customerId },
-    select: {
-      openingBalance: true,
-      salesOrders: {
-        where: { deletedAt: null, status: { notIn: ["CANCELLED", "DRAFT"] } },
-        select: { factoryAmount: true, amountPaid: true },
-      },
-    },
-  });
-  const salesmanTotalOutstanding =
-    Number(salesman?.openingBalance ?? 0) +
-    (salesman?.salesOrders ?? []).reduce(
-      (sum, o) => sum + Number(o.factoryAmount) - Number(o.amountPaid),
-      0
-    );
-
-  if (data.amount > salesmanTotalOutstanding + 0.001) {
-    throw new Error(
-      `Payment of Rs ${data.amount.toFixed(2)} exceeds the total outstanding balance of Rs ${salesmanTotalOutstanding.toFixed(2)}`
-    );
-  }
-
-  const factoryDue = Number(so.factoryAmount);
-  const newPaid    = Number(so.amountPaid) + data.amount;
-  const newStatus  = newPaid >= factoryDue - 0.001 ? "PAID" : "PARTIALLY_PAID";
-
   await prisma.$transaction(async (tx) => {
+    const current = await tx.salesOrder.findUnique({
+      where: { id: soId },
+      select: { factoryAmount: true, amountPaid: true },
+    });
+    if (!current) throw new Error("Sales order not found");
+
+    // Validate against the salesman's TOTAL outstanding (not just this order), so they can
+    // pay more than this order's balance to reduce previous debt.
+    const salesman = await tx.salesman.findUnique({
+      where: { id: so.customerId },
+      select: {
+        openingBalance: true,
+        salesOrders: {
+          where: { deletedAt: null, status: { notIn: ["CANCELLED", "DRAFT"] } },
+          select: { factoryAmount: true, amountPaid: true },
+        },
+      },
+    });
+    const salesmanTotalOutstanding =
+      Number(salesman?.openingBalance ?? 0) +
+      (salesman?.salesOrders ?? []).reduce(
+        (sum, o) => sum + Number(o.factoryAmount) - Number(o.amountPaid),
+        0
+      );
+
+    if (data.amount > salesmanTotalOutstanding + 0.001) {
+      throw new Error(
+        `Payment of Rs ${data.amount.toFixed(2)} exceeds the total outstanding balance of Rs ${salesmanTotalOutstanding.toFixed(2)}`
+      );
+    }
+
+    const factoryDue = Number(current.factoryAmount);
+    const newPaid    = Number(current.amountPaid) + data.amount;
+    const newStatus  = newPaid >= factoryDue - 0.001 ? "PAID" : "PARTIALLY_PAID";
+
     await tx.salesmanPayment.create({
       data: {
         salesOrderId: soId,

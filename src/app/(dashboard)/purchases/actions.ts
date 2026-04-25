@@ -268,23 +268,26 @@ export async function recordPayment(poId: string, values: PaymentFormValues) {
 
   const po = await prisma.purchaseOrder.findUnique({
     where: { id: poId },
-    select: { supplierId: true, totalAmount: true, amountPaid: true, status: true },
+    select: { supplierId: true, status: true },
   });
   if (!po) throw new Error("Purchase order not found");
   if (po.status === "DRAFT") throw new Error("Confirm the order before recording a payment");
   if (po.status === "CANCELLED") throw new Error("Cannot record payment for a cancelled order");
 
-  const alreadyPaid = Number(po.amountPaid);
-  const total = Number(po.totalAmount);
-  const remaining = total - alreadyPaid;
-
-  if (data.amount > remaining + 0.001) {
-    throw new Error(
-      `Payment of Rs ${data.amount.toFixed(2)} exceeds the outstanding balance of Rs ${remaining.toFixed(2)}`
-    );
-  }
-
   await prisma.$transaction(async (tx) => {
+    const current = await tx.purchaseOrder.findUnique({
+      where: { id: poId },
+      select: { totalAmount: true, amountPaid: true },
+    });
+    if (!current) throw new Error("Purchase order not found");
+
+    const remaining = Number(current.totalAmount) - Number(current.amountPaid);
+    if (data.amount > remaining + 0.001) {
+      throw new Error(
+        `Payment of Rs ${data.amount.toFixed(2)} exceeds the outstanding balance of Rs ${remaining.toFixed(2)}`
+      );
+    }
+
     await tx.supplierPayment.create({
       data: {
         purchaseOrderId: poId,
