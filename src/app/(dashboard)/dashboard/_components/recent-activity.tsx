@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { format } from "date-fns";
 import { ArrowUpRight } from "lucide-react";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

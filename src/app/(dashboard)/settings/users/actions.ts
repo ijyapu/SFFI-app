@@ -7,8 +7,6 @@ import { requirePermission } from "@/lib/auth";
 import type { AppRole } from "@/types/globals";
 import { z } from "zod/v4";
 
-const VALID_ROLES: AppRole[] = ["admin", "manager", "accountant", "employee"];
-
 const schema = z.object({
   userId: z.string().min(1),
   role:   z.enum(["admin", "manager", "accountant", "employee", "none"]),

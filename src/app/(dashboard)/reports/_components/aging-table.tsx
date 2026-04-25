@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { format } from "date-fns";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SortButton } from "@/components/ui/sort-icon";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Image from "next/image";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
@@ -231,9 +232,11 @@ export function EmployeeDetail({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
           onClick={() => setLightbox(null)}
         >
-          <img
+          <Image
             src={lightbox}
             alt="Proof"
+            width={1600}
+            height={900}
             className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
             onClick={(e) => e.stopPropagation()}
           />

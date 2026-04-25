@@ -1,6 +1,6 @@
 import type { VendorLedgerData } from "../actions";
 import { format } from "date-fns";
-import { toNepaliDateString, toNepaliMonthYear } from "@/lib/nepali-date";
+import { toNepaliMonthYear } from "@/lib/nepali-date";
 import { AlertCircle, CheckCircle2, FileText } from "lucide-react";
 import { COMPANY } from "@/lib/company";
 

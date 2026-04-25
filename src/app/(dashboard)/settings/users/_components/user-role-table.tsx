@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
-import { format } from "date-fns";
+import Image from "next/image";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { setUserRole } from "../actions";
@@ -40,9 +40,11 @@ const ROLE_BADGE: Record<string, string> = {
 
 function Avatar({ src, name }: { src: string; name: string }) {
   return (
-    <img
+    <Image
       src={src}
       alt={name}
+      width={32}
+      height={32}
       className="h-8 w-8 rounded-full object-cover shrink-0"
       onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
     />

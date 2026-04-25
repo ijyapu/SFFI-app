@@ -211,7 +211,6 @@ export function DailyLogTable({ items, isOpen }: Props) {
             // Category totals for summary row
             const totals = catRows.reduce(
               (acc, r) => {
-                const closing = calcClosing(r);
                 return {
                   produced: acc.produced + r.producedQty,
                   used: acc.used + r.usedQty,

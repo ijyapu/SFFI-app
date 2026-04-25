@@ -1,7 +1,6 @@
 import { format } from "date-fns";
 import { TrendingDown, Percent } from "lucide-react";
 import type { CustomerLedgerData } from "../actions";
-import { Separator } from "@/components/ui/separator";
 
 function fmt(n: number) {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

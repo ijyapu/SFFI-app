@@ -1,4 +1,3 @@
-import { COMPANY } from "@/lib/company";
 import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { PendingAccess } from "@/components/auth/pending-access";

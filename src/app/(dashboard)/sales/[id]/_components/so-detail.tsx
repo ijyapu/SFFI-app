@@ -98,7 +98,7 @@ type Props = {
 export function SoDetail(props: Props) {
   const {
     id, orderNumber, status, customerName, orderDate, dueDate,
-    notes, subtotal, totalAmount, commissionPct, commissionAmount, factoryAmount,
+    notes, totalAmount, commissionPct, commissionAmount, factoryAmount,
     amountPaid, items, payments, returns, products, salesmanTotalOutstanding,
   } = props;
 

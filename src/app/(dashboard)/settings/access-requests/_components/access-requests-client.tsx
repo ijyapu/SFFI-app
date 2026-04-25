@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import {
-  CheckCircle2, XCircle, Clock, User, Mail,
+  CheckCircle2, XCircle, Clock, Mail,
   Building2, Briefcase, Phone, MessageSquare,
   ChevronDown, Loader2,
 } from "lucide-react";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import Image from "next/image";
 import { toast } from "sonner";
 import { Trash2, ImageIcon } from "lucide-react";
 import {
@@ -117,9 +118,11 @@ export function ReceiptTable({ receipts }: { receipts: Receipt[] }) {
               <TableCell>
                 {r.photoUrl ? (
                   <a href={r.photoUrl} target="_blank" rel="noopener noreferrer" title="View photo">
-                    <img
+                    <Image
                       src={r.photoUrl}
                       alt="Proof"
+                      width={32}
+                      height={32}
                       className="h-8 w-8 rounded object-cover border border-border hover:opacity-80 transition-opacity"
                     />
                   </a>

@@ -138,7 +138,7 @@ async function main() {
       address: "Tema Industrial Area, Accra",
     },
   });
-  const supplier2 = await prisma.supplier.upsert({
+  await prisma.supplier.upsert({
     where: { id: "seed-supplier-002" }, update: {},
     create: {
       id: "seed-supplier-002",

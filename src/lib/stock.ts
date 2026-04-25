@@ -42,11 +42,6 @@ const DECREASE_TYPES: StockMovementType[] = [
   StockMovementType.DAILY_OUT,
 ];
 
-const ADJUSTMENT_TYPES: StockMovementType[] = [
-  StockMovementType.ADJUSTMENT_IN,
-  StockMovementType.ADJUSTMENT_OUT,
-];
-
 // Types that require notes
 const NOTES_REQUIRED_TYPES: StockMovementType[] = [
   StockMovementType.ADJUSTMENT_IN,

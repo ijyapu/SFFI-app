@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import { getDailyLogHistory } from "../actions";
 import { ReopenDialog } from "../_components/reopen-dialog";
-import { getCurrentRole } from "@/lib/auth";
 
 export const metadata = { title: "Daily Log History" };
 

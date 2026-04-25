@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, Fragment } from "react";
-import { format } from "date-fns";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChevronDown, ChevronRight } from "lucide-react";
@@ -155,7 +154,7 @@ export function AuditLogTable({ entries, total, page, pageSize, productMap }: Pr
   function toggle(id: string) {
     setExpanded((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) { next.delete(id); } else { next.add(id); }
       return next;
     });
   }

@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Plus, Pencil, Trash2, CheckCircle, XCircle, Tag } from "lucide-react";
 import {
@@ -11,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,

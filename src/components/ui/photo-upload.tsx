@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Image from "next/image";
 import { Camera, X, Upload, Loader2 } from "lucide-react";
 
 interface Props {
@@ -53,9 +54,11 @@ export function PhotoUpload({ value, onChange, label = "Proof photo" }: Props) {
       <div className="space-y-1.5">
         <p className="text-sm font-medium">{label}</p>
         <div className="relative inline-block rounded-lg overflow-hidden border border-border">
-          <img
+          <Image
             src={value}
             alt="Proof"
+            width={800}
+            height={192}
             className="max-h-48 max-w-full object-contain"
           />
           <button
