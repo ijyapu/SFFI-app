@@ -44,6 +44,11 @@ const nextConfig: NextConfig = {
   },
 };
 
+const sentryEnvReady =
+  !!process.env.SENTRY_ORG &&
+  !!process.env.SENTRY_PROJECT &&
+  !!process.env.SENTRY_AUTH_TOKEN;
+
 export default withSentryConfig(nextConfig, {
   org:     process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
@@ -51,13 +56,16 @@ export default withSentryConfig(nextConfig, {
   // Only log Sentry build output in CI; keeps local builds quiet
   silent: !process.env.CI,
 
-  // Upload source maps so Sentry shows original TypeScript in stack traces
-  widenClientFileUpload: true,
-  hideSourceMaps: true,
-
   // Remove Sentry's logger from the production bundle (~3 KB)
   disableLogger: true,
 
   // We manage our own uptime monitoring via UptimeRobot
   automaticVercelMonitors: false,
+
+  sourcemaps: {
+    // Skip upload (and avoid build errors) until Sentry env vars are configured
+    disable: !sentryEnvReady,
+    // Delete .map files from the public build after upload so they aren't served
+    filesToDeleteAfterUpload: [".next/static/**/*.map"],
+  },
 });
