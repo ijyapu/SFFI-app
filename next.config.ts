@@ -15,7 +15,7 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Next.js App Router requires unsafe-inline for its streaming runtime scripts
-      "script-src 'self' 'unsafe-inline' https://*.clerk.com https://*.clerk.accounts.dev",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.clerk.com https://*.clerk.accounts.dev`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com",
       "font-src 'self' data:",
