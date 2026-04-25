@@ -17,7 +17,19 @@
       "Bash(node -e \"const s = require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui/react/select'\\); console.log\\(Object.keys\\(s.Select\\)\\)\")",
       "Bash(npm run *)",
       "Bash(grep -v \"^$\")",
-      "Bash(awk '/^model/ { model=$2 } /deletedAt/ { print model }' /c/Users/rider/Desktop/SSFI/erp-app/prisma/schema.prisma)"
+      "Bash(awk '/^model/ { model=$2 } /deletedAt/ { print model }' /c/Users/rider/Desktop/SSFI/erp-app/prisma/schema.prisma)",
+      "Bash(npm ls *)",
+      "Bash(git -C /c/Users/rider/Desktop/SSFI/erp-app log --oneline --all .env .env.local)",
+      "Bash(git -C /c/Users/rider/Desktop/SSFI/erp-app status)",
+      "Bash(git -C /c/Users/rider/Desktop/SSFI/erp-app log --all --oneline --follow -- .env .env.local)",
+      "Bash(git -C /c/Users/rider/Desktop/SSFI/erp-app log --oneline -- .env .env.local)",
+      "Bash(npm view *)",
+      "Bash(npm audit *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k, v.get\\('severity','?'\\), v.get\\('via',[{}]\\)[0].get\\('title',''\\) if isinstance\\(v.get\\('via',[{}]\\)[0],dict\\) else v.get\\('via',[{}]\\)[0]\\) for k,v in d.get\\('vulnerabilities',{}\\).items\\(\\)]\")",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('DEPS:'\\); [print\\(f'  {k}: {v}'\\) for k,v in d.get\\('dependencies',{}\\).items\\(\\)]; print\\('DEV:'\\); [print\\(f'  {k}: {v}'\\) for k,v in d.get\\('devDependencies',{}\\).items\\(\\)]\")",
+      "Bash(node -e ' *)",
+      "Bash(npm show *)"
     ]
   }
 }
