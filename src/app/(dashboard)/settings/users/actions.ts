@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { clerkClient } from "@clerk/nextjs/server";
 import { auth } from "@clerk/nextjs/server";
 import { requirePermission } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import type { AppRole } from "@/types/globals";
 import { z } from "zod/v4";
 
@@ -27,6 +28,16 @@ export async function setUserRole(userId: string, role: AppRole | "none") {
   await client.users.updateUserMetadata(userId, {
     publicMetadata: {
       role: role === "none" ? undefined : role,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      userId:     currentUserId!,
+      action:     "SET_USER_ROLE",
+      entityType: "User",
+      entityId:   userId,
+      after:      { role },
     },
   });
 

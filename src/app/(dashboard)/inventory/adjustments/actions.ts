@@ -26,7 +26,7 @@ export async function createAdjustment(values: AdjustmentFormValues) {
     throw new Error("Only admins can override the negative stock restriction");
   }
 
-  await applyStockMovement({
+  const movement = await applyStockMovement({
     productId: data.productId,
     type: data.type,
     quantity: data.quantity,
@@ -39,8 +39,9 @@ export async function createAdjustment(values: AdjustmentFormValues) {
   await prisma.auditLog.create({
     data: {
       userId,
-      action: data.type,
+      action:     data.type,
       entityType: "StockMovement",
+      entityId:   movement.id,
       after: { productId: data.productId, quantity: data.quantity, notes: data.notes },
     },
   });
