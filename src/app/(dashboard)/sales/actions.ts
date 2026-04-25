@@ -10,6 +10,9 @@ import {
   type SalesmanFormValues, type CreateSoValues, type UpdateSoValues,
   type SalesmanPaymentValues, type SalesReturnValues,
 } from "@/lib/validators/sales";
+import { getNextDocumentNumber } from "@/lib/doc-counter";
+
+type Db = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
 async function requireSalesAccess() {
   const user = await currentUser();
@@ -21,22 +24,12 @@ async function requireSalesAccess() {
   return user.id;
 }
 
-async function generateSoNumber(): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `SO-${year}-`;
-  const count = await prisma.salesOrder.count({
-    where: { orderNumber: { startsWith: prefix } },
-  });
-  return `${prefix}${String(count + 1).padStart(4, "0")}`;
+async function generateSoNumber(db: Db = prisma): Promise<string> {
+  return getNextDocumentNumber(`SO-${new Date().getFullYear()}-`, db);
 }
 
-async function generateReturnNumber(): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `SR-${year}-`;
-  const count = await prisma.salesReturn.count({
-    where: { returnNumber: { startsWith: prefix } },
-  });
-  return `${prefix}${String(count + 1).padStart(4, "0")}`;
+async function generateReturnNumber(db: Db = prisma): Promise<string> {
+  return getNextDocumentNumber(`SR-${new Date().getFullYear()}-`, db);
 }
 
 /** Best-effort: increment (+1) or decrement (-1) soldQty in today's open daily log. */
@@ -123,7 +116,6 @@ export async function createSalesOrder(values: CreateSoValues) {
     select: { commissionPct: true },
   });
   const commissionPct = Number(customer?.commissionPct ?? 0);
-  const orderNumber   = await generateSoNumber();
   const subtotal      = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
 
   // Check stock availability before touching anything
@@ -162,15 +154,16 @@ export async function createSalesOrder(values: CreateSoValues) {
   const commissionAmount = Math.round(netAmount * commissionPct) / 100;
   const factoryAmount    = netAmount - commissionAmount;
 
-  const returnNumber      = hasReturn ? await generateReturnNumber() : null;
-  const freshReturnNumber = hasFreshReturn ? await generateReturnNumber() : null;
-
   const paidNow = Math.min(data.amountPaid, factoryAmount);
   const status  = paidNow >= factoryAmount - 0.001 ? "PAID"
                 : paidNow > 0                       ? "PARTIALLY_PAID"
                 :                                     "CONFIRMED";
 
   await prisma.$transaction(async (tx) => {
+    const orderNumber       = await generateSoNumber(tx as Db);
+    const returnNumber      = hasReturn      ? await generateReturnNumber(tx as Db) : null;
+    const freshReturnNumber = hasFreshReturn ? await generateReturnNumber(tx as Db) : null;
+
     const so = await tx.salesOrder.create({
       data: {
         orderNumber,
@@ -298,23 +291,36 @@ export async function confirmSalesOrder(id: string) {
 
   const so = await prisma.salesOrder.findUnique({
     where: { id },
-    include: { items: { include: { product: true } } },
+    select: {
+      status:      true,
+      orderNumber: true,
+      items: {
+        select: { productId: true, quantity: true, unitPrice: true },
+      },
+    },
   });
   if (!so) throw new Error("Sales order not found");
   if (so.status !== "DRAFT") throw new Error("Only draft orders can be confirmed");
 
-  // Check sufficient stock for all items before touching anything
-  for (const item of so.items) {
-    const available = Number(item.product.currentStock);
-    const needed    = Number(item.quantity);
-    if (available < needed) {
-      throw new Error(
-        `Insufficient stock for "${item.product.name}". Available: ${available.toLocaleString(undefined, { maximumFractionDigits: 3 })}, needed: ${needed.toLocaleString(undefined, { maximumFractionDigits: 3 })}`
-      );
-    }
-  }
-
   await prisma.$transaction(async (tx) => {
+    // Re-read stock inside the transaction — prevents TOCTOU overselling
+    for (const item of so.items) {
+      const product = await tx.product.findUnique({
+        where:  { id: item.productId },
+        select: { name: true, currentStock: true },
+      });
+      if (!product) throw new Error("Product not found");
+      const available = Number(product.currentStock);
+      const needed    = Number(item.quantity);
+      if (available < needed) {
+        throw new Error(
+          `Insufficient stock for "${product.name}". ` +
+          `Available: ${available.toLocaleString(undefined, { maximumFractionDigits: 3 })}, ` +
+          `needed: ${needed.toLocaleString(undefined, { maximumFractionDigits: 3 })}`
+        );
+      }
+    }
+
     for (const item of so.items) {
       await applyStockMovement(
         {
@@ -627,14 +633,54 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
 
   const so = await prisma.salesOrder.findUnique({
     where: { id: soId },
-    select: { status: true, orderNumber: true, totalAmount: true, commissionPct: true, returns: { select: { totalAmount: true } } },
+    select: {
+      status:        true,
+      orderNumber:   true,
+      totalAmount:   true,
+      commissionPct: true,
+      items: {
+        select: {
+          productId: true,
+          quantity:  true,
+          product:   { select: { name: true } },
+        },
+      },
+      returns: {
+        select: {
+          totalAmount: true,
+          items: { select: { productId: true, quantity: true } },
+        },
+      },
+    },
   });
   if (!so) throw new Error("Sales order not found");
   if (so.status === "DRAFT" || so.status === "CANCELLED") {
     throw new Error("Cannot process a return for a draft or cancelled order");
   }
 
-  const returnNumber  = await generateReturnNumber();
+  // Validate: cumulative returned qty per product must not exceed sold qty
+  for (const returnItem of data.items) {
+    const soldQty = so.items
+      .filter((i) => i.productId === returnItem.productId)
+      .reduce((sum, i) => sum + Number(i.quantity), 0);
+    if (soldQty === 0) {
+      throw new Error(`Product was not part of this sales order`);
+    }
+    const previouslyReturned = so.returns
+      .flatMap((r) => r.items)
+      .filter((i) => i.productId === returnItem.productId)
+      .reduce((sum, i) => sum + Number(i.quantity), 0);
+    if (previouslyReturned + returnItem.quantity > soldQty + 0.001) {
+      const productName = so.items.find((i) => i.productId === returnItem.productId)?.product.name ?? returnItem.productId;
+      throw new Error(
+        `Cannot return ${returnItem.quantity} of "${productName}". ` +
+        `Sold: ${soldQty.toLocaleString(undefined, { maximumFractionDigits: 3 })}, ` +
+        `already returned: ${previouslyReturned.toLocaleString(undefined, { maximumFractionDigits: 3 })}, ` +
+        `remaining: ${Math.max(0, soldQty - previouslyReturned).toLocaleString(undefined, { maximumFractionDigits: 3 })}`
+      );
+    }
+  }
+
   const returnTotal   = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
 
   // Recalculate commission/factory amounts after this waste return
@@ -645,6 +691,7 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
   const factoryAmount    = netAmount - commissionAmount;
 
   await prisma.$transaction(async (tx) => {
+    const returnNumber = await generateReturnNumber(tx as Db);
     await tx.salesReturn.create({
       data: {
         returnNumber,

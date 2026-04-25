@@ -16,7 +16,8 @@
       "Bash(node -e \"const s = require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui/react/select'\\); console.log\\(Object.keys\\(s\\)\\)\")",
       "Bash(node -e \"const s = require\\('c:/Users/rider/Desktop/SSFI/erp-app/node_modules/@base-ui/react/select'\\); console.log\\(Object.keys\\(s.Select\\)\\)\")",
       "Bash(npm run *)",
-      "Bash(grep -v \"^$\")"
+      "Bash(grep -v \"^$\")",
+      "Bash(awk '/^model/ { model=$2 } /deletedAt/ { print model }' /c/Users/rider/Desktop/SSFI/erp-app/prisma/schema.prisma)"
     ]
   }
 }

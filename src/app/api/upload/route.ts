@@ -46,7 +46,8 @@ export async function POST(req: NextRequest) {
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("[upload] storage error:", error.message);
+    return NextResponse.json({ error: "Upload failed. Please try again." }, { status: 500 });
   }
 
   const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(fileName);

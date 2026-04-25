@@ -57,7 +57,7 @@ export async function GET() {
         status:   { in: ["CONFIRMED", "PARTIALLY_PAID"] },
         dueDate:  { lt: now },
       },
-      include: { salesman: true },
+      include: { salesman: { select: { name: true } } },
       take:    20,
       orderBy: { dueDate: "asc" },
     });

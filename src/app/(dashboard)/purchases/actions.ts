@@ -13,6 +13,9 @@ import {
   type ReceiveGoodsValues, type PaymentFormValues,
   type CreatePurchaseValues, type NewProductValues,
 } from "@/lib/validators/purchase";
+import { getNextDocumentNumber } from "@/lib/doc-counter";
+
+type Db = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
 async function requirePurchasesAccess() {
   const { userId } = await auth();
@@ -25,13 +28,8 @@ async function requirePurchasesAccess() {
   return userId;
 }
 
-async function generatePoNumber(): Promise<string> {
-  const year = new Date().getFullYear();
-  const prefix = `PO-${year}-`;
-  const count = await prisma.purchaseOrder.count({
-    where: { orderNumber: { startsWith: prefix } },
-  });
-  return `${prefix}${String(count + 1).padStart(4, "0")}`;
+async function generatePoNumber(db: Db = prisma): Promise<string> {
+  return getNextDocumentNumber(`PO-${new Date().getFullYear()}-`, db);
 }
 
 // ─── Suppliers ────────────────────────────────
@@ -87,29 +85,30 @@ export async function createPurchaseOrder(values: CreatePoValues) {
   const userId = await requirePurchasesAccess();
   const data = createPoSchema.parse(values);
 
-  const orderNumber = await generatePoNumber();
-
   const subtotal = data.items.reduce((sum, i) => sum + i.quantity * i.unitCost, 0);
 
-  await prisma.purchaseOrder.create({
-    data: {
-      orderNumber,
-      supplierId:   data.supplierId,
-      expectedDate: data.expectedDate ? new Date(data.expectedDate) : null,
-      notes:        data.notes || null,
-      subtotal,
-      taxAmount:    0,
-      totalAmount:  subtotal,
-      createdBy:    userId,
-      items: {
-        create: data.items.map((item) => ({
-          productId: item.productId,
-          quantity:  item.quantity,
-          unitCost:  item.unitCost,
-          totalCost: item.quantity * item.unitCost,
-        })),
+  await prisma.$transaction(async (tx) => {
+    const orderNumber = await generatePoNumber(tx as Db);
+    await tx.purchaseOrder.create({
+      data: {
+        orderNumber,
+        supplierId:   data.supplierId,
+        expectedDate: data.expectedDate ? new Date(data.expectedDate) : null,
+        notes:        data.notes || null,
+        subtotal,
+        taxAmount:    0,
+        totalAmount:  subtotal,
+        createdBy:    userId,
+        items: {
+          create: data.items.map((item) => ({
+            productId: item.productId,
+            quantity:  item.quantity,
+            unitCost:  item.unitCost,
+            totalCost: item.quantity * item.unitCost,
+          })),
+        },
       },
-    },
+    });
   });
 
   revalidatePath("/purchases");
@@ -365,6 +364,13 @@ export async function createPurchase(values: CreatePurchaseValues) {
   const userId = await requirePurchasesAccess();
   const data   = createPurchaseSchema.parse(values);
 
+  const duplicate = await prisma.purchase.findFirst({
+    where: { invoiceNo: data.invoiceNo, deletedAt: null },
+  });
+  if (duplicate) {
+    throw new Error(`Invoice number "${data.invoiceNo}" already exists. Please use a different invoice number.`);
+  }
+
   // Compute per-item amounts
   const computedItems = data.items.map((item) => {
     const grossAmount   = item.quantity * item.unitPrice;
@@ -475,6 +481,13 @@ export async function createPurchase(values: CreatePurchaseValues) {
 export async function updatePurchase(id: string, values: CreatePurchaseValues) {
   const userId = await requirePurchasesAccess();
   const data   = createPurchaseSchema.parse(values);
+
+  const duplicate = await prisma.purchase.findFirst({
+    where: { invoiceNo: data.invoiceNo, deletedAt: null, NOT: { id } },
+  });
+  if (duplicate) {
+    throw new Error(`Invoice number "${data.invoiceNo}" is already used by another purchase.`);
+  }
 
   const computedItems = data.items.map((item) => {
     const grossAmount  = item.quantity * item.unitPrice;

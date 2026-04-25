@@ -791,3 +791,14 @@ model CompanySettings {
   updatedAt   DateTime @updatedAt
   updatedBy   String?
 }
+
+// ─────────────────────────────────────────────
+// DOCUMENT COUNTERS (atomic sequence per prefix)
+// ─────────────────────────────────────────────
+
+model DocumentCounter {
+  prefix    String   @id
+  nextVal   Int
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
