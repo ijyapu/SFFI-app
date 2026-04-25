@@ -29,7 +29,9 @@
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); [print\\(k, v.get\\('severity','?'\\), v.get\\('via',[{}]\\)[0].get\\('title',''\\) if isinstance\\(v.get\\('via',[{}]\\)[0],dict\\) else v.get\\('via',[{}]\\)[0]\\) for k,v in d.get\\('vulnerabilities',{}\\).items\\(\\)]\")",
       "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('DEPS:'\\); [print\\(f'  {k}: {v}'\\) for k,v in d.get\\('dependencies',{}\\).items\\(\\)]; print\\('DEV:'\\); [print\\(f'  {k}: {v}'\\) for k,v in d.get\\('devDependencies',{}\\).items\\(\\)]\")",
       "Bash(node -e ' *)",
-      "Bash(npm show *)"
+      "Bash(npm show *)",
+      "Bash(npm install *)",
+      "Bash(node -e \"const p = require\\('./node_modules/@sentry/nextjs/package.json'\\); console.log\\(p.version\\)\")"
     ]
   }
 }

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const isDev = process.env.NODE_ENV !== "production";
 
@@ -19,7 +20,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.supabase.co wss://*.supabase.co",
+      "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
       "frame-src https://*.clerk.accounts.dev https://*.clerk.com",
       "object-src 'none'",
       "base-uri 'self'",
@@ -43,4 +44,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org:     process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+
+  // Only log Sentry build output in CI; keeps local builds quiet
+  silent: !process.env.CI,
+
+  // Upload source maps so Sentry shows original TypeScript in stack traces
+  widenClientFileUpload: true,
+  hideSourceMaps: true,
+
+  // Remove Sentry's logger from the production bundle (~3 KB)
+  disableLogger: true,
+
+  // We manage our own uptime monitoring via UptimeRobot
+  automaticVercelMonitors: false,
+});
