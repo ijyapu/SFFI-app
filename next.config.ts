@@ -49,23 +49,18 @@ const sentryEnvReady =
   !!process.env.SENTRY_PROJECT &&
   !!process.env.SENTRY_AUTH_TOKEN;
 
-export default withSentryConfig(nextConfig, {
-  org:     process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-
-  // Only log Sentry build output in CI; keeps local builds quiet
-  silent: !process.env.CI,
-
-  // Remove Sentry's logger from the production bundle (~3 KB)
-  disableLogger: true,
-
-  // We manage our own uptime monitoring via UptimeRobot
-  automaticVercelMonitors: false,
-
-  sourcemaps: {
-    // Skip upload (and avoid build errors) until Sentry env vars are configured
-    disable: !sentryEnvReady,
-    // Delete .map files from the public build after upload so they aren't served
-    filesToDeleteAfterUpload: [".next/static/**/*.map"],
-  },
-});
+// Skip withSentryConfig entirely when env vars aren't set — sourcemaps.disable
+// only suppresses upload; sentry-cli still tries to create releases and fails
+// with 401 if SENTRY_AUTH_TOKEN is missing.
+export default sentryEnvReady
+  ? withSentryConfig(nextConfig, {
+      org:     process.env.SENTRY_ORG,
+      project: process.env.SENTRY_PROJECT,
+      silent:  !process.env.CI,
+      disableLogger:            true,
+      automaticVercelMonitors:  false,
+      sourcemaps: {
+        filesToDeleteAfterUpload: [".next/static/**/*.map"],
+      },
+    })
+  : nextConfig;

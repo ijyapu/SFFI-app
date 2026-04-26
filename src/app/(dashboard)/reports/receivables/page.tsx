@@ -26,28 +26,25 @@ export default async function ReceivablesPage() {
     orderBy: { orderDate: "asc" },
   });
 
-  const rows: AgingRow[] = orders
-    .map((o) => {
-      const outstanding = Number(o.factoryAmount) - Number(o.amountPaid);
-      if (outstanding <= 0) return null;
+  const rows: AgingRow[] = orders.flatMap((o) => {
+    const outstanding = Number(o.factoryAmount) - Number(o.amountPaid);
+    if (outstanding <= 0) return [];
 
-      const ageDays = Math.max(0, differenceInDays(now, o.orderDate));
-      const bucket  = ageBucket(ageDays);
+    const ageDays = Math.max(0, differenceInDays(now, o.orderDate));
 
-      return {
-        id:          o.id,
-        orderNumber: o.orderNumber,
-        partyName:   o.salesman.name,
-        orderDate:   o.orderDate.toISOString(),
-        dueDate:     null,
-        totalAmount: Number(o.factoryAmount),
-        amountPaid:  Number(o.amountPaid),
-        outstanding,
-        ageDays,
-        bucket,
-      } satisfies AgingRow;
-    })
-    .filter((r): r is AgingRow => r !== null);
+    return [{
+      id:          o.id,
+      orderNumber: o.orderNumber,
+      partyName:   o.salesman.name,
+      orderDate:   o.orderDate.toISOString(),
+      dueDate:     null,
+      totalAmount: Number(o.factoryAmount),
+      amountPaid:  Number(o.amountPaid),
+      outstanding,
+      ageDays,
+      bucket:      ageBucket(ageDays),
+    }];
+  });
 
   return (
     <AgingTable
