@@ -5,11 +5,11 @@ import { AgingTable, type AgingRow } from "../_components/aging-table";
 
 export const metadata = { title: "Receivables Aging — Reports" };
 
-function ageBucket(days: number, dueDate: string | null): AgingRow["bucket"] {
-  if (!dueDate || days <= 0) return "current";
-  if (days <= 30)  return "1-30";
-  if (days <= 60)  return "31-60";
-  if (days <= 90)  return "61-90";
+function ageBucket(days: number): AgingRow["bucket"] {
+  if (days <= 7)  return "current";
+  if (days <= 30) return "1-30";
+  if (days <= 60) return "31-60";
+  if (days <= 90) return "61-90";
   return "91+";
 }
 
@@ -31,16 +31,15 @@ export default async function ReceivablesPage() {
       const outstanding = Number(o.factoryAmount) - Number(o.amountPaid);
       if (outstanding <= 0) return null;
 
-      const dueDate  = o.dueDate?.toISOString() ?? null;
-      const ageDays  = dueDate ? Math.max(0, differenceInDays(now, new Date(dueDate))) : 0;
-      const bucket   = ageBucket(ageDays, dueDate);
+      const ageDays = Math.max(0, differenceInDays(now, o.orderDate));
+      const bucket  = ageBucket(ageDays);
 
       return {
         id:          o.id,
         orderNumber: o.orderNumber,
         partyName:   o.salesman.name,
         orderDate:   o.orderDate.toISOString(),
-        dueDate,
+        dueDate:     null,
         totalAmount: Number(o.factoryAmount),
         amountPaid:  Number(o.amountPaid),
         outstanding,

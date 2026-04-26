@@ -14,6 +14,12 @@ import { getNextDocumentNumber } from "@/lib/doc-counter";
 
 type Db = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
+/** Store date-only inputs as noon UTC to avoid midnight timezone boundary issues */
+function toNoonUTC(dateStr: string): Date {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0));
+}
+
 async function requireSalesAccess() {
   const user = await currentUser();
   if (!user) throw new Error("Unauthenticated");
@@ -168,7 +174,7 @@ export async function createSalesOrder(values: CreateSoValues) {
       data: {
         orderNumber,
         customerId:      data.customerId,
-        dueDate:         data.dueDate ? new Date(data.dueDate) : null,
+        orderDate:       toNoonUTC(data.orderDate),
         notes:           data.notes || null,
         subtotal,
         taxAmount:       0,
@@ -421,7 +427,7 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
     await tx.salesOrder.update({
       where: { id },
       data: {
-        dueDate:          data.dueDate ? new Date(data.dueDate) : null,
+        orderDate:        toNoonUTC(data.orderDate),
         notes:            data.notes || null,
         subtotal,
         totalAmount:      subtotal,

@@ -80,7 +80,6 @@ type Props = {
   status: keyof typeof STATUS_CONFIG;
   customerName: string;
   orderDate: string;
-  dueDate: string | null;
   notes: string | null;
   subtotal: number;
   totalAmount: number;
@@ -97,7 +96,7 @@ type Props = {
 
 export function SoDetail(props: Props) {
   const {
-    id, orderNumber, status, customerName, orderDate, dueDate,
+    id, orderNumber, status, customerName, orderDate,
     notes, totalAmount, commissionPct, commissionAmount, factoryAmount,
     amountPaid, items, payments, returns, products, salesmanTotalOutstanding,
   } = props;
@@ -162,11 +161,6 @@ export function SoDetail(props: Props) {
           <span className="text-muted-foreground text-sm">
             <DateDisplay date={orderDate} />
           </span>
-          {dueDate && (
-            <span className="text-muted-foreground text-sm flex items-center gap-1">
-              · Due <DateDisplay date={dueDate} />
-            </span>
-          )}
         </div>
 
         <div className="flex gap-2">

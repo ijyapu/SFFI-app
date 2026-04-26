@@ -25,7 +25,7 @@ type SoData = {
   status: string;
   salesmanName: string;
   commissionPct: number;
-  dueDate: string;
+  orderDate: string;
   notes: string;
   amountPaid: number;
   existingReturnTotal: number;
@@ -49,8 +49,8 @@ export function SoEditForm({ so, products }: { so: SoData; products: Product[] }
   const form = useForm<UpdateSoValues>({
     resolver: zodResolver(updateSoSchema),
     defaultValues: {
-      dueDate: so.dueDate,
-      notes:   so.notes,
+      orderDate: so.orderDate,
+      notes:     so.notes,
       items:   so.items,
     },
   });
@@ -120,10 +120,10 @@ export function SoEditForm({ so, products }: { so: SoData; products: Product[] }
           </div>
           <FormField
             control={form.control}
-            name="dueDate"
+            name="orderDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Due Date</FormLabel>
+                <FormLabel>Sale Date *</FormLabel>
                 <FormControl><Input type="date" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>

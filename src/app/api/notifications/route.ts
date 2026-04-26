@@ -55,15 +55,15 @@ export async function GET() {
       where: {
         deletedAt: null,
         status:   { in: ["CONFIRMED", "PARTIALLY_PAID"] },
-        dueDate:  { lt: now },
+        orderDate: { lt: subDays(now, 7) },
       },
       include: { salesman: { select: { name: true } } },
       take:    20,
-      orderBy: { dueDate: "asc" },
+      orderBy: { orderDate: "asc" },
     });
 
     for (const o of overdue) {
-      const days = differenceInDays(now, o.dueDate!);
+      const days = differenceInDays(now, o.orderDate);
       notifications.push({
         id:          `overdue_so_${o.id}`,
         type:        "overdue_receivable",

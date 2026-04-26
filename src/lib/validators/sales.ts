@@ -30,7 +30,7 @@ export const returnItemSchema = z.object({
 
 export const createSoSchema = z.object({
   customerId:        z.string().min(1, "Select a salesman"),
-  dueDate:           z.string().optional(),
+  orderDate:         z.string().min(1, "Sale date is required"),
   notes:             z.string().max(2000).optional(),
   items:             z.array(soItemSchema).min(1, "Add at least one item").max(500),
   returnItems:       z.array(returnItemSchema).max(500).optional(),
@@ -45,8 +45,8 @@ export type CreateSoValues = z.infer<typeof createSoSchema>;
 // ─── Sales Order Edit ─────────────────────────
 
 export const updateSoSchema = z.object({
-  dueDate: z.string().optional(),
-  notes:   z.string().max(2000).optional(),
+  orderDate: z.string().min(1, "Sale date is required"),
+  notes:     z.string().max(2000).optional(),
   items:   z.array(soItemSchema).min(1, "Add at least one item").max(500),
 });
 

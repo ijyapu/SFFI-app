@@ -73,7 +73,6 @@ export default async function SalesOrderDetailPage({
     status:       so.status,
     customerName: so.salesman.name,
     orderDate:    so.orderDate.toISOString(),
-    dueDate:      so.dueDate?.toISOString() ?? null,
     notes:        so.notes,
     subtotal:         Number(so.subtotal),
     totalAmount:      Number(so.totalAmount),

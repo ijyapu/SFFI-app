@@ -49,7 +49,7 @@ export default async function EditSalesOrderPage({
     status:       so.status,
     salesmanName: so.salesman.name,
     commissionPct: Number(so.commissionPct),
-    dueDate:      so.dueDate ? so.dueDate.toISOString().split("T")[0] : "",
+    orderDate:    so.orderDate.toISOString().split("T")[0],
     notes:        so.notes ?? "",
     amountPaid:   Number(so.amountPaid),
     existingReturnTotal: so.returns.reduce((sum, r) => sum + Number(r.totalAmount), 0),

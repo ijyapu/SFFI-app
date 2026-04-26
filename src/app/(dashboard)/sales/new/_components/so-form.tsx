@@ -61,7 +61,7 @@ export function SoForm({ salesmen, products }: Props) {
     resolver: zodResolver(createSoSchema),
     defaultValues: {
       customerId: "",
-      dueDate:    "",
+      orderDate:  new Date().toISOString().split("T")[0],
       notes:      "",
       items:      [{ productId: "", quantity: 1, unitPrice: 0 }],
       amountPaid: 0,
@@ -190,10 +190,10 @@ export function SoForm({ salesmen, products }: Props) {
           />
           <FormField
             control={form.control}
-            name="dueDate"
+            name="orderDate"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Due Date</FormLabel>
+                <FormLabel>Sale Date *</FormLabel>
                 <FormControl><Input type="date" {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
