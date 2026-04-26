@@ -185,7 +185,7 @@ export function SoDetail(props: Props) {
               </Button>
             </>
           )}
-          {!["DRAFT", "CANCELLED"].includes(status) && salesmanTotalOutstanding > 0.001 && (
+          {!["DRAFT", "CANCELLED"].includes(status) && (
             <Button onClick={() => setPaymentOpen(true)}>
               <CreditCard className="h-4 w-4" />
               Record Payment

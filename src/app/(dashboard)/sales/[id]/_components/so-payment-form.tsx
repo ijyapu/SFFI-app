@@ -49,11 +49,6 @@ export function SoPaymentForm({ soId, factoryAmount, outstanding, salesmanTotalO
   });
 
   async function onSubmit(values: SalesmanPaymentValues) {
-    if (values.amount === 0) {
-      form.reset();
-      onClose();
-      return;
-    }
     try {
       await recordSalesmanPayment(soId, values);
       toast.success(`Payment of Rs ${values.amount.toFixed(2)} recorded`);

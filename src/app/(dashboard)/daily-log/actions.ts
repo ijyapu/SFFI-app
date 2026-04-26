@@ -629,20 +629,16 @@ export async function reopenDailyLog(logId: string): Promise<void> {
         });
       }
 
-      // Reset all item activity fields so staff can re-enter
+      // Reset only computed/derived fields — preserve manually-entered data
+      // (producedQty, usedQty, wasteQty, damagedQty, notes stay intact)
       await tx.dailyLogItem.updateMany({
         where: { dailyLogId: logId },
         data: {
-          producedQty:    0,
-          usedQty:        0,
           soldQty:        0,
           freshReturnQty: 0,
-          wasteQty:       0,
-          damagedQty:     0,
           closingQty:     0,
           actualQty:      null,
           varianceQty:    null,
-          notes:          null,
         },
       });
 
