@@ -108,41 +108,37 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
       .map((s) => [s.productId!, Number(s._sum.quantity ?? 0)])
   );
 
-  // For open logs, compute soldQty and freshReturnQty live so the table
-  // always reflects actual activity regardless of async sync functions.
-  let confirmedSoldMap     = new Map<string, number>();
-  let freshReturnMap       = new Map<string, number>();
-  if (log.status === "OPEN") {
-    const [soldSums, freshReturnSums] = await Promise.all([
-      prisma.salesOrderItem.groupBy({
-        by: ["productId"],
-        where: {
-          salesOrder: {
-            status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
-            deletedAt: null,
-            orderDate: { gte: logDate, lt: nextDay },
-          },
+  // Always compute soldQty and freshReturnQty live from sales orders by orderDate.
+  // This ensures backdated entries and edits are reflected in both open and closed logs.
+  const [soldSums, freshReturnSums] = await Promise.all([
+    prisma.salesOrderItem.groupBy({
+      by: ["productId"],
+      where: {
+        salesOrder: {
+          status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+          deletedAt: null,
+          orderDate: { gte: logDate, lt: nextDay },
         },
-        _sum: { quantity: true },
-      }),
-      prisma.salesReturnItem.groupBy({
-        by: ["productId"],
-        where: {
-          salesReturn: {
-            returnType: "FRESH",
-            salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
-          },
+      },
+      _sum: { quantity: true },
+    }),
+    prisma.salesReturnItem.groupBy({
+      by: ["productId"],
+      where: {
+        salesReturn: {
+          returnType: "FRESH",
+          salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
         },
-        _sum: { quantity: true },
-      }),
-    ]);
-    confirmedSoldMap = new Map(
-      soldSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
-    );
-    freshReturnMap = new Map(
-      freshReturnSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
-    );
-  }
+      },
+      _sum: { quantity: true },
+    }),
+  ]);
+  const confirmedSoldMap = new Map(
+    soldSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
+  );
+  const freshReturnMap = new Map(
+    freshReturnSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
+  );
 
   // Always compute wasteReturnQty from WASTE sales returns (read-only, informational)
   // Filter by the sales order's orderDate so backdated entries appear in the correct day's log.
@@ -172,14 +168,9 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
     purchasedQty: purchaseMap.get(item.productId) ?? 0,
     producedQty: Number(item.producedQty),
     usedQty: Number(item.usedQty),
-    soldQty: log.status === "OPEN"
-      ? (confirmedSoldMap.get(item.productId) ?? Number(item.soldQty))
-      : Number(item.soldQty),
-    freshReturnQty: log.status === "OPEN"
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      ? (freshReturnMap.get(item.productId) ?? Number((item as any).freshReturnQty ?? 0))
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      : Number((item as any).freshReturnQty ?? 0),
+    soldQty:       confirmedSoldMap.get(item.productId) ?? Number(item.soldQty),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    freshReturnQty: freshReturnMap.get(item.productId) ?? Number((item as any).freshReturnQty ?? 0),
     wasteReturnQty: wasteReturnMap.get(item.productId) ?? 0,
     wasteQty: Number(item.wasteQty),
     damagedQty: Number(item.damagedQty),
@@ -265,26 +256,47 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
     },
   });
 
-  // Backfill soldQty from any sales that were confirmed before the log was opened
+  // Backfill soldQty and freshReturnQty from any activity recorded before the log was opened
   const nextDay = new Date(logDate.getTime() + 24 * 60 * 60 * 1000);
-  const soldItems = await prisma.salesOrderItem.findMany({
-    where: {
-      salesOrder: {
-        status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
-        deletedAt: null,
-        orderDate: { gte: logDate, lt: nextDay },
+  const [soldItems, freshReturnItems] = await Promise.all([
+    prisma.salesOrderItem.findMany({
+      where: {
+        salesOrder: {
+          status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+          deletedAt: null,
+          orderDate: { gte: logDate, lt: nextDay },
+        },
       },
-    },
-    select: { productId: true, quantity: true },
-  });
+      select: { productId: true, quantity: true },
+    }),
+    prisma.salesReturnItem.findMany({
+      where: {
+        salesReturn: {
+          returnType: "FRESH",
+          salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
+        },
+      },
+      select: { productId: true, quantity: true },
+    }),
+  ]);
   const soldByProduct = new Map<string, number>();
   for (const si of soldItems) {
     soldByProduct.set(si.productId, (soldByProduct.get(si.productId) ?? 0) + Number(si.quantity));
+  }
+  const freshByProduct = new Map<string, number>();
+  for (const ri of freshReturnItems) {
+    freshByProduct.set(ri.productId, (freshByProduct.get(ri.productId) ?? 0) + Number(ri.quantity));
   }
   for (const [productId, qty] of soldByProduct) {
     await prisma.dailyLogItem.updateMany({
       where: { dailyLogId: log.id, productId },
       data:  { soldQty: qty },
+    });
+  }
+  for (const [productId, qty] of freshByProduct) {
+    await prisma.dailyLogItem.updateMany({
+      where: { dailyLogId: log.id, productId },
+      data:  { freshReturnQty: qty },
     });
   }
 
@@ -402,22 +414,33 @@ export async function closeDailyLog(logId: string): Promise<void> {
   const pendingMovements: PendingMovement[] = [];
   const itemUpdates: Array<{ id: string; closingQty: number; actualQty: number | null; varianceQty: number | null }> = [];
 
-  // Sync soldQty from confirmed sales before calculating, so closing qty
-  // uses the same value that was shown to the user in the table.
-  const confirmedSoldSums = await prisma.salesOrderItem.groupBy({
-    by: ["productId"],
-    where: {
-      salesOrder: {
-        status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
-        deletedAt: null,
-        orderDate: { gte: logDate, lt: nextDay },
+  // Sync soldQty and freshReturnQty live before calculating so closing qty
+  // uses the same values that were shown to the user in the table.
+  const [confirmedSoldSums, confirmedFreshSums] = await Promise.all([
+    prisma.salesOrderItem.groupBy({
+      by: ["productId"],
+      where: {
+        salesOrder: {
+          status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+          deletedAt: null,
+          orderDate: { gte: logDate, lt: nextDay },
+        },
       },
-    },
-    _sum: { quantity: true },
-  });
-  const confirmedSoldMap = new Map(
-    confirmedSoldSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
-  );
+      _sum: { quantity: true },
+    }),
+    prisma.salesReturnItem.groupBy({
+      by: ["productId"],
+      where: {
+        salesReturn: {
+          returnType: "FRESH",
+          salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
+        },
+      },
+      _sum: { quantity: true },
+    }),
+  ]);
+  const confirmedSoldMap  = new Map(confirmedSoldSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)]));
+  const confirmedFreshMap = new Map(confirmedFreshSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)]));
 
   for (const item of log.items) {
     const opening   = Number(item.openingQty);
@@ -429,7 +452,9 @@ export async function closeDailyLog(logId: string): Promise<void> {
     const storedSold     = Number(item.soldQty);
     const sold           = storedSold > confirmedSold ? storedSold : confirmedSold;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const freshReturn    = Number((item as any).freshReturnQty ?? 0);
+    const storedFresh    = Number((item as any).freshReturnQty ?? 0);
+    const confirmedFresh = confirmedFreshMap.get(item.productId) ?? 0;
+    const freshReturn    = storedFresh > confirmedFresh ? storedFresh : confirmedFresh;
     const waste          = Number(item.wasteQty);
     const damaged        = Number(item.damagedQty);
 
@@ -621,27 +646,47 @@ export async function reopenDailyLog(logId: string): Promise<void> {
         },
       });
 
-      // Re-populate soldQty from confirmed sales orders for this log's date.
-      // Since close no longer creates DAILY_OUT for sold, soldQty must reflect actual sales.
+      // Re-populate soldQty and freshReturnQty from confirmed sales orders for this log's date.
       const nextDay = new Date(log.logDate.getTime() + 24 * 60 * 60 * 1000);
-      const soldItems = await tx.salesOrderItem.findMany({
-        where: {
-          salesOrder: {
-            status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
-            deletedAt: null,
-            orderDate: { gte: log.logDate, lt: nextDay },
+      const [soldItems, freshReturnItems] = await Promise.all([
+        tx.salesOrderItem.findMany({
+          where: {
+            salesOrder: {
+              status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+              deletedAt: null,
+              orderDate: { gte: log.logDate, lt: nextDay },
+            },
           },
-        },
-        select: { productId: true, quantity: true },
-      });
-      const soldByProduct = new Map<string, number>();
+          select: { productId: true, quantity: true },
+        }),
+        tx.salesReturnItem.findMany({
+          where: {
+            salesReturn: {
+              returnType: "FRESH",
+              salesOrder: { deletedAt: null, orderDate: { gte: log.logDate, lt: nextDay } },
+            },
+          },
+          select: { productId: true, quantity: true },
+        }),
+      ]);
+      const soldByProduct  = new Map<string, number>();
       for (const si of soldItems) {
         soldByProduct.set(si.productId, (soldByProduct.get(si.productId) ?? 0) + Number(si.quantity));
+      }
+      const freshByProduct = new Map<string, number>();
+      for (const ri of freshReturnItems) {
+        freshByProduct.set(ri.productId, (freshByProduct.get(ri.productId) ?? 0) + Number(ri.quantity));
       }
       for (const [productId, qty] of soldByProduct) {
         await tx.dailyLogItem.updateMany({
           where: { dailyLogId: logId, productId },
           data:  { soldQty: qty },
+        });
+      }
+      for (const [productId, qty] of freshByProduct) {
+        await tx.dailyLogItem.updateMany({
+          where: { dailyLogId: logId, productId },
+          data:  { freshReturnQty: qty },
         });
       }
 
