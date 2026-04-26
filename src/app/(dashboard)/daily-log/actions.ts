@@ -130,8 +130,7 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
         where: {
           salesReturn: {
             returnType: "FRESH",
-            salesOrder: { deletedAt: null },
-            createdAt:  { gte: logDate, lt: nextDay },
+            salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
           },
         },
         _sum: { quantity: true },
@@ -146,13 +145,13 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
   }
 
   // Always compute wasteReturnQty from WASTE sales returns (read-only, informational)
+  // Filter by the sales order's orderDate so backdated entries appear in the correct day's log.
   const wasteReturnSums = await prisma.salesReturnItem.groupBy({
     by: ["productId"],
     where: {
       salesReturn: {
         returnType: "WASTE",
-        salesOrder: { deletedAt: null },
-        createdAt:  { gte: logDate, lt: nextDay },
+        salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
       },
     },
     _sum: { quantity: true },

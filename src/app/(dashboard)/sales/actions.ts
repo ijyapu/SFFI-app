@@ -38,22 +38,27 @@ async function generateReturnNumber(db: Db = prisma): Promise<string> {
   return getNextDocumentNumber(`SR-${new Date().getFullYear()}-`, db);
 }
 
-/** Best-effort: increment (+1) or decrement (-1) soldQty in today's open daily log. */
+/** Best-effort: increment (+1) or decrement (-1) soldQty in the daily log for the given date. */
 async function syncDailyLogSoldQty(
   items: Array<{ productId: string; quantity: number }>,
   delta: 1 | -1,
+  orderDate: Date,
 ): Promise<void> {
   try {
-    const now      = new Date();
-    const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
-    const openLog  = await prisma.dailyLog.findUnique({
-      where:  { logDate: todayUTC },
-      select: { id: true, status: true },
+    // Normalise to midnight UTC for the daily log key (orderDate is stored as noon UTC)
+    const logDateUTC = new Date(Date.UTC(
+      orderDate.getUTCFullYear(),
+      orderDate.getUTCMonth(),
+      orderDate.getUTCDate(),
+    ));
+    const log = await prisma.dailyLog.findUnique({
+      where:  { logDate: logDateUTC },
+      select: { id: true },
     });
-    if (openLog?.status !== "OPEN") return;
+    if (!log) return;
     for (const item of items) {
       await prisma.dailyLogItem.updateMany({
-        where: { dailyLogId: openLog.id, productId: item.productId },
+        where: { dailyLogId: log.id, productId: item.productId },
         data:  delta === 1
           ? { soldQty: { increment: item.quantity } }
           : { soldQty: { decrement: item.quantity } },
@@ -285,7 +290,7 @@ export async function createSalesOrder(values: CreateSoValues) {
     }
   }, { timeout: 30000 });
 
-  await syncDailyLogSoldQty(data.items, 1);
+  await syncDailyLogSoldQty(data.items, 1, toNoonUTC(data.orderDate));
 
   revalidatePath("/sales");
   revalidatePath("/inventory");
@@ -300,6 +305,7 @@ export async function confirmSalesOrder(id: string) {
     select: {
       status:      true,
       orderNumber: true,
+      orderDate:   true,
       items: {
         select: { productId: true, quantity: true, unitPrice: true },
       },
@@ -352,6 +358,7 @@ export async function confirmSalesOrder(id: string) {
   await syncDailyLogSoldQty(
     so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
     1,
+    so.orderDate,
   );
 
   revalidatePath(`/sales/${id}`);
@@ -468,8 +475,9 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
     await syncDailyLogSoldQty(
       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
       -1,
+      so.orderDate,
     );
-    await syncDailyLogSoldQty(data.items, 1);
+    await syncDailyLogSoldQty(data.items, 1, toNoonUTC(data.orderDate));
   }
 
   revalidatePath(`/sales/${id}`);
@@ -483,7 +491,7 @@ export async function cancelSalesOrder(id: string) {
 
   const so = await prisma.salesOrder.findUnique({
     where: { id },
-    select: { status: true, items: { select: { productId: true, quantity: true } } },
+    select: { status: true, orderDate: true, items: { select: { productId: true, quantity: true } } },
   });
   if (!so) throw new Error("Sales order not found");
   if (so.status === "PAID") throw new Error("Cannot cancel a fully paid order");
@@ -500,6 +508,7 @@ export async function cancelSalesOrder(id: string) {
     await syncDailyLogSoldQty(
       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
       -1,
+      so.orderDate,
     );
   }
 
@@ -516,6 +525,7 @@ export async function deleteSalesOrder(id: string) {
     select: {
       status:      true,
       orderNumber: true,
+      orderDate:   true,
       items:       { select: { productId: true, quantity: true } },
     },
   });
@@ -552,6 +562,7 @@ export async function deleteSalesOrder(id: string) {
     await syncDailyLogSoldQty(
       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
       -1,
+      so.orderDate,
     );
   }
 
