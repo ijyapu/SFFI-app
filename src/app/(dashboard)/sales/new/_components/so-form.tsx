@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,9 +50,7 @@ export function SoForm({ salesmen, products }: Props) {
   const [wasteLines, setWasteLines] = useState<ReturnLine[]>([]);
   const [wasteNotes, setWasteNotes] = useState("");
 
-  // Payment state — defaults to factory amount, user can lower it for partial payment
   const [amountPaid, setAmountPaid] = useState(0);
-  const paymentTouchedRef = useRef(false);
 
   // Track open state for each product combobox by field index
   const [openCombobox, setOpenCombobox] = useState<Record<number, boolean>>({});
@@ -85,12 +83,6 @@ export function SoForm({ salesmen, products }: Props) {
   const commissionAmount = Math.round(netAmount * commissionPct) / 100;
   const factoryAmount    = netAmount - commissionAmount;
 
-  // Keep amountPaid in sync with factoryAmount unless user has manually edited it
-  useEffect(() => {
-    if (!paymentTouchedRef.current) {
-      setAmountPaid(factoryAmount);
-    }
-  }, [factoryAmount]);
 
   function handleProductChange(index: number, productId: string) {
     const product = products.find((p) => p.id === productId);
@@ -696,10 +688,7 @@ export function SoForm({ salesmen, products }: Props) {
                   min="0"
                   step="0.01"
                   value={amountPaid === 0 ? "" : amountPaid}
-                  onChange={(e) => {
-                    paymentTouchedRef.current = true;
-                    setAmountPaid(parseFloat(e.target.value) || 0);
-                  }}
+                  onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
                   placeholder="0.00"
                 />
               </div>
@@ -708,10 +697,7 @@ export function SoForm({ salesmen, products }: Props) {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    paymentTouchedRef.current = false;
-                    setAmountPaid(factoryAmount);
-                  }}
+                  onClick={() => setAmountPaid(factoryAmount)}
                 >
                   Full amount
                 </Button>

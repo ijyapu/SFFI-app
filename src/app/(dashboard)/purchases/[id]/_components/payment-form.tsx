@@ -37,7 +37,7 @@ export function PaymentForm({ poId, outstanding, open, onClose }: Props) {
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
-      amount:    outstanding,
+      amount:    0,
       method:    "CASH",
       paidAt:    new Date().toISOString().split("T")[0],
       reference: "",

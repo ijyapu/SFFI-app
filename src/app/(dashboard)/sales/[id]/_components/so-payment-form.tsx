@@ -41,7 +41,7 @@ export function SoPaymentForm({ soId, factoryAmount, outstanding, salesmanTotalO
   const form = useForm<SalesmanPaymentValues>({
     resolver: zodResolver(salesmanPaymentSchema),
     defaultValues: {
-      amount:    Math.max(outstanding, 0),
+      amount:    0,
       method:    "CASH",
       reference: "",
       notes:     "",

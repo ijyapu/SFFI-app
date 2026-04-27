@@ -32,7 +32,8 @@
       "Bash(npm show *)",
       "Bash(npm install *)",
       "Bash(node -e \"const p = require\\('./node_modules/@sentry/nextjs/package.json'\\); console.log\\(p.version\\)\")",
-      "Bash(node -e \"const t = require\\('./node_modules/@sentry/nextjs'\\); console.log\\(Object.keys\\(t\\).filter\\(k => k.toLowerCase\\(\\).includes\\('config'\\) || k.toLowerCase\\(\\).includes\\('sentry'\\)\\)\\)\")"
+      "Bash(node -e \"const t = require\\('./node_modules/@sentry/nextjs'\\); console.log\\(Object.keys\\(t\\).filter\\(k => k.toLowerCase\\(\\).includes\\('config'\\) || k.toLowerCase\\(\\).includes\\('sentry'\\)\\)\\)\")",
+      "Bash(xargs -I{} git show {} -- prisma/schema.prisma)"
     ]
   }
 }
