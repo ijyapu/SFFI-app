@@ -175,7 +175,7 @@ export default async function DailyLogPage({ searchParams }: Props) {
                   The previous day&apos;s closing figures changed after this log was opened
                   (likely because that day was reopened and re-edited).
                   One or more products have opening values that no longer match the previous closing.
-                  Ask an admin to delete this log and recreate it to pull in the corrected opening quantities.
+                  These will update automatically once the previous day is re-closed.
                 </p>
               </div>
             </div>

@@ -63,7 +63,7 @@ async function syncDailyLogSoldQty(
     });
     if (!log) return { ok: true, logUpdated: false };
 
-    // Skip update if log is in a state that should be re-derived by cascade instead
+    // Skip closed logs — soldQty is read live from sales orders in getDailyLog for display
     if (log.status === "CLOSED" || log.status === "AUTO_ADJUSTED") {
       return { ok: true, logUpdated: false };
     }

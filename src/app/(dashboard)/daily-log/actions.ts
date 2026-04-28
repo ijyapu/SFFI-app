@@ -272,9 +272,8 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
 
   // REOPENED = admin is re-editing; its closing figures may still change.
   // Skip it and use the most recent CLOSED / AUTO_ADJUSTED log's closing instead.
-  // (When the REOPENED log is eventually re-closed, cascade will propagate its
-  //  corrected closing to any already-closed future logs. OPEN future logs will
-  //  show an "opening may be outdated" warning until recreated.)
+  // When the REOPENED log is eventually re-closed, closeDailyLog will push its
+  // corrected closing into this new log's opening automatically.
   const prevLog = await prisma.dailyLog.findFirst({
     where: { logDate: { lt: logDate }, status: { in: ["CLOSED", "AUTO_ADJUSTED"] } },
     orderBy: { logDate: "desc" },
@@ -467,6 +466,7 @@ export async function closeDailyLog(logId: string): Promise<void> {
   const pendingMovements: PendingMovement[] = [];
   const itemUpdates: Array<{
     id: string;
+    productId: string;
     closingQty: number;
     soldQty: number;
     freshReturnQty: number;
@@ -546,7 +546,7 @@ export async function closeDailyLog(logId: string): Promise<void> {
         addMovement(StockMovementType.DAILY_OUT, waste,    "waste");
         addMovement(StockMovementType.DAILY_OUT, damaged,  "damaged");
 
-        itemUpdates.push({ id: item.id, closingQty: closing, soldQty: sold, freshReturnQty: freshReturn, actualQty: actual, varianceQty: variance });
+        itemUpdates.push({ id: item.id, productId: item.productId, closingQty: closing, soldQty: sold, freshReturnQty: freshReturn, actualQty: actual, varianceQty: variance });
       }
 
       // Batch-create all stock movements
@@ -611,6 +611,24 @@ export async function closeDailyLog(logId: string): Promise<void> {
       itemCount: log.items.length,
     },
   });
+
+  // Propagate today's closing quantities into the immediate next OPEN/REOPENED log.
+  // Only one log, one step — no cascade beyond that.
+  const immediateNextLog = await prisma.dailyLog.findFirst({
+    where:   { logDate: { gt: logDate } },
+    orderBy: { logDate: "asc" },
+    select:  { id: true, status: true },
+  });
+  if (immediateNextLog && (immediateNextLog.status === "OPEN" || immediateNextLog.status === "REOPENED")) {
+    await prisma.$transaction(
+      itemUpdates.map((upd) =>
+        prisma.dailyLogItem.updateMany({
+          where: { dailyLogId: immediateNextLog.id, productId: upd.productId },
+          data:  { openingQty: upd.closingQty },
+        })
+      )
+    );
+  }
 
   revalidatePath("/daily-log");
   revalidatePath("/daily-log/history");
