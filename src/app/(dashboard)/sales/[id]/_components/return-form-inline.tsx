@@ -14,7 +14,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { processSalesReturn } from "../../actions";
 
-type Product  = { id: string; name: string; unitName: string };
+type Product  = { id: string; name: string; unitName: string; sellingPrice: number };
 type LineItem = { key: number; productId: string; quantity: number | ""; unitPrice: number | "" };
 
 type PreviousReturnItem = {
@@ -201,13 +201,13 @@ export function ReturnFormInline({
         </div>
       )}
 
-      <div className="flex gap-0">
+      <div className="flex flex-col xl:flex-row">
 
         {/* Left: entry table */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-x-auto">
 
           {/* Column headers */}
-          <div className="grid grid-cols-[3rem_minmax(0,1fr)_9rem_11rem_10rem_3rem] border-b bg-muted/30">
+          <div className="grid grid-cols-[3rem_minmax(12rem,1fr)_8rem_10rem_9rem_3rem] border-b bg-muted/30 min-w-152">
             <div className="px-4 py-2.5 text-xs font-semibold text-muted-foreground">#</div>
             <div className="px-3 py-2.5 text-xs font-semibold text-muted-foreground">Product</div>
             <div className="px-3 py-2.5 text-xs font-semibold text-muted-foreground text-right">Quantity</div>
@@ -230,7 +230,7 @@ export function ReturnFormInline({
               return (
                 <div
                   key={line.key}
-                  className={`grid grid-cols-[3rem_minmax(0,1fr)_9rem_11rem_10rem_3rem] items-start transition-colors ${
+                  className={`grid grid-cols-[3rem_minmax(12rem,1fr)_8rem_10rem_9rem_3rem] min-w-152 items-start transition-colors ${
                     hasRowErr ? "bg-destructive/5" : "hover:bg-muted/10"
                   }`}
                 >
@@ -241,7 +241,11 @@ export function ReturnFormInline({
                   <div className="px-3 py-2 space-y-1">
                     <Select
                       value={line.productId}
-                      onValueChange={(v) => v && updateLine(line.key, { productId: v })}
+                      onValueChange={(v) => {
+                        if (!v) return;
+                        const p = products.find((pr) => pr.id === v);
+                        updateLine(line.key, { productId: v, unitPrice: p?.sellingPrice ?? "" });
+                      }}
                     >
                       <SelectTrigger className={`h-8 w-full text-sm ${errProd ? "border-destructive" : ""}`}>
                         <SelectValue placeholder="Choose product…">
@@ -320,7 +324,7 @@ export function ReturnFormInline({
         </div>
 
         {/* Right: notes + summary + actions */}
-        <div className="w-64 shrink-0 border-l flex flex-col">
+        <div className="xl:w-64 xl:shrink-0 xl:border-l border-t xl:border-t-0 flex flex-col">
 
           <div className="p-4 space-y-3 flex-1">
             {/* Running total */}

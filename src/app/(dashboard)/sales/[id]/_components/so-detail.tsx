@@ -78,7 +78,7 @@ type SalesReturn = {
   items: ReturnItem[];
 };
 
-type Product = { id: string; name: string; unitName: string };
+type Product = { id: string; name: string; unitName: string; sellingPrice: number };
 
 type Props = {
   id: string;

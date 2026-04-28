@@ -32,18 +32,26 @@ export function NotificationBell() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch("/api/notifications")
+    const controller = new AbortController();
+
+    fetch("/api/notifications", { signal: controller.signal })
       .then((r) => r.json())
       .then((d) => setNotifications(d.notifications ?? []))
+      .catch(() => {})
       .finally(() => setLoading(false));
 
-    // Re-poll every 2 minutes
+    // Re-poll every 2 minutes — silently ignore transient failures
     const interval = setInterval(() => {
-      fetch("/api/notifications")
+      fetch("/api/notifications", { signal: controller.signal })
         .then((r) => r.json())
-        .then((d) => setNotifications(d.notifications ?? []));
+        .then((d) => setNotifications(d.notifications ?? []))
+        .catch(() => {});
     }, 120_000);
-    return () => clearInterval(interval);
+
+    return () => {
+      clearInterval(interval);
+      controller.abort();
+    };
   }, []);
 
   // Close on outside click

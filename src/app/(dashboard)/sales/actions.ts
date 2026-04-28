@@ -831,28 +831,6 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
     throw new Error("Cannot process a return for a draft, voided, or lost order");
   }
 
-  // Validate: cumulative returned qty per product must not exceed sold qty
-  for (const returnItem of data.items) {
-    const soldQty = so.items
-      .filter((i) => i.productId === returnItem.productId)
-      .reduce((sum, i) => sum + Number(i.quantity), 0);
-    if (soldQty === 0) {
-      throw new Error(`Product was not part of this sales order`);
-    }
-    const previouslyReturned = so.returns
-      .flatMap((r) => r.items)
-      .filter((i) => i.productId === returnItem.productId)
-      .reduce((sum, i) => sum + Number(i.quantity), 0);
-    if (previouslyReturned + returnItem.quantity > soldQty + 0.001) {
-      const productName = so.items.find((i) => i.productId === returnItem.productId)?.product.name ?? returnItem.productId;
-      throw new Error(
-        `Cannot return ${returnItem.quantity} of "${productName}". ` +
-        `Sold: ${soldQty.toLocaleString(undefined, { maximumFractionDigits: 3 })}, ` +
-        `already returned: ${previouslyReturned.toLocaleString(undefined, { maximumFractionDigits: 3 })}, ` +
-        `remaining: ${Math.max(0, soldQty - previouslyReturned).toLocaleString(undefined, { maximumFractionDigits: 3 })}`
-      );
-    }
-  }
 
   const returnTotal   = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
 

@@ -51,7 +51,7 @@ export default async function SalesOrderDetailPage({
     }),
     prisma.product.findMany({
       where: { deletedAt: null },
-      select: { id: true, name: true, unit: { select: { name: true } } },
+      select: { id: true, name: true, sellingPrice: true, unit: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -65,7 +65,7 @@ export default async function SalesOrderDetailPage({
       0
     );
 
-  const products = rawProducts.map((p) => ({ id: p.id, name: p.name, unitName: p.unit.name }));
+  const products = rawProducts.map((p) => ({ id: p.id, name: p.name, unitName: p.unit.name, sellingPrice: Number(p.sellingPrice) }));
 
   const serialised = {
     id:           so.id,
@@ -83,8 +83,8 @@ export default async function SalesOrderDetailPage({
     items: so.items.map((i) => ({
       id:          i.id,
       productId:   i.productId,
-      productName: i.product.name,
-      unitName:    i.product.unit.name,
+      productName: i.product?.name ?? "Deleted Product",
+      unitName:    i.product?.unit?.name ?? "—",
       quantity:    Number(i.quantity),
       unitPrice:   Number(i.unitPrice),
       totalPrice:  Number(i.totalPrice),
@@ -106,8 +106,8 @@ export default async function SalesOrderDetailPage({
       createdAt:    r.createdAt.toISOString(),
       items: r.items.map((i) => ({
         id:          i.id,
-        productName: i.product.name,
-        unitName:    i.product.unit.name,
+        productName: i.product?.name ?? "Deleted Product",
+        unitName:    i.product?.unit?.name ?? "—",
         quantity:    Number(i.quantity),
         unitPrice:   Number(i.unitPrice),
         totalPrice:  Number(i.quantity) * Number(i.unitPrice),

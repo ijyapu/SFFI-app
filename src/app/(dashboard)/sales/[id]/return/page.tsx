@@ -36,7 +36,7 @@ export default async function RecordWastePage({
     }),
     prisma.product.findMany({
       where: { deletedAt: null },
-      select: { id: true, name: true, unit: { select: { name: true } } },
+      select: { id: true, name: true, sellingPrice: true, unit: { select: { name: true } } },
       orderBy: { name: "asc" },
     }),
   ]);
@@ -48,6 +48,7 @@ export default async function RecordWastePage({
     id: p.id,
     name: p.name,
     unitName: p.unit.name,
+    sellingPrice: Number(p.sellingPrice),
   }));
 
   return (
