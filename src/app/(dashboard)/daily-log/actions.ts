@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { StockMovementType } from "@prisma/client";
+import { StockMovementType, Prisma } from "@prisma/client";
+import { writeAuditLog } from "@/lib/audit";
 
 async function requireDailyLogAccess() {
   const user = await currentUser();
@@ -31,10 +32,12 @@ export async function getTodayString(): Promise<string> {
 // FETCH
 // ─────────────────────────────────────────────
 
+export type DailyLogStatus = "OPEN" | "CLOSED" | "REOPENED" | "AUTO_ADJUSTED";
+
 export type DailyLogRow = {
   id: string;
   logDate: string;        // YYYY-MM-DD
-  status: "OPEN" | "CLOSED";
+  status: DailyLogStatus;
   notes: string | null;
   createdAt: string;
   closedAt: string | null;
@@ -55,14 +58,17 @@ export type DailyLogItemRow = {
   producedQty: number;
   usedQty: number;
   soldQty: number;
-  freshReturnQty: number;   // computed from FRESH SalesReturn records
-  wasteReturnQty: number;  // computed from WASTE SalesReturn records (read-only, not deducted)
+  freshReturnQty: number;  // computed from FRESH SalesReturn records
+  wasteReturnQty: number;  // computed from WASTE SalesReturn records (informational, not deducted)
   wasteQty: number;
   damagedQty: number;
   closingQty: number;
   actualQty: number | null;
   varianceQty: number | null;
   notes: string | null;
+  // opening + purchased + produced + freshReturn - used - sold - waste - damaged - closing
+  // Should be 0; non-zero means the stored closing is stale vs live figures
+  formulaDelta: number;
 };
 
 export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> {
@@ -141,7 +147,6 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
   );
 
   // Always compute wasteReturnQty from WASTE sales returns (read-only, informational)
-  // Filter by the sales order's orderDate so backdated entries appear in the correct day's log.
   const wasteReturnSums = await prisma.salesReturnItem.groupBy({
     by: ["productId"],
     where: {
@@ -156,34 +161,51 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
     wasteReturnSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
   );
 
-  const items: DailyLogItemRow[] = log.items.map((item) => ({
-    id: item.id,
-    productId: item.productId,
-    productName: item.product.name,
-    productSku: item.product.sku,
-    categoryId: item.product.categoryId,
-    categoryName: item.product.category.name,
-    unitName: item.product.unit.name,
-    openingQty: Number(item.openingQty),
-    purchasedQty: purchaseMap.get(item.productId) ?? 0,
-    producedQty: Number(item.producedQty),
-    usedQty: Number(item.usedQty),
-    soldQty:       confirmedSoldMap.get(item.productId) ?? Number(item.soldQty),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    freshReturnQty: freshReturnMap.get(item.productId) ?? Number((item as any).freshReturnQty ?? 0),
-    wasteReturnQty: wasteReturnMap.get(item.productId) ?? 0,
-    wasteQty: Number(item.wasteQty),
-    damagedQty: Number(item.damagedQty),
-    closingQty: Number(item.closingQty),
-    actualQty: item.actualQty != null ? Number(item.actualQty) : null,
-    varianceQty: item.varianceQty != null ? Number(item.varianceQty) : null,
-    notes: item.notes,
-  }));
+  const items: DailyLogItemRow[] = log.items.map((item) => {
+    const opening      = Number(item.openingQty);
+    const purchased    = purchaseMap.get(item.productId) ?? 0;
+    const produced     = Number(item.producedQty);
+    const used         = Number(item.usedQty);
+    const sold         = confirmedSoldMap.get(item.productId) ?? Number(item.soldQty);
+    const freshReturn  = freshReturnMap.get(item.productId) ?? Number(item.freshReturnQty);
+    const wasteReturn  = wasteReturnMap.get(item.productId) ?? 0;
+    const waste        = Number(item.wasteQty);
+    const damaged      = Number(item.damagedQty);
+    const closing      = Number(item.closingQty);
+
+    // Positive delta = formula says closing should be higher than stored (data was added after close)
+    // Negative delta = formula says closing should be lower (data was removed after close)
+    const formulaDelta = (opening + purchased + produced + freshReturn - used - sold - waste - damaged) - closing;
+
+    return {
+      id: item.id,
+      productId: item.productId,
+      productName: item.product.name,
+      productSku: item.product.sku,
+      categoryId: item.product.categoryId,
+      categoryName: item.product.category.name,
+      unitName: item.product.unit.name,
+      openingQty: opening,
+      purchasedQty: purchased,
+      producedQty: produced,
+      usedQty: used,
+      soldQty: sold,
+      freshReturnQty: freshReturn,
+      wasteReturnQty: wasteReturn,
+      wasteQty: waste,
+      damagedQty: damaged,
+      closingQty: closing,
+      actualQty: item.actualQty != null ? Number(item.actualQty) : null,
+      varianceQty: item.varianceQty != null ? Number(item.varianceQty) : null,
+      notes: item.notes,
+      formulaDelta: Math.round(formulaDelta * 1000) / 1000, // round to 3 decimal places
+    };
+  });
 
   return {
     id: log.id,
     logDate: dateStr,
-    status: log.status,
+    status: log.status as DailyLogStatus,
     notes: log.notes,
     createdAt: log.createdAt.toISOString(),
     closedAt: log.closedAt?.toISOString() ?? null,
@@ -204,8 +226,8 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
   const existing = await prisma.dailyLog.findUnique({ where: { logDate } });
   if (existing) throw new Error("A log already exists for this date");
 
-  // Prevent starting a new log if any previous log is still open
-  // (opening quantities would be wrong — stock movements only apply on close)
+  // Prevent starting a new log if any previous log is still OPEN
+  // REOPENED and AUTO_ADJUSTED are treated as "closed enough" — they have valid closing qtys
   const openLog = await prisma.dailyLog.findFirst({
     where: { status: "OPEN", logDate: { lt: logDate } },
     select: { logDate: true },
@@ -218,11 +240,9 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
     );
   }
 
-  // Use previous closed log's closing quantities as opening quantities.
-  // This creates an explicit, traceable chain: Day N closing → Day N+1 opening.
-  // Falls back to currentStock for products not in the previous log (e.g. newly added).
+  // Use previous closed/auto-adjusted log's closing quantities as opening quantities.
   const prevLog = await prisma.dailyLog.findFirst({
-    where: { status: "CLOSED", logDate: { lt: logDate } },
+    where: { status: { in: ["CLOSED", "REOPENED", "AUTO_ADJUSTED"] }, logDate: { lt: logDate } },
     orderBy: { logDate: "desc" },
     include: {
       items: { select: { productId: true, closingQty: true } },
@@ -325,13 +345,16 @@ export async function updateDailyLogItem(
 ): Promise<void> {
   await requireDailyLogAccess();
 
-  // Ensure log is still open
   const item = await prisma.dailyLogItem.findUnique({
     where: { id: itemId },
     select: { dailyLog: { select: { status: true } } },
   });
   if (!item) throw new Error("Item not found");
-  if (item.dailyLog.status === "CLOSED") throw new Error("Log is closed");
+
+  // CLOSED and AUTO_ADJUSTED logs are locked; OPEN and REOPENED allow edits
+  const { status } = item.dailyLog;
+  if (status === "CLOSED") throw new Error("Log is closed");
+  if (status === "AUTO_ADJUSTED") throw new Error("Log was auto-adjusted. Reopen it before editing.");
 
   await prisma.dailyLogItem.update({
     where: { id: itemId },
@@ -367,10 +390,14 @@ export async function closeDailyLog(logId: string): Promise<void> {
 
   if (!log) throw new Error("Log not found");
   if (log.status === "CLOSED") throw new Error("Log is already closed");
+  if (log.status === "AUTO_ADJUSTED") {
+    throw new Error("Log was auto-adjusted. Reopen it before closing again to avoid duplicate stock movements.");
+  }
 
   // Determine purchased quantities on this day
   const logDate = log.logDate;
   const nextDay = new Date(logDate.getTime() + 24 * 60 * 60 * 1000);
+  const dateLabel = logDate.toISOString().slice(0, 10);
 
   const purchaseSums = await prisma.purchaseLineItem.groupBy({
     by: ["productId"],
@@ -389,19 +416,9 @@ export async function closeDailyLog(logId: string): Promise<void> {
       .map((s) => [s.productId!, Number(s._sum.quantity ?? 0)])
   );
 
-  // Pre-load current stock for all products in this log (1 query instead of N×M)
   const productIds = log.items.map((i) => i.productId);
-  const stockSnapshot = await prisma.product.findMany({
-    where: { id: { in: productIds } },
-    select: { id: true, currentStock: true },
-  });
-  // Mutable in-memory stock map — updated as we process each movement
-  const stockMap = new Map(stockSnapshot.map((p) => [p.id, Number(p.currentStock)]));
-
-  const dateLabel = logDate.toISOString().slice(0, 10);
   const ref = { referenceId: log.id, referenceType: "DailyLog" };
 
-  // Build all stock movement records and final values in-memory
   type PendingMovement = {
     productId: string;
     type: StockMovementType;
@@ -411,101 +428,113 @@ export async function closeDailyLog(logId: string): Promise<void> {
     notes: string;
   };
 
+  // ── All reads and all writes happen inside ONE RepeatableRead transaction ──
+  // Moving the stock snapshot inside the transaction prevents a race condition
+  // where a concurrent SALE between snapshot and commit would corrupt stock values.
   const pendingMovements: PendingMovement[] = [];
-  const itemUpdates: Array<{ id: string; closingQty: number; actualQty: number | null; varianceQty: number | null }> = [];
+  const itemUpdates: Array<{
+    id: string;
+    closingQty: number;
+    soldQty: number;
+    freshReturnQty: number;
+    actualQty: number | null;
+    varianceQty: number | null;
+  }> = [];
 
-  // Sync soldQty and freshReturnQty live before calculating so closing qty
-  // uses the same values that were shown to the user in the table.
-  const [confirmedSoldSums, confirmedFreshSums] = await Promise.all([
-    prisma.salesOrderItem.groupBy({
-      by: ["productId"],
-      where: {
-        salesOrder: {
-          status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
-          deletedAt: null,
-          orderDate: { gte: logDate, lt: nextDay },
-        },
-      },
-      _sum: { quantity: true },
-    }),
-    prisma.salesReturnItem.groupBy({
-      by: ["productId"],
-      where: {
-        salesReturn: {
-          returnType: "FRESH",
-          salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
-        },
-      },
-      _sum: { quantity: true },
-    }),
-  ]);
-  const confirmedSoldMap  = new Map(confirmedSoldSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)]));
-  const confirmedFreshMap = new Map(confirmedFreshSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)]));
-
-  for (const item of log.items) {
-    const opening   = Number(item.openingQty);
-    const purchased = purchaseMap.get(item.productId) ?? 0;
-    const produced  = Number(item.producedQty);
-    const used      = Number(item.usedQty);
-    // Use confirmed sales qty; fall back to stored soldQty if user manually overrode it
-    const confirmedSold  = confirmedSoldMap.get(item.productId) ?? 0;
-    const storedSold     = Number(item.soldQty);
-    const sold           = storedSold > confirmedSold ? storedSold : confirmedSold;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const storedFresh    = Number((item as any).freshReturnQty ?? 0);
-    const confirmedFresh = confirmedFreshMap.get(item.productId) ?? 0;
-    const freshReturn    = storedFresh > confirmedFresh ? storedFresh : confirmedFresh;
-    const waste          = Number(item.wasteQty);
-    const damaged        = Number(item.damagedQty);
-
-    const closing  = opening + purchased + produced + freshReturn - used - sold - waste - damaged;
-    const actual   = item.actualQty != null ? Number(item.actualQty) : null;
-    const variance = actual != null ? actual - closing : null;
-
-    // Track running stock in-memory; DAILY_IN first, then DAILY_OUT
-    const pid = item.productId;
-    const addMovement = (type: StockMovementType, qty: number, label: string) => {
-      if (qty <= 0) return;
-      const before = stockMap.get(pid) ?? 0;
-      const isOut  = type === StockMovementType.DAILY_OUT;
-      const after  = isOut ? before - qty : before + qty;
-      stockMap.set(pid, after);
-      pendingMovements.push({ productId: pid, type, quantity: qty, quantityBefore: before, quantityAfter: after, notes: `Daily log ${dateLabel} — ${label}` });
-    };
-
-    addMovement(StockMovementType.DAILY_IN,  produced, "produced");
-    addMovement(StockMovementType.DAILY_OUT, used,     "used");
-    // soldQty is auto-populated from confirmed sales orders, which already create SALE stock movements.
-    // Skipping DAILY_OUT for sold here prevents double-deduction.
-    // addMovement(StockMovementType.DAILY_OUT, sold, "sold");
-    addMovement(StockMovementType.DAILY_OUT, waste,    "waste");
-    addMovement(StockMovementType.DAILY_OUT, damaged,  "damaged");
-
-    itemUpdates.push({ id: item.id, closingQty: closing, actualQty: actual, varianceQty: variance });
-  }
-
-  // Single transaction: batch-insert movements, update products + items + log header
   await prisma.$transaction(
     async (tx) => {
-      // Batch-create all stock movements at once
+      // Read stock snapshot INSIDE the transaction with RepeatableRead isolation.
+      // No concurrent SALE can sneak between this read and the writes below.
+      const stockSnapshot = await tx.product.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, currentStock: true },
+      });
+      const stockMap = new Map(stockSnapshot.map((p) => [p.id, Number(p.currentStock)]));
+
+      // Sync soldQty and freshReturnQty live so closing qty matches what was shown to the user
+      const [confirmedSoldSums, confirmedFreshSums] = await Promise.all([
+        tx.salesOrderItem.groupBy({
+          by: ["productId"],
+          where: {
+            salesOrder: {
+              status:    { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] },
+              deletedAt: null,
+              orderDate: { gte: logDate, lt: nextDay },
+            },
+          },
+          _sum: { quantity: true },
+        }),
+        tx.salesReturnItem.groupBy({
+          by: ["productId"],
+          where: {
+            salesReturn: {
+              returnType: "FRESH",
+              salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
+            },
+          },
+          _sum: { quantity: true },
+        }),
+      ]);
+      const confirmedSoldMap  = new Map(confirmedSoldSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)]));
+      const confirmedFreshMap = new Map(confirmedFreshSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)]));
+
+      for (const item of log.items) {
+        const opening    = Number(item.openingQty);
+        const purchased  = purchaseMap.get(item.productId) ?? 0;
+        const produced   = Number(item.producedQty);
+        const used       = Number(item.usedQty);
+        // Use confirmed sales qty; fall back to stored soldQty if user manually overrode it higher
+        const confirmedSold  = confirmedSoldMap.get(item.productId) ?? 0;
+        const storedSold     = Number(item.soldQty);
+        const sold           = storedSold > confirmedSold ? storedSold : confirmedSold;
+        const storedFresh    = Number(item.freshReturnQty);
+        const confirmedFresh = confirmedFreshMap.get(item.productId) ?? 0;
+        const freshReturn    = storedFresh > confirmedFresh ? storedFresh : confirmedFresh;
+        const waste          = Number(item.wasteQty);
+        const damaged        = Number(item.damagedQty);
+
+        const closing  = opening + purchased + produced + freshReturn - used - sold - waste - damaged;
+        const actual   = item.actualQty != null ? Number(item.actualQty) : null;
+        const variance = actual != null ? actual - closing : null;
+
+        const pid = item.productId;
+        const addMovement = (type: StockMovementType, qty: number, label: string) => {
+          if (qty <= 0) return;
+          const before = stockMap.get(pid) ?? 0;
+          const isOut  = type === StockMovementType.DAILY_OUT;
+          const after  = isOut ? before - qty : before + qty;
+          stockMap.set(pid, after);
+          pendingMovements.push({ productId: pid, type, quantity: qty, quantityBefore: before, quantityAfter: after, notes: `Daily log ${dateLabel} — ${label}` });
+        };
+
+        addMovement(StockMovementType.DAILY_IN,  produced, "produced");
+        addMovement(StockMovementType.DAILY_OUT, used,     "used");
+        // soldQty comes from confirmed SALE movements — skipping DAILY_OUT for sold prevents double-deduction
+        addMovement(StockMovementType.DAILY_OUT, waste,    "waste");
+        addMovement(StockMovementType.DAILY_OUT, damaged,  "damaged");
+
+        itemUpdates.push({ id: item.id, closingQty: closing, soldQty: sold, freshReturnQty: freshReturn, actualQty: actual, varianceQty: variance });
+      }
+
+      // Batch-create all stock movements
       if (pendingMovements.length > 0) {
         await tx.stockMovement.createMany({
           data: pendingMovements.map((m) => ({
-            productId:      m.productId,
-            type:           m.type,
-            quantity:       m.quantity,
-            quantityBefore: m.quantityBefore,
-            quantityAfter:  m.quantityAfter,
-            notes:          m.notes,
-            referenceId:    ref.referenceId,
-            referenceType:  ref.referenceType,
+            productId:       m.productId,
+            type:            m.type,
+            quantity:        m.quantity,
+            quantityBefore:  m.quantityBefore,
+            quantityAfter:   m.quantityAfter,
+            notes:           m.notes,
+            referenceId:     ref.referenceId,
+            referenceType:   ref.referenceType,
             isAdminOverride: true,
-            createdBy:      userId,
+            createdBy:       userId,
           })),
         });
       }
 
-      // Update each product's currentStock (one update per product, not per movement)
+      // Update each product's currentStock
       for (const [productId, newStock] of stockMap.entries()) {
         await tx.product.update({
           where: { id: productId },
@@ -513,11 +542,17 @@ export async function closeDailyLog(logId: string): Promise<void> {
         });
       }
 
-      // Update daily log items
+      // Update daily log items (store the live soldQty/freshReturnQty used for closing)
       for (const upd of itemUpdates) {
         await tx.dailyLogItem.update({
           where: { id: upd.id },
-          data: { closingQty: upd.closingQty, actualQty: upd.actualQty, varianceQty: upd.varianceQty },
+          data: {
+            soldQty:        upd.soldQty,
+            freshReturnQty: upd.freshReturnQty,
+            closingQty:     upd.closingQty,
+            actualQty:      upd.actualQty,
+            varianceQty:    upd.varianceQty,
+          },
         });
       }
 
@@ -527,8 +562,22 @@ export async function closeDailyLog(logId: string): Promise<void> {
         data: { status: "CLOSED", closedBy: userId, closedAt: new Date() },
       });
     },
-    { timeout: 30000 }  // 30s safety ceiling for large catalogs
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      timeout: 30000,
+    }
   );
+
+  await writeAuditLog({
+    userId,
+    action:     "DAILY_LOG_CLOSE",
+    entityType: "DailyLog",
+    entityId:   logId,
+    after: {
+      date:      dateLabel,
+      itemCount: log.items.length,
+    },
+  });
 
   revalidatePath("/daily-log");
   revalidatePath("/daily-log/history");
@@ -549,29 +598,24 @@ export async function reopenDailyLog(logId: string): Promise<void> {
     select: { status: true, logDate: true },
   });
   if (!log) throw new Error("Log not found");
-  if (log.status !== "CLOSED") throw new Error("Log is not closed");
+  if (log.status !== "CLOSED" && log.status !== "AUTO_ADJUSTED") {
+    throw new Error("Only CLOSED or AUTO_ADJUSTED logs can be reopened");
+  }
 
   const dateLabel = log.logDate.toISOString().slice(0, 10);
 
-  // Load forward movements to reverse
+  // Load the movements that this log created so we can reverse them
   const movements = await prisma.stockMovement.findMany({
     where: {
-      referenceId: logId,
+      referenceId:   logId,
       referenceType: "DailyLog",
       type: { in: [StockMovementType.DAILY_IN, StockMovementType.DAILY_OUT] },
     },
     select: { productId: true, type: true, quantity: true },
   });
 
-  // Pre-load current stock for affected products
   const productIds = [...new Set(movements.map((m) => m.productId))];
-  const stockSnapshot = await prisma.product.findMany({
-    where: { id: { in: productIds } },
-    select: { id: true, currentStock: true },
-  });
-  const stockMap = new Map(stockSnapshot.map((p) => [p.id, Number(p.currentStock)]));
 
-  // Build reversal movement records in-memory
   type PendingMovement = {
     productId: string;
     type: StockMovementType;
@@ -580,30 +624,37 @@ export async function reopenDailyLog(logId: string): Promise<void> {
     quantityAfter: number;
     notes: string;
   };
-  const pendingMovements: PendingMovement[] = [];
-
-  for (const mv of movements) {
-    const reverseType =
-      mv.type === StockMovementType.DAILY_IN
-        ? StockMovementType.DAILY_OUT
-        : StockMovementType.DAILY_IN;
-    const qty    = Number(mv.quantity);
-    const before = stockMap.get(mv.productId) ?? 0;
-    const after  = reverseType === StockMovementType.DAILY_OUT ? before - qty : before + qty;
-    stockMap.set(mv.productId, after);
-    pendingMovements.push({
-      productId: mv.productId,
-      type:      reverseType,
-      quantity:  qty,
-      quantityBefore: before,
-      quantityAfter:  after,
-      notes: `Reopen: reversal of daily log ${dateLabel}`,
-    });
-  }
 
   await prisma.$transaction(
     async (tx) => {
-      // Batch-insert all reversal movements
+      // Read stock snapshot INSIDE the transaction with RepeatableRead isolation
+      const stockSnapshot = await tx.product.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, currentStock: true },
+      });
+      const stockMap = new Map(stockSnapshot.map((p) => [p.id, Number(p.currentStock)]));
+
+      const pendingMovements: PendingMovement[] = [];
+
+      for (const mv of movements) {
+        const reverseType =
+          mv.type === StockMovementType.DAILY_IN
+            ? StockMovementType.DAILY_OUT
+            : StockMovementType.DAILY_IN;
+        const qty    = Number(mv.quantity);
+        const before = stockMap.get(mv.productId) ?? 0;
+        const after  = reverseType === StockMovementType.DAILY_OUT ? before - qty : before + qty;
+        stockMap.set(mv.productId, after);
+        pendingMovements.push({
+          productId:     mv.productId,
+          type:          reverseType,
+          quantity:      qty,
+          quantityBefore: before,
+          quantityAfter:  after,
+          notes: `Reopen: reversal of daily log ${dateLabel}`,
+        });
+      }
+
       if (pendingMovements.length > 0) {
         await tx.stockMovement.createMany({
           data: pendingMovements.map((m) => ({
@@ -621,7 +672,6 @@ export async function reopenDailyLog(logId: string): Promise<void> {
         });
       }
 
-      // Update each product's currentStock once
       for (const [productId, newStock] of stockMap.entries()) {
         await tx.product.update({
           where: { id: productId },
@@ -629,8 +679,7 @@ export async function reopenDailyLog(logId: string): Promise<void> {
         });
       }
 
-      // Reset only computed/derived fields — preserve manually-entered data
-      // (producedQty, usedQty, wasteQty, damagedQty, notes stay intact)
+      // Reset derived fields; preserve manually-entered data (producedQty, usedQty, wasteQty, etc.)
       await tx.dailyLogItem.updateMany({
         where: { dailyLogId: logId },
         data: {
@@ -642,7 +691,7 @@ export async function reopenDailyLog(logId: string): Promise<void> {
         },
       });
 
-      // Re-populate soldQty and freshReturnQty from confirmed sales orders for this log's date.
+      // Re-populate soldQty and freshReturnQty from confirmed sales orders
       const nextDay = new Date(log.logDate.getTime() + 24 * 60 * 60 * 1000);
       const [soldItems, freshReturnItems] = await Promise.all([
         tx.salesOrderItem.findMany({
@@ -686,14 +735,30 @@ export async function reopenDailyLog(logId: string): Promise<void> {
         });
       }
 
-      // Unlock log
+      // Set status to REOPENED (not OPEN) so history shows it was touched
       await tx.dailyLog.update({
         where: { id: logId },
-        data: { status: "OPEN", closedBy: null, closedAt: null },
+        data: {
+          status:          "REOPENED",
+          autoAdjustedAt:  null,
+          autoAdjustedBy:  null,
+          // preserve closedBy/closedAt for audit trail
+        },
       });
     },
-    { timeout: 30000 }
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      timeout: 30000,
+    }
   );
+
+  await writeAuditLog({
+    userId,
+    action:     "DAILY_LOG_REOPEN",
+    entityType: "DailyLog",
+    entityId:   logId,
+    after: { date: dateLabel, reopenedBy: userId },
+  });
 
   revalidatePath("/daily-log");
   revalidatePath("/daily-log/history");
@@ -708,13 +773,14 @@ export async function reopenDailyLog(logId: string): Promise<void> {
 export type DailyLogSummary = {
   id: string;
   logDate: string;
-  status: "OPEN" | "CLOSED";
+  status: DailyLogStatus;
   createdBy: string;
   closedBy: string | null;
   closedAt: string | null;
+  autoAdjustedAt: string | null;
   productCount: number;
-  activeCount: number;       // rows with any activity
-  varianceCount: number;     // rows with a non-zero variance
+  activeCount: number;
+  varianceCount: number;
   totalProduced: number;
   totalUsed: number;
   totalSold: number;
@@ -758,10 +824,11 @@ export async function getDailyLogHistory(limitDays = 30): Promise<DailyLogSummar
     return {
       id: log.id,
       logDate: log.logDate.toISOString().slice(0, 10),
-      status: log.status,
+      status: log.status as DailyLogStatus,
       createdBy: log.createdBy,
       closedBy: log.closedBy,
       closedAt: log.closedAt?.toISOString() ?? null,
+      autoAdjustedAt: log.autoAdjustedAt?.toISOString() ?? null,
       productCount: log.items.length,
       activeCount,
       varianceCount,

@@ -42,7 +42,7 @@ export default async function RecordWastePage({
   ]);
 
   if (!so) notFound();
-  if (so.status === "DRAFT" || so.status === "CANCELLED") notFound();
+  if (so.status === "DRAFT" || so.status === "CANCELLED" || so.status === "LOST") notFound();
 
   const products = rawProducts.map((p) => ({
     id: p.id,

@@ -37,8 +37,8 @@ export default async function DailyLogHistoryPage() {
 
   const logs = await getDailyLogHistory(60); // last 60 days
 
-  const openCount = logs.filter((l) => l.status === "OPEN").length;
-  const closedCount = logs.filter((l) => l.status === "CLOSED").length;
+  const openCount = logs.filter((l) => l.status === "OPEN" || l.status === "REOPENED").length;
+  const closedCount = logs.filter((l) => l.status === "CLOSED" || l.status === "AUTO_ADJUSTED").length;
   const totalVariances = logs.reduce((s, l) => s + l.varianceCount, 0);
 
   return (
@@ -133,11 +133,19 @@ export default async function DailyLogHistoryPage() {
                       className={
                         log.status === "CLOSED"
                           ? "bg-green-100 text-green-700"
+                          : log.status === "AUTO_ADJUSTED"
+                          ? "bg-purple-100 text-purple-700"
+                          : log.status === "REOPENED"
+                          ? "bg-blue-100 text-blue-700"
                           : "bg-amber-100 text-amber-700"
                       }
                     >
                       {log.status === "CLOSED" ? (
                         <><CheckCircle2 className="h-3 w-3 mr-1" /> Closed</>
+                      ) : log.status === "AUTO_ADJUSTED" ? (
+                        <><CheckCircle2 className="h-3 w-3 mr-1" /> Auto-adjusted</>
+                      ) : log.status === "REOPENED" ? (
+                        <><BookOpen className="h-3 w-3 mr-1" /> Reopened</>
                       ) : (
                         <><BookOpen className="h-3 w-3 mr-1" /> Open</>
                       )}
@@ -219,7 +227,7 @@ export default async function DailyLogHistoryPage() {
                       >
                         View
                       </Link>
-                      {isAdmin && log.status === "CLOSED" && (
+                      {isAdmin && (log.status === "CLOSED" || log.status === "AUTO_ADJUSTED") && (
                         <ReopenDialog
                           logId={log.id}
                           dateLabel={formatDate(log.logDate)}

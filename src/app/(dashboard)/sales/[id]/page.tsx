@@ -33,7 +33,7 @@ export default async function SalesOrderDetailPage({
         salesman: {
           include: {
             salesOrders: {
-              where: { deletedAt: null, status: { notIn: ["CANCELLED", "DRAFT"] } },
+              where: { deletedAt: null, status: { notIn: ["CANCELLED", "DRAFT", "LOST"] } },
               select: { factoryAmount: true, amountPaid: true },
             },
           },

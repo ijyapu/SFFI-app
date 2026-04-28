@@ -38,7 +38,8 @@ const STATUS_LABEL: Record<string, string> = {
   CONFIRMED:      "Confirmed",
   PARTIALLY_PAID: "Partial",
   PAID:           "Paid",
-  CANCELLED:      "Cancelled",
+  CANCELLED:      "Voided",
+  LOST:           "Lost / Not Returned",
 };
 
 const STATUS_BADGE: Record<string, string> = {
@@ -47,6 +48,7 @@ const STATUS_BADGE: Record<string, string> = {
   PARTIALLY_PAID: "bg-amber-100 text-amber-700",
   PAID:           "bg-green-100 text-green-700",
   CANCELLED:      "bg-red-100 text-red-600",
+  LOST:           "bg-orange-100 text-orange-700",
 };
 
 export function SalesmanLedger({ commissionPct, openingBalance, rows }: Props) {

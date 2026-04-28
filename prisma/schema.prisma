@@ -26,6 +26,8 @@ enum StockMovementType {
 enum DailyLogStatus {
   OPEN
   CLOSED
+  REOPENED       // admin reopened; manual edits allowed again
+  AUTO_ADJUSTED  // cascade recalculation applied after a backdated change
 }
 
 
@@ -42,7 +44,8 @@ enum SalesOrderStatus {
   CONFIRMED
   PARTIALLY_PAID
   PAID
-  CANCELLED
+  CANCELLED  // voided: sale didn't happen, stock restored
+  LOST       // dispatched: goods gone, stock NOT restored, financial obligation waived
 }
 
 enum PaymentMethod {
@@ -187,6 +190,10 @@ model DailyLog {
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   closedAt  DateTime?
+
+  // Set when cascade recalculation auto-adjusts this log
+  autoAdjustedAt DateTime?
+  autoAdjustedBy String?
 
   items DailyLogItem[]
 

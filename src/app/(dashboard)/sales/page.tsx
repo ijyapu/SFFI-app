@@ -37,16 +37,16 @@ export default async function SalesPage() {
   }));
 
   const totalCommission  = orders
-    .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT")
+    .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT" && o.status !== "LOST")
     .reduce((sum, o) => sum + Number(o.commissionAmount), 0);
   const totalRevenue     = serialised
-    .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT")
+    .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT" && o.status !== "LOST")
     .reduce((sum, o) => sum + o.factoryAmount, 0);
   const openingBalanceTotal = salesmen.reduce((sum, s) => sum + Number(s.openingBalance), 0);
   const totalOutstanding =
     openingBalanceTotal +
     serialised
-      .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT")
+      .filter((o) => o.status !== "CANCELLED" && o.status !== "DRAFT" && o.status !== "LOST")
       .reduce((sum, o) => sum + (o.factoryAmount - o.amountPaid), 0);
   const totalCollected   = serialised.reduce((sum, o) => sum + o.amountPaid, 0);
 

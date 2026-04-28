@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { DateDisplay } from "@/components/ui/date-display";
 import {
-  CheckCircle, XCircle, CreditCard, Loader2, Pencil,
+  CheckCircle, XCircle, CreditCard, Loader2, Pencil, AlertTriangle,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -15,19 +15,25 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SortButton } from "@/components/ui/sort-icon";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { SoPaymentForm }    from "./so-payment-form";
 import { ReturnFormInline } from "./return-form-inline";
-import { confirmSalesOrder, cancelSalesOrder } from "../../actions";
+import { confirmSalesOrder, voidSalesOrder, markSalesOrderLost } from "../../actions";
 
 const STATUS_CONFIG = {
-  DRAFT:          { label: "Draft",           className: "bg-gray-100 text-gray-700" },
-  CONFIRMED:      { label: "Confirmed",       className: "bg-blue-100 text-blue-700" },
-  PARTIALLY_PAID: { label: "Partial Payment", className: "bg-amber-100 text-amber-700" },
-  PAID:           { label: "Paid",            className: "bg-green-100 text-green-700" },
-  CANCELLED:      { label: "Cancelled",       className: "bg-red-100 text-red-700" },
+  DRAFT:          { label: "Draft",              className: "bg-gray-100 text-gray-700" },
+  CONFIRMED:      { label: "Confirmed",          className: "bg-blue-100 text-blue-700" },
+  PARTIALLY_PAID: { label: "Partial Payment",    className: "bg-amber-100 text-amber-700" },
+  PAID:           { label: "Paid",               className: "bg-green-100 text-green-700" },
+  CANCELLED:      { label: "Voided",             className: "bg-red-100 text-red-700" },
+  LOST:           { label: "Lost / Not Returned", className: "bg-orange-100 text-orange-700" },
 } as const;
 
 const METHOD_LABELS: Record<string, string> = {
@@ -101,10 +107,13 @@ export function SoDetail(props: Props) {
     amountPaid, items, payments, returns, products, salesmanTotalOutstanding,
   } = props;
 
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [confirming,  setConfirming]  = useState(false);
-  const [cancelling,  setCancelling]  = useState(false);
-  const { sortKey, sortDir, toggle }  = useSortable("productName");
+  const [paymentOpen,  setPaymentOpen]  = useState(false);
+  const [confirming,   setConfirming]   = useState(false);
+  const [voidOpen,     setVoidOpen]     = useState(false);
+  const [voiding,      setVoiding]      = useState(false);
+  const [lostOpen,     setLostOpen]     = useState(false);
+  const [markingLost,  setMarkingLost]  = useState(false);
+  const { sortKey, sortDir, toggle }    = useSortable("productName");
 
   const sortedItems = useMemo(() => {
     if (!sortKey) return items;
@@ -120,10 +129,17 @@ export function SoDetail(props: Props) {
   const totalReturns  = returns.reduce((sum, r) => sum + r.totalAmount, 0);
   const netAmount     = totalAmount - totalReturns;
   const outstanding   = factoryAmount - amountPaid;
-  const cfg = STATUS_CONFIG[status];
+  const cfg           = STATUS_CONFIG[status];
 
-  // Whether return recording is allowed (any active confirmed order)
-  const canRecordReturn = status === "CONFIRMED" || status === "PARTIALLY_PAID" || status === "PAID";
+  const isActive   = status === "CONFIRMED" || status === "PARTIALLY_PAID" || status === "PAID";
+  const isTerminal = status === "CANCELLED" || status === "LOST";
+  const isDraft    = status === "DRAFT";
+
+  const canRecordReturn  = isActive;
+  const canVoid          = !isTerminal && status !== "PAID";
+  const canMarkLost      = status === "CONFIRMED" || status === "PARTIALLY_PAID";
+  const canRecordPayment = isActive;
+  const canEdit          = !isTerminal;
 
   async function handleConfirm() {
     setConfirming(true);
@@ -137,16 +153,32 @@ export function SoDetail(props: Props) {
     }
   }
 
-  async function handleCancel() {
-    if (!confirm("Cancel this sales order?")) return;
-    setCancelling(true);
+  async function handleVoid() {
+    setVoiding(true);
     try {
-      await cancelSalesOrder(id);
-      toast.success("Order cancelled");
+      await voidSalesOrder(id);
+      const msg = (status === "CONFIRMED" || status === "PARTIALLY_PAID")
+        ? "Sale voided — stock restored to inventory"
+        : "Sale voided";
+      toast.success(msg);
+      setVoidOpen(false);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to cancel order");
+      toast.error(e instanceof Error ? e.message : "Failed to void sale");
     } finally {
-      setCancelling(false);
+      setVoiding(false);
+    }
+  }
+
+  async function handleMarkLost() {
+    setMarkingLost(true);
+    try {
+      await markSalesOrderLost(id);
+      toast.success("Order marked as lost — stock NOT restored");
+      setLostOpen(false);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to mark order as lost");
+    } finally {
+      setMarkingLost(false);
     }
   }
 
@@ -163,8 +195,8 @@ export function SoDetail(props: Props) {
           </span>
         </div>
 
-        <div className="flex gap-2">
-          {status !== "CANCELLED" && (
+        <div className="flex gap-2 flex-wrap">
+          {canEdit && (
             <Link
               href={`/sales/${id}/edit`}
               className={cn(buttonVariants({ variant: "outline" }))}
@@ -173,19 +205,29 @@ export function SoDetail(props: Props) {
               Edit Order
             </Link>
           )}
-          {status === "DRAFT" && (
-            <>
-              <Button variant="outline" onClick={handleCancel} disabled={cancelling}>
-                {cancelling ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
-                Cancel
-              </Button>
-              <Button onClick={handleConfirm} disabled={confirming}>
-                {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
-                Confirm &amp; Dispatch
-              </Button>
-            </>
+          {isDraft && (
+            <Button onClick={handleConfirm} disabled={confirming}>
+              {confirming ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+              Confirm &amp; Dispatch
+            </Button>
           )}
-          {!["DRAFT", "CANCELLED"].includes(status) && (
+          {canVoid && (
+            <Button variant="outline" onClick={() => setVoidOpen(true)}>
+              <XCircle className="h-4 w-4" />
+              Void Sale
+            </Button>
+          )}
+          {canMarkLost && (
+            <Button
+              variant="outline"
+              onClick={() => setLostOpen(true)}
+              className="border-orange-300 text-orange-700 hover:bg-orange-50"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              Mark as Lost
+            </Button>
+          )}
+          {canRecordPayment && (
             <Button onClick={() => setPaymentOpen(true)}>
               <CreditCard className="h-4 w-4" />
               Record Payment
@@ -193,6 +235,29 @@ export function SoDetail(props: Props) {
           )}
         </div>
       </div>
+
+      {/* Banner for voided orders */}
+      {status === "CANCELLED" && (
+        <div className="flex items-start gap-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+          <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <span className="font-medium">Sale Voided.</span> This sale was voided because it did not happen.
+            All dispatched stock has been restored to inventory.
+          </div>
+        </div>
+      )}
+
+      {/* Banner for lost orders */}
+      {status === "LOST" && (
+        <div className="flex items-start gap-3 rounded-lg bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-800">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <span className="font-medium">Dispatched — Not Returned.</span>{" "}
+            Goods were physically taken and will not come back. Stock was NOT restored.
+            The financial obligation has been waived and is excluded from outstanding balances.
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Items + order info */}
@@ -303,13 +368,19 @@ export function SoDetail(props: Props) {
                 <span>Collected</span>
                 <span>Rs {amountPaid.toFixed(2)}</span>
               </div>
-              {outstanding > 0.001 && (
+              {outstanding > 0.001 && status !== "LOST" && (
                 <div className="flex justify-between font-semibold text-destructive">
                   <span>Outstanding</span>
                   <span>Rs {outstanding.toFixed(2)}</span>
                 </div>
               )}
-              {outstanding <= 0.001 && amountPaid > 0 && (
+              {status === "LOST" && outstanding > 0.001 && (
+                <div className="flex justify-between text-muted-foreground line-through text-xs">
+                  <span>Outstanding (waived)</span>
+                  <span>Rs {outstanding.toFixed(2)}</span>
+                </div>
+              )}
+              {outstanding <= 0.001 && amountPaid > 0 && status !== "LOST" && (
                 <div className="flex items-center gap-1.5 text-green-600 font-medium">
                   <CheckCircle className="h-3.5 w-3.5" />
                   Fully collected
@@ -407,6 +478,78 @@ export function SoDetail(props: Props) {
         open={paymentOpen}
         onClose={() => setPaymentOpen(false)}
       />
+
+      {/* Void Sale dialog */}
+      <AlertDialog open={voidOpen} onOpenChange={setVoidOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Void This Sale?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Use this when the sale was entered by mistake or did not actually happen.
+            </AlertDialogDescription>
+            {(status === "CONFIRMED" || status === "PARTIALLY_PAID") ? (
+              <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+                <span className="font-medium">Stock will be restored.</span>{" "}
+                All items from this order will be returned to inventory.
+              </div>
+            ) : (
+              <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700">
+                This is a draft — no stock was ever deducted.
+              </div>
+            )}
+            <p className="text-sm font-medium text-destructive">
+              This action cannot be undone.
+            </p>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={voiding}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleVoid}
+              disabled={voiding}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {voiding ? "Voiding..." : "Yes, Void Sale"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Mark as Lost dialog */}
+      <AlertDialog open={lostOpen} onOpenChange={setLostOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-orange-700">
+              <AlertTriangle className="h-5 w-5" />
+              Mark as Dispatched — Not Returned?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Use this <span className="font-medium">only</span> if goods were physically
+              taken by the salesman and will <span className="font-medium">not</span> be
+              returned to the factory.
+            </AlertDialogDescription>
+            <div className="rounded-md bg-orange-50 border border-orange-200 px-3 py-2 text-sm text-orange-800 space-y-1">
+              <p className="font-medium">Stock will NOT be restored.</p>
+              <p>The goods are considered gone. This is a business loss absorbed by the factory.</p>
+            </div>
+            <div className="rounded-md bg-blue-50 border border-blue-100 px-3 py-2 text-sm text-blue-800">
+              The salesman&apos;s outstanding balance will be cleared for this order.
+            </div>
+            <p className="text-sm font-medium text-destructive">
+              This action cannot be undone.
+            </p>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={markingLost}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleMarkLost}
+              disabled={markingLost}
+              className="bg-orange-600 text-white hover:bg-orange-700"
+            >
+              {markingLost ? "Marking..." : "Yes, Mark as Lost"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

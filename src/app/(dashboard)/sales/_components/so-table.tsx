@@ -23,11 +23,12 @@ import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { deleteSalesOrder } from "../actions";
 
 const STATUS_CONFIG = {
-  DRAFT:          { label: "Draft",           className: "bg-gray-100 text-gray-700" },
-  CONFIRMED:      { label: "Confirmed",       className: "bg-blue-100 text-blue-700" },
-  PARTIALLY_PAID: { label: "Partial",         className: "bg-amber-100 text-amber-700" },
-  PAID:           { label: "Paid",            className: "bg-green-100 text-green-700" },
-  CANCELLED:      { label: "Cancelled",       className: "bg-red-100 text-red-700" },
+  DRAFT:          { label: "Draft",               className: "bg-gray-100 text-gray-700" },
+  CONFIRMED:      { label: "Confirmed",           className: "bg-blue-100 text-blue-700" },
+  PARTIALLY_PAID: { label: "Partial",             className: "bg-amber-100 text-amber-700" },
+  PAID:           { label: "Paid",                className: "bg-green-100 text-green-700" },
+  CANCELLED:      { label: "Voided",              className: "bg-red-100 text-red-700" },
+  LOST:           { label: "Lost / Not Returned", className: "bg-orange-100 text-orange-700" },
 } as const;
 
 type SO = {
@@ -224,7 +225,7 @@ export function SoTable({ orders }: { orders: SO[] }) {
                               <AlertDialogTitle>Delete {so.orderNumber}?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 This will permanently remove the order.
-                                {!["DRAFT", "CANCELLED"].includes(so.status) && " Stock will be restored."}
+                                {!["DRAFT", "CANCELLED", "LOST"].includes(so.status) && " Stock will be restored."}
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>

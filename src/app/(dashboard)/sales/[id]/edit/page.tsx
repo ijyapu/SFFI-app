@@ -41,7 +41,7 @@ export default async function EditSalesOrderPage({
   ]);
 
   if (!so) notFound();
-  if (so.status === "CANCELLED") redirect(`/sales/${id}`);
+  if (so.status === "CANCELLED" || so.status === "LOST") redirect(`/sales/${id}`);
 
   const serialised = {
     id:           so.id,

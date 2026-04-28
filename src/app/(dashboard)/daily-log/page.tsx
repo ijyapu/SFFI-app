@@ -50,8 +50,8 @@ export default async function DailyLogPage({ searchParams }: Props) {
 
   const dateLabel = formatDate(validDate);
   const isToday = validDate === todayStr;
-  const isClosed = log?.status === "CLOSED";
-  const isOpen = log?.status === "OPEN";
+  const isClosed = log?.status === "CLOSED" || log?.status === "AUTO_ADJUSTED";
+  const isOpen   = log?.status === "OPEN"   || log?.status === "REOPENED";
 
   return (
     <div className="space-y-6">
@@ -70,13 +70,21 @@ export default async function DailyLogPage({ searchParams }: Props) {
               <Badge
                 variant="secondary"
                 className={
-                  isClosed
+                  log.status === "CLOSED"
                     ? "bg-green-100 text-green-700"
+                    : log.status === "AUTO_ADJUSTED"
+                    ? "bg-purple-100 text-purple-700"
+                    : log.status === "REOPENED"
+                    ? "bg-blue-100 text-blue-700"
                     : "bg-amber-100 text-amber-700"
                 }
               >
-                {isClosed ? (
+                {log.status === "CLOSED" ? (
                   <><CheckCircle2 className="h-3 w-3 mr-1" /> Closed</>
+                ) : log.status === "AUTO_ADJUSTED" ? (
+                  <><CheckCircle2 className="h-3 w-3 mr-1" /> Auto-adjusted</>
+                ) : log.status === "REOPENED" ? (
+                  <><BookOpen className="h-3 w-3 mr-1" /> Reopened</>
                 ) : (
                   <><BookOpen className="h-3 w-3 mr-1" /> Open</>
                 )}
@@ -129,7 +137,7 @@ export default async function DailyLogPage({ searchParams }: Props) {
       {log && (
         <>
           {/* Info banner for closed logs */}
-          {isClosed && (
+          {log.status === "CLOSED" && (
             <div className="flex items-start gap-3 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
               <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
               <div>
@@ -137,6 +145,20 @@ export default async function DailyLogPage({ searchParams }: Props) {
                 {log.closedAt && (
                   <span className="block text-xs text-green-600 mt-0.5">
                     Closed on {new Date(log.closedAt).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+          {log.status === "AUTO_ADJUSTED" && (
+            <div className="flex items-start gap-3 rounded-lg bg-purple-50 border border-purple-200 px-4 py-3 text-sm text-purple-800">
+              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
+              <div>
+                This log was auto-adjusted after a backdated sale or return changed the figures.
+                The closing quantities have been recalculated. Stock movements are unaffected.
+                {log.closedAt && (
+                  <span className="block text-xs text-purple-600 mt-0.5">
+                    Originally closed on {new Date(log.closedAt).toLocaleString()}
                   </span>
                 )}
               </div>

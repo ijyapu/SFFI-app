@@ -11,6 +11,8 @@ import {
   type SalesmanPaymentValues, type SalesReturnValues,
 } from "@/lib/validators/sales";
 import { getNextDocumentNumber } from "@/lib/doc-counter";
+import { writeAuditLog } from "@/lib/audit";
+import { cascadeClosedDailyLogs } from "@/lib/daily-log-cascade";
 
 type Db = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
@@ -38,12 +40,17 @@ async function generateReturnNumber(db: Db = prisma): Promise<string> {
   return getNextDocumentNumber(`SR-${new Date().getFullYear()}-`, db);
 }
 
-/** Best-effort: increment (+1) or decrement (-1) soldQty in the daily log for the given date. */
+type SyncResult = { ok: boolean; logUpdated: boolean; warning?: string };
+
+/**
+ * Increment (+1) or decrement (-1) soldQty in the daily log for the given date.
+ * Returns a result object so callers can log a warning when it fails.
+ */
 async function syncDailyLogSoldQty(
   items: Array<{ productId: string; quantity: number }>,
   delta: 1 | -1,
   orderDate: Date,
-): Promise<void> {
+): Promise<SyncResult> {
   try {
     // Normalise to midnight UTC for the daily log key (orderDate is stored as noon UTC)
     const logDateUTC = new Date(Date.UTC(
@@ -53,9 +60,15 @@ async function syncDailyLogSoldQty(
     ));
     const log = await prisma.dailyLog.findUnique({
       where:  { logDate: logDateUTC },
-      select: { id: true },
+      select: { id: true, status: true },
     });
-    if (!log) return;
+    if (!log) return { ok: true, logUpdated: false };
+
+    // Skip update if log is in a state that should be re-derived by cascade instead
+    if (log.status === "CLOSED" || log.status === "AUTO_ADJUSTED") {
+      return { ok: true, logUpdated: false };
+    }
+
     for (const item of items) {
       await prisma.dailyLogItem.updateMany({
         where: { dailyLogId: log.id, productId: item.productId },
@@ -64,8 +77,11 @@ async function syncDailyLogSoldQty(
           : { soldQty: { decrement: item.quantity } },
       });
     }
-  } catch {
-    // Best-effort — never fail the caller
+    return { ok: true, logUpdated: true };
+  } catch (err) {
+    const warning = `syncDailyLogSoldQty failed for date ${orderDate.toISOString()}: ${err instanceof Error ? err.message : String(err)}`;
+    console.warn("[sales]", warning);
+    return { ok: false, logUpdated: false, warning };
   }
 }
 
@@ -170,6 +186,8 @@ export async function createSalesOrder(values: CreateSoValues) {
                 : paidNow > 0                       ? "PARTIALLY_PAID"
                 :                                     "CONFIRMED";
 
+  let createdSoId = "";
+
   await prisma.$transaction(async (tx) => {
     const orderNumber       = await generateSoNumber(tx as Db);
     const returnNumber      = hasReturn      ? await generateReturnNumber(tx as Db) : null;
@@ -200,8 +218,8 @@ export async function createSalesOrder(values: CreateSoValues) {
         },
       },
     });
+    createdSoId = so.id;
 
-    // Record payment only if something was paid
     if (paidNow > 0) {
       await tx.salesmanPayment.create({
         data: {
@@ -215,7 +233,6 @@ export async function createSalesOrder(values: CreateSoValues) {
       });
     }
 
-    // Deduct stock immediately
     for (const item of data.items) {
       await applyStockMovement(
         {
@@ -271,7 +288,6 @@ export async function createSalesOrder(values: CreateSoValues) {
         },
       });
 
-      // Restock fresh return items
       for (const item of validFreshItems) {
         await applyStockMovement(
           {
@@ -290,7 +306,12 @@ export async function createSalesOrder(values: CreateSoValues) {
     }
   }, { timeout: 30000 });
 
-  await syncDailyLogSoldQty(data.items, 1, toNoonUTC(data.orderDate));
+  const syncResult = await syncDailyLogSoldQty(data.items, 1, toNoonUTC(data.orderDate));
+  if (!syncResult.ok) {
+    console.warn("[sales] createSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
+  }
+  // Cascade if the order date's log was already closed when this sale was recorded
+  await cascadeClosedDailyLogs({ fromDate: toNoonUTC(data.orderDate), triggerUserId: userId });
 
   revalidatePath("/sales");
   revalidatePath("/inventory");
@@ -355,11 +376,24 @@ export async function confirmSalesOrder(id: string) {
     });
   }, { timeout: 30000 });
 
-  await syncDailyLogSoldQty(
+  await writeAuditLog({
+    userId,
+    action:     "SALES_ORDER_CONFIRM",
+    entityType: "SalesOrder",
+    entityId:   id,
+    after: { orderNumber: so.orderNumber, status: "CONFIRMED" },
+  });
+
+  const syncResult = await syncDailyLogSoldQty(
     so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
     1,
     so.orderDate,
   );
+  if (!syncResult.ok) {
+    console.warn("[sales] confirmSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
+  }
+  // Cascade if the order date's log was already closed when this draft was confirmed
+  await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
 
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
@@ -379,7 +413,12 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
     },
   });
   if (!so) throw new Error("Sales order not found");
-  if (so.status === "CANCELLED") throw new Error("Cannot edit a cancelled order");
+  if (so.status === "CANCELLED") throw new Error("Cannot edit a voided order");
+  if (so.status === "LOST") throw new Error("Cannot edit an order marked as lost");
+
+  const oldOrderDate  = so.orderDate;
+  const newOrderDate  = toNoonUTC(data.orderDate);
+  const dateChanged   = oldOrderDate.getTime() !== newOrderDate.getTime();
 
   const subtotal             = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
   const existingReturnTotal  = so.returns.reduce((sum, r) => sum + Number(r.totalAmount), 0);
@@ -388,10 +427,10 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
   const commissionAmount     = Math.round(netAmount * commissionPct) / 100;
   const factoryAmount        = netAmount - commissionAmount;
   const amountPaid           = Number(so.amountPaid);
-  const newStatus            = so.status === "DRAFT"        ? "DRAFT"
-                             : amountPaid >= factoryAmount - 0.001 ? "PAID"
-                             : amountPaid > 0               ? "PARTIALLY_PAID"
-                             :                                "CONFIRMED";
+  const newStatus            = so.status === "DRAFT"                    ? "DRAFT"
+                             : amountPaid >= factoryAmount - 0.001      ? "PAID"
+                             : amountPaid > 0                           ? "PARTIALLY_PAID"
+                             :                                            "CONFIRMED";
 
   const needsStock = so.status !== "DRAFT";
 
@@ -428,13 +467,12 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
       }
     }
 
-    // Replace items
     await tx.salesOrderItem.deleteMany({ where: { salesOrderId: id } });
 
     await tx.salesOrder.update({
       where: { id },
       data: {
-        orderDate:        toNoonUTC(data.orderDate),
+        orderDate:        newOrderDate,
         notes:            data.notes || null,
         subtotal,
         totalAmount:      subtotal,
@@ -471,13 +509,48 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
     }
   }, { timeout: 30000 });
 
+  await writeAuditLog({
+    userId,
+    action:     "SALES_ORDER_EDIT",
+    entityType: "SalesOrder",
+    entityId:   id,
+    before: {
+      orderNumber: so.orderNumber,
+      orderDate:   oldOrderDate.toISOString(),
+      items:       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
+    },
+    after: {
+      orderDate: newOrderDate.toISOString(),
+      items:     data.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      dateChanged,
+    },
+  });
+
   if (needsStock) {
-    await syncDailyLogSoldQty(
+    // Reverse old date's soldQty
+    const oldSync = await syncDailyLogSoldQty(
       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
       -1,
-      so.orderDate,
+      oldOrderDate,
     );
-    await syncDailyLogSoldQty(data.items, 1, toNoonUTC(data.orderDate));
+    if (!oldSync.ok) {
+      console.warn("[sales] updateSalesOrder: failed to reverse old daily log soldQty:", oldSync.warning);
+    }
+
+    // Increment new date's soldQty
+    const newSync = await syncDailyLogSoldQty(data.items, 1, newOrderDate);
+    if (!newSync.ok) {
+      console.warn("[sales] updateSalesOrder: failed to sync new daily log soldQty:", newSync.warning);
+    }
+
+    // If the date changed, cascade-recalculate any closed logs from the earlier of the two dates
+    if (dateChanged) {
+      const earlierDate = oldOrderDate.getTime() < newOrderDate.getTime() ? oldOrderDate : newOrderDate;
+      await cascadeClosedDailyLogs({ fromDate: earlierDate, triggerUserId: userId });
+    } else {
+      // Same date — just cascade from that date in case the day was already closed
+      await cascadeClosedDailyLogs({ fromDate: oldOrderDate, triggerUserId: userId });
+    }
   }
 
   revalidatePath(`/sales/${id}`);
@@ -486,31 +559,110 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
   revalidatePath("/daily-log");
 }
 
-export async function cancelSalesOrder(id: string) {
-  await requireSalesAccess();
+/**
+ * Void a sale — use when the sale was entered by mistake or did not happen.
+ * For confirmed/partially-paid orders: reverses SALE stock movements so goods
+ * return to inventory and removes the order from daily log soldQty via cascade.
+ * For draft orders: no stock was ever deducted, so just marks it voided.
+ */
+export async function voidSalesOrder(id: string) {
+  const userId = await requireSalesAccess();
 
   const so = await prisma.salesOrder.findUnique({
     where: { id },
-    select: { status: true, orderDate: true, items: { select: { productId: true, quantity: true } } },
+    select: {
+      status:      true,
+      orderNumber: true,
+      orderDate:   true,
+      items: { select: { productId: true, quantity: true } },
+    },
   });
   if (!so) throw new Error("Sales order not found");
-  if (so.status === "PAID") throw new Error("Cannot cancel a fully paid order");
-  if (so.status === "CANCELLED") throw new Error("Order is already cancelled");
+  if (so.status === "PAID")      throw new Error("Cannot void a fully paid order. Use Mark as Lost if goods will not be returned.");
+  if (so.status === "CANCELLED") throw new Error("Order is already voided");
+  if (so.status === "LOST")      throw new Error("Order is already marked as lost");
 
-  const wasConfirmed = ["CONFIRMED", "PARTIALLY_PAID"].includes(so.status);
+  const stockWasDeducted = so.status === "CONFIRMED" || so.status === "PARTIALLY_PAID";
 
-  await prisma.salesOrder.update({
-    where: { id },
-    data: { status: "CANCELLED" },
+  await prisma.$transaction(async (tx) => {
+    if (stockWasDeducted) {
+      // Restore stock for every item
+      for (const item of so.items) {
+        await applyStockMovement(
+          {
+            productId:     item.productId,
+            type:          StockMovementType.ADJUSTMENT_IN,
+            quantity:      Number(item.quantity),
+            notes:         `Void: ${so.orderNumber} — sale did not happen`,
+            referenceId:   id,
+            referenceType: "SalesOrder",
+            createdBy:     userId,
+          },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      }
+    }
+    await tx.salesOrder.update({ where: { id }, data: { status: "CANCELLED" } });
+  }, { timeout: 30000 });
+
+  await writeAuditLog({
+    userId,
+    action:     "SALES_ORDER_CANCEL",
+    entityType: "SalesOrder",
+    entityId:   id,
+    before: { orderNumber: so.orderNumber, status: so.status },
+    after:  { status: "CANCELLED", stockRestored: stockWasDeducted },
   });
 
-  if (wasConfirmed) {
-    await syncDailyLogSoldQty(
+  if (stockWasDeducted) {
+    const syncResult = await syncDailyLogSoldQty(
       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
       -1,
       so.orderDate,
     );
+    if (!syncResult.ok) {
+      console.warn("[sales] voidSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
+    }
+    await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
   }
+
+  revalidatePath(`/sales/${id}`);
+  revalidatePath("/sales");
+  revalidatePath("/inventory");
+  revalidatePath("/daily-log");
+}
+
+/**
+ * Mark a sale as Lost / Dispatched Not Returned.
+ * Use ONLY when goods physically left with the salesman and will NOT come back.
+ * Stock is NOT restored — the business absorbs the physical loss.
+ * The financial obligation is waived (order excluded from outstanding calculations).
+ */
+export async function markSalesOrderLost(id: string) {
+  const userId = await requireSalesAccess();
+
+  const so = await prisma.salesOrder.findUnique({
+    where: { id },
+    select: { status: true, orderNumber: true, orderDate: true },
+  });
+  if (!so) throw new Error("Sales order not found");
+  if (so.status === "DRAFT")     throw new Error("A draft order has no dispatched goods. Use Void instead.");
+  if (so.status === "CANCELLED") throw new Error("Order is already voided");
+  if (so.status === "LOST")      throw new Error("Order is already marked as lost");
+
+  await prisma.salesOrder.update({ where: { id }, data: { status: "LOST" } });
+
+  await writeAuditLog({
+    userId,
+    action:     "SALES_ORDER_CANCEL",
+    entityType: "SalesOrder",
+    entityId:   id,
+    before: { orderNumber: so.orderNumber, status: so.status },
+    after:  { status: "LOST", stockRestored: false },
+  });
+
+  // Cascade daily log: remove this order from soldQty paper records
+  await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
 
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
@@ -531,8 +683,10 @@ export async function deleteSalesOrder(id: string) {
   });
   if (!so) throw new Error("Sales order not found");
 
-  // For confirmed/paid orders, reverse stock movements
-  const needsReversal = !["DRAFT", "CANCELLED"].includes(so.status);
+  // CANCELLED = voided (stock already restored by voidSalesOrder)
+  // LOST = goods gone (stock intentionally not restored)
+  // DRAFT = stock never deducted
+  const needsReversal = !["DRAFT", "CANCELLED", "LOST"].includes(so.status);
 
   await prisma.$transaction(async (tx) => {
     if (needsReversal) {
@@ -558,12 +712,24 @@ export async function deleteSalesOrder(id: string) {
     });
   }, { timeout: 30000 });
 
+  await writeAuditLog({
+    userId,
+    action:     "SALES_ORDER_DELETE",
+    entityType: "SalesOrder",
+    entityId:   id,
+    before: { orderNumber: so.orderNumber, status: so.status },
+  });
+
   if (needsReversal) {
-    await syncDailyLogSoldQty(
+    const syncResult = await syncDailyLogSoldQty(
       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
       -1,
       so.orderDate,
     );
+    if (!syncResult.ok) {
+      console.warn("[sales] deleteSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
+    }
+    await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
   }
 
   revalidatePath("/sales");
@@ -577,14 +743,14 @@ export async function recordSalesmanPayment(soId: string, values: SalesmanPaymen
   const userId = await requireSalesAccess();
   const data = salesmanPaymentSchema.parse(values);
 
-
   const so = await prisma.salesOrder.findUnique({
     where: { id: soId },
     select: { customerId: true, status: true },
   });
   if (!so) throw new Error("Sales order not found");
-  if (so.status === "DRAFT") throw new Error("Confirm the order before recording a payment");
-  if (so.status === "CANCELLED") throw new Error("Cannot record payment for a cancelled order");
+  if (so.status === "DRAFT")     throw new Error("Confirm the order before recording a payment");
+  if (so.status === "CANCELLED") throw new Error("Cannot record payment for a voided order");
+  if (so.status === "LOST")      throw new Error("Cannot record payment for an order marked as lost");
 
   await prisma.$transaction(async (tx) => {
     const current = await tx.salesOrder.findUnique({
@@ -593,14 +759,13 @@ export async function recordSalesmanPayment(soId: string, values: SalesmanPaymen
     });
     if (!current) throw new Error("Sales order not found");
 
-    // Validate against the salesman's TOTAL outstanding (not just this order), so they can
-    // pay more than this order's balance to reduce previous debt.
+    // Validate against the salesman's TOTAL outstanding (not just this order)
     const salesman = await tx.salesman.findUnique({
       where: { id: so.customerId },
       select: {
         openingBalance: true,
         salesOrders: {
-          where: { deletedAt: null, status: { notIn: ["CANCELLED", "DRAFT"] } },
+          where: { deletedAt: null, status: { notIn: ["CANCELLED", "DRAFT", "LOST"] } },
           select: { factoryAmount: true, amountPaid: true },
         },
       },
@@ -658,6 +823,7 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
     select: {
       status:        true,
       orderNumber:   true,
+      orderDate:     true,
       totalAmount:   true,
       commissionPct: true,
       items: {
@@ -676,8 +842,8 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
     },
   });
   if (!so) throw new Error("Sales order not found");
-  if (so.status === "DRAFT" || so.status === "CANCELLED") {
-    throw new Error("Cannot process a return for a draft or cancelled order");
+  if (so.status === "DRAFT" || so.status === "CANCELLED" || so.status === "LOST") {
+    throw new Error("Cannot process a return for a draft, voided, or lost order");
   }
 
   // Validate: cumulative returned qty per product must not exceed sold qty
@@ -705,15 +871,16 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
 
   const returnTotal   = data.items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
 
-  // Recalculate commission/factory amounts after this waste return
   const prevWaste        = so.returns.reduce((sum, r) => sum + Number(r.totalAmount), 0);
   const netAmount        = Number(so.totalAmount) - prevWaste - returnTotal;
   const commissionPct    = Number(so.commissionPct);
   const commissionAmount = Math.round(netAmount * commissionPct) / 100;
   const factoryAmount    = netAmount - commissionAmount;
 
+  let returnNumber = "";
+
   await prisma.$transaction(async (tx) => {
-    const returnNumber = await generateReturnNumber(tx as Db);
+    returnNumber = await generateReturnNumber(tx as Db);
     await tx.salesReturn.create({
       data: {
         returnNumber,
@@ -732,13 +899,11 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
       },
     });
 
-    // Update commission/factory amounts on the order
     await tx.salesOrder.update({
       where: { id: soId },
       data: { commissionAmount, factoryAmount },
     });
 
-    // Fresh returns: restock the items back into inventory
     if (data.returnType === "FRESH") {
       for (const item of data.items) {
         await applyStockMovement(
@@ -757,6 +922,24 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
       }
     }
   });
+
+  await writeAuditLog({
+    userId,
+    action:     "SALES_RETURN_CREATE",
+    entityType: "SalesReturn",
+    entityId:   soId,
+    after: {
+      returnNumber,
+      returnType: data.returnType,
+      items:      data.items.map((i) => ({ productId: i.productId, quantity: i.quantity })),
+      orderDate:  so.orderDate.toISOString(),
+    },
+  });
+
+  // Cascade-recalculate any closed logs from the order's date onward
+  // (a FRESH return changes freshReturnQty; a WASTE return doesn't affect daily log qtys
+  //  but we still cascade to keep paper records consistent)
+  await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
 
   revalidatePath(`/sales/${soId}`);
   revalidatePath("/sales");

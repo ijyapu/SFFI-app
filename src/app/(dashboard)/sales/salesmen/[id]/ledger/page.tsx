@@ -28,7 +28,7 @@ export default async function SalesmanLedgerPage({
   if (!salesman) notFound();
 
   const orders = await prisma.salesOrder.findMany({
-    where: { customerId: id, deletedAt: null, status: { not: "CANCELLED" } },
+    where: { customerId: id, deletedAt: null, status: { notIn: ["CANCELLED", "LOST"] } },
     orderBy: { orderDate: "desc" },
     include: {
       returns:  { select: { totalAmount: true } },
