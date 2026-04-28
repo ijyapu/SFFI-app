@@ -50,52 +50,46 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
     <>
       <style>{`
         @media print {
-          @page { size: A4 landscape; margin: 12mm 14mm; }
-          nav, aside, header, .no-print { display: none !important; }
-          body { font-size: 10px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-          .print-break { page-break-before: always; }
+          /* Isolate only the ledger area — hides sidebar, header, filters, KPI cards */
+          body * { visibility: hidden; }
+          #salesman-ledger-print, #salesman-ledger-print * { visibility: visible; }
+          #salesman-ledger-print { position: absolute; top: 0; left: 0; right: 0; }
 
-          .print-table-wrapper {
-            overflow: visible !important;
-            width: 100% !important;
-          }
-          .print-table-wrapper table {
+          @page { size: A4 landscape; margin: 12mm 14mm; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+          /* Remove all overflow clipping inside the print area */
+          #salesman-ledger-print div,
+          #salesman-ledger-print table { overflow: visible !important; }
+
+          /* Ledger table sizing */
+          #salesman-ledger-print table {
             width: 100% !important;
             table-layout: fixed !important;
             font-size: 9px !important;
             border-collapse: collapse !important;
           }
-          .print-table-wrapper th,
-          .print-table-wrapper td {
+          #salesman-ledger-print th,
+          #salesman-ledger-print td {
             padding: 4px 5px !important;
-            overflow: hidden;
+            overflow: hidden !important;
             text-overflow: ellipsis;
             white-space: nowrap;
           }
-          .print-table-wrapper th:nth-child(1),
-          .print-table-wrapper td:nth-child(1) { width: 13%; }
-          .print-table-wrapper th:nth-child(2),
-          .print-table-wrapper td:nth-child(2) { width: 10%; }
-          .print-table-wrapper th:nth-child(3),
-          .print-table-wrapper td:nth-child(3) { width: 18%; white-space: normal; }
-          .print-table-wrapper th:nth-child(4),
-          .print-table-wrapper td:nth-child(4) { width: 13%; }
-          .print-table-wrapper th:nth-child(5),
-          .print-table-wrapper td:nth-child(5) { width: 10%; }
-          .print-table-wrapper th:nth-child(6),
-          .print-table-wrapper td:nth-child(6) { width: 10%; }
-          .print-table-wrapper th:nth-child(7),
-          .print-table-wrapper td:nth-child(7) { width: 13%; }
-          .print-table-wrapper th:nth-child(8),
-          .print-table-wrapper td:nth-child(8) { width: 13%; }
-          .print-table-wrapper tr { page-break-inside: avoid; }
-          .print-table-wrapper a svg { display: none; }
+          /* Description column — allow wrapping */
+          #salesman-ledger-print th:nth-child(3),
+          #salesman-ledger-print td:nth-child(3) { white-space: normal; }
+          #salesman-ledger-print tr { page-break-inside: avoid; }
+          /* Hide external-link icons */
+          #salesman-ledger-print a svg { display: none !important; }
+
+          .print-break { page-break-before: always; }
         }
       `}</style>
 
       <div className="space-y-6 pb-10">
 
-        {/* ── Header ── */}
+        {/* ── Header (screen only) ── */}
         <div className="flex flex-wrap items-start justify-between gap-4 no-print">
           <div>
             <div className="flex items-center gap-2">
@@ -116,7 +110,7 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
           )}
         </div>
 
-        {/* ── Filters ── */}
+        {/* ── Filters (screen only) ── */}
         <div className="no-print">
           <Suspense>
             <LedgerFilters
@@ -145,9 +139,47 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
           </div>
         )}
 
+        {/* ── KPI cards (screen only) ── */}
         {ledgerData && (
-          <>
-            {/* Print header */}
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 no-print">
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Opening Balance</p>
+              <p className={`text-xl font-bold tabular-nums ${ledgerData.openingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
+                Rs {ledgerData.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-muted-foreground">{format(new Date(from), "d MMM yyyy")}</p>
+            </div>
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Invoiced</p>
+              <p className="text-xl font-bold tabular-nums">
+                Rs {ledgerData.commissionSummary.totalInvoiced.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-muted-foreground">{ledgerData.commissionSummary.invoiceCount} invoice{ledgerData.commissionSummary.invoiceCount !== 1 ? "s" : ""}</p>
+            </div>
+            <div className="rounded-lg border p-4 space-y-1">
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Commission Deducted</p>
+              <p className="text-xl font-bold tabular-nums text-amber-600">
+                Rs {ledgerData.commissionSummary.totalCommission.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-muted-foreground">{ledgerData.salesman.commissionPct}% rate</p>
+            </div>
+            <div className={`rounded-lg border p-4 space-y-1 ${ledgerData.closingBalance > 0.005 ? "border-blue-500/40 bg-blue-50/30 dark:bg-blue-950/10" : "border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/10"}`}>
+              <p className="text-xs text-muted-foreground uppercase tracking-wide">Closing Balance</p>
+              <p className={`text-xl font-bold tabular-nums ${ledgerData.closingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
+                Rs {ledgerData.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {ledgerData.closingBalance > 0.005 ? "Salesman owes you" : ledgerData.closingBalance < -0.005 ? "You owe salesman" : "Settled"}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* ── Printable area — only this renders on paper ── */}
+        {ledgerData && (
+          <div id="salesman-ledger-print">
+
+            {/* Company header (always visible inside print area; hidden on screen via CSS parent) */}
             <div className="hidden print:block mb-4">
               <div className="flex justify-between items-start border-b-2 border-red-700 pb-3 mb-4">
                 <div>
@@ -167,58 +199,20 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
               </div>
             </div>
 
-            {/* ── KPI cards ── */}
-            <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 no-print">
-              <div className="rounded-lg border p-4 space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Opening Balance</p>
-                <p className={`text-xl font-bold tabular-nums ${ledgerData.openingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
-                  Rs {ledgerData.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </p>
-                <p className="text-xs text-muted-foreground">{format(new Date(from), "d MMM yyyy")}</p>
-              </div>
-              <div className="rounded-lg border p-4 space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Invoiced</p>
-                <p className="text-xl font-bold tabular-nums">
-                  Rs {ledgerData.commissionSummary.totalInvoiced.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </p>
-                <p className="text-xs text-muted-foreground">{ledgerData.commissionSummary.invoiceCount} invoice{ledgerData.commissionSummary.invoiceCount !== 1 ? "s" : ""}</p>
-              </div>
-              <div className="rounded-lg border p-4 space-y-1">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Commission Deducted</p>
-                <p className="text-xl font-bold tabular-nums text-amber-600">
-                  Rs {ledgerData.commissionSummary.totalCommission.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {ledgerData.salesman.commissionPct}% rate
-                </p>
-              </div>
-              <div className={`rounded-lg border p-4 space-y-1 ${ledgerData.closingBalance > 0.005 ? "border-blue-500/40 bg-blue-50/30 dark:bg-blue-950/10" : "border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/10"}`}>
-                <p className="text-xs text-muted-foreground uppercase tracking-wide">Closing Balance</p>
-                <p className={`text-xl font-bold tabular-nums ${ledgerData.closingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
-                  Rs {ledgerData.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  {ledgerData.closingBalance > 0.005 ? "Salesman owes you" : ledgerData.closingBalance < -0.005 ? "You owe salesman" : "Settled"}
-                </p>
-              </div>
-            </div>
+            {/* Ledger table */}
+            <LedgerTable
+              entries={ledgerData.entries}
+              openingBalance={ledgerData.openingBalance}
+              closingBalance={ledgerData.closingBalance}
+              from={from}
+              to={to}
+            />
 
-            {/* ── Ledger table ── */}
-            <div className="print-table-wrapper">
-              <LedgerTable
-                entries={ledgerData.entries}
-                openingBalance={ledgerData.openingBalance}
-                closingBalance={ledgerData.closingBalance}
-                from={from}
-                to={to}
-              />
-            </div>
-
-            {/* ── Commission Summary ── */}
-            <div className="print-break">
+            {/* Commission summary — new page */}
+            <div className="print-break mt-6">
               <CommissionSummary data={ledgerData} />
             </div>
-          </>
+          </div>
         )}
       </div>
     </>

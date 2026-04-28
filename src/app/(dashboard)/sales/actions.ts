@@ -308,6 +308,7 @@ export async function createSalesOrder(values: CreateSoValues) {
   }
 
   revalidatePath("/sales");
+  revalidatePath("/sales/salesmen");
   revalidatePath("/inventory");
   revalidatePath("/daily-log");
 }
@@ -389,6 +390,7 @@ export async function confirmSalesOrder(id: string) {
 
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
+  revalidatePath("/sales/salesmen");
   revalidatePath("/inventory");
   revalidatePath("/daily-log");
 }
@@ -539,6 +541,7 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
 
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
+  revalidatePath("/sales/salesmen");
   revalidatePath("/inventory");
   revalidatePath("/daily-log");
 }
@@ -611,6 +614,7 @@ export async function voidSalesOrder(id: string) {
 
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
+  revalidatePath("/sales/salesmen");
   revalidatePath("/inventory");
   revalidatePath("/daily-log");
 }
@@ -646,6 +650,7 @@ export async function markSalesOrderLost(id: string) {
 
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
+  revalidatePath("/sales/salesmen");
   revalidatePath("/daily-log");
 }
 
@@ -712,6 +717,7 @@ export async function deleteSalesOrder(id: string) {
   }
 
   revalidatePath("/sales");
+  revalidatePath("/sales/salesmen");
   revalidatePath("/inventory");
   revalidatePath("/daily-log");
 }

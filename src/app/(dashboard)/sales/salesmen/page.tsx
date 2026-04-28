@@ -14,7 +14,18 @@ export default async function SalesmenPage() {
   const raw = await prisma.salesman.findMany({
     where: { deletedAt: null },
     orderBy: { name: "asc" },
-    include: { _count: { select: { salesOrders: true } } },
+    include: {
+      _count: {
+        select: {
+          salesOrders: {
+            where: {
+              deletedAt: null,
+              status: { notIn: ["DRAFT", "CANCELLED", "LOST"] },
+            },
+          },
+        },
+      },
+    },
   });
 
   const salesmen = raw.map((c) => ({

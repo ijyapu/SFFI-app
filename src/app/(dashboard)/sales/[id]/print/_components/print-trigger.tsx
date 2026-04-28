@@ -5,7 +5,6 @@ import { Printer } from "lucide-react";
 
 export function PrintTrigger() {
   useEffect(() => {
-    // Wait for all resources (logo image, fonts) before triggering print
     function tryPrint() { window.print(); }
     if (document.readyState === "complete") {
       const t = setTimeout(tryPrint, 150);

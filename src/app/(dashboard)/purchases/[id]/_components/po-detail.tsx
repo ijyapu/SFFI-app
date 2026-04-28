@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
+import Link from "next/link";
 import { DateDisplay } from "@/components/ui/date-display";
-import { PackageCheck, CreditCard, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { PackageCheck, CreditCard, CheckCircle, XCircle, Loader2, Printer } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -139,6 +140,12 @@ export function PoDetail(props: Props) {
         </div>
 
         <div className="flex gap-2">
+          <Link href={`/purchases/${id}/print`} target="_blank">
+            <Button variant="outline">
+              <Printer className="h-4 w-4" />
+              Print Invoice
+            </Button>
+          </Link>
           {status === "DRAFT" && (
             <>
               <Button variant="outline" onClick={handleCancel} disabled={cancelling}>

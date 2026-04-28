@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { DateDisplay } from "@/components/ui/date-display";
 import {
-  CheckCircle, XCircle, CreditCard, Loader2, Pencil, AlertTriangle,
+  CheckCircle, XCircle, CreditCard, Loader2, Pencil, AlertTriangle, Printer,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -196,6 +196,14 @@ export function SoDetail(props: Props) {
         </div>
 
         <div className="flex gap-2 flex-wrap">
+          <Link
+            href={`/sales/${id}/print`}
+            target="_blank"
+            className={cn(buttonVariants({ variant: "outline" }))}
+          >
+            <Printer className="h-4 w-4" />
+            Print Invoice
+          </Link>
           {canEdit && (
             <Link
               href={`/sales/${id}/edit`}
