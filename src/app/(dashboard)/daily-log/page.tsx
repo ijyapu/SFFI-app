@@ -9,7 +9,6 @@ import { getDailyLog } from "./actions";
 import { DailyLogTable } from "./_components/daily-log-table";
 import { CloseDayDialog } from "./_components/close-day-dialog";
 import { StartDayButton } from "./_components/start-day-button";
-import { DateNav } from "./_components/date-nav";
 
 export const metadata = { title: "Daily Log" };
 
@@ -105,7 +104,14 @@ export default async function DailyLogPage({ searchParams }: Props) {
             <History className="h-4 w-4" />
             History
           </Link>
-          <DateNav dateStr={validDate} todayStr={todayStr} />
+          {!isToday && (
+            <Link
+              href="/daily-log"
+              className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+            >
+              Today
+            </Link>
+          )}
           {isOpen && log && (
             <CloseDayDialog logId={log.id} dateLabel={dateLabel} />
           )}
