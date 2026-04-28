@@ -12,7 +12,6 @@ import {
 } from "@/lib/validators/sales";
 import { getNextDocumentNumber } from "@/lib/doc-counter";
 import { writeAuditLog } from "@/lib/audit";
-import { cascadeClosedDailyLogs } from "@/lib/daily-log-cascade";
 
 type Db = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
@@ -186,8 +185,6 @@ export async function createSalesOrder(values: CreateSoValues) {
                 : paidNow > 0                       ? "PARTIALLY_PAID"
                 :                                     "CONFIRMED";
 
-  let createdSoId = "";
-
   await prisma.$transaction(async (tx) => {
     const orderNumber       = await generateSoNumber(tx as Db);
     const returnNumber      = hasReturn      ? await generateReturnNumber(tx as Db) : null;
@@ -218,7 +215,6 @@ export async function createSalesOrder(values: CreateSoValues) {
         },
       },
     });
-    createdSoId = so.id;
 
     if (paidNow > 0) {
       await tx.salesmanPayment.create({
@@ -310,8 +306,6 @@ export async function createSalesOrder(values: CreateSoValues) {
   if (!syncResult.ok) {
     console.warn("[sales] createSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
   }
-  // Cascade if the order date's log was already closed when this sale was recorded
-  await cascadeClosedDailyLogs({ fromDate: toNoonUTC(data.orderDate), triggerUserId: userId });
 
   revalidatePath("/sales");
   revalidatePath("/inventory");
@@ -392,8 +386,6 @@ export async function confirmSalesOrder(id: string) {
   if (!syncResult.ok) {
     console.warn("[sales] confirmSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
   }
-  // Cascade if the order date's log was already closed when this draft was confirmed
-  await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
 
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
@@ -543,14 +535,6 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
       console.warn("[sales] updateSalesOrder: failed to sync new daily log soldQty:", newSync.warning);
     }
 
-    // If the date changed, cascade-recalculate any closed logs from the earlier of the two dates
-    if (dateChanged) {
-      const earlierDate = oldOrderDate.getTime() < newOrderDate.getTime() ? oldOrderDate : newOrderDate;
-      await cascadeClosedDailyLogs({ fromDate: earlierDate, triggerUserId: userId });
-    } else {
-      // Same date — just cascade from that date in case the day was already closed
-      await cascadeClosedDailyLogs({ fromDate: oldOrderDate, triggerUserId: userId });
-    }
   }
 
   revalidatePath(`/sales/${id}`);
@@ -623,7 +607,6 @@ export async function voidSalesOrder(id: string) {
     if (!syncResult.ok) {
       console.warn("[sales] voidSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
     }
-    await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
   }
 
   revalidatePath(`/sales/${id}`);
@@ -660,9 +643,6 @@ export async function markSalesOrderLost(id: string) {
     before: { orderNumber: so.orderNumber, status: so.status },
     after:  { status: "LOST", stockRestored: false },
   });
-
-  // Cascade daily log: remove this order from soldQty paper records
-  await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
 
   revalidatePath(`/sales/${id}`);
   revalidatePath("/sales");
@@ -729,7 +709,6 @@ export async function deleteSalesOrder(id: string) {
     if (!syncResult.ok) {
       console.warn("[sales] deleteSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
     }
-    await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
   }
 
   revalidatePath("/sales");
@@ -935,11 +914,6 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
       orderDate:  so.orderDate.toISOString(),
     },
   });
-
-  // Cascade-recalculate any closed logs from the order's date onward
-  // (a FRESH return changes freshReturnQty; a WASTE return doesn't affect daily log qtys
-  //  but we still cascade to keep paper records consistent)
-  await cascadeClosedDailyLogs({ fromDate: so.orderDate, triggerUserId: userId });
 
   revalidatePath(`/sales/${soId}`);
   revalidatePath("/sales");

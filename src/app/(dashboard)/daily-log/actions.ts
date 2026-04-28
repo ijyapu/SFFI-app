@@ -5,7 +5,6 @@ import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { StockMovementType, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit";
-import { cascadeClosedDailyLogs } from "@/lib/daily-log-cascade";
 
 async function requireDailyLogAccess() {
   const user = await currentUser();
@@ -612,10 +611,6 @@ export async function closeDailyLog(logId: string): Promise<void> {
       itemCount: log.items.length,
     },
   });
-
-  // Propagate this log's closing quantities to any already-closed future logs
-  // (handles the case where a REOPENED log was re-edited then re-closed).
-  await cascadeClosedDailyLogs({ fromDate: nextDay, triggerUserId: userId });
 
   revalidatePath("/daily-log");
   revalidatePath("/daily-log/history");
