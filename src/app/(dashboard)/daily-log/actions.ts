@@ -5,6 +5,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { StockMovementType, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit";
+import { cascadeClosedDailyLogs } from "@/lib/daily-log-cascade";
 
 async function requireDailyLogAccess() {
   const user = await currentUser();
@@ -42,6 +43,7 @@ export type DailyLogRow = {
   createdAt: string;
   closedAt: string | null;
   closedBy: string | null;
+  openingOutdated: boolean; // true when ≥1 product's openingQty doesn't match prev log's closingQty
   items: DailyLogItemRow[];
 };
 
@@ -69,6 +71,8 @@ export type DailyLogItemRow = {
   // opening + purchased + produced + freshReturn - used - sold - waste - damaged - closing
   // Should be 0; non-zero means the stored closing is stale vs live figures
   formulaDelta: number;
+  // true when this product's openingQty doesn't match the previous log's closingQty
+  openingOutdated: boolean;
 };
 
 export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> {
@@ -94,6 +98,25 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
   });
 
   if (!log) return null;
+
+  // For OPEN / REOPENED logs, compare each item's openingQty against the previous
+  // finalized log's closingQty so we can warn the admin if they are out of sync.
+  let prevClosingCheck = new Map<string, number>();
+  if (log.status === "OPEN" || log.status === "REOPENED") {
+    const prevFinalized = await prisma.dailyLog.findFirst({
+      where: {
+        logDate: { lt: logDate },
+        status:  { in: ["CLOSED", "AUTO_ADJUSTED"] },
+      },
+      orderBy: { logDate: "desc" },
+      include: { items: { select: { productId: true, closingQty: true } } },
+    });
+    if (prevFinalized) {
+      prevClosingCheck = new Map(
+        prevFinalized.items.map((i) => [i.productId, Number(i.closingQty)])
+      );
+    }
+  }
 
   // Get purchases that landed on this date for each product
   const purchaseSums = await prisma.purchaseLineItem.groupBy({
@@ -177,6 +200,9 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
     // Negative delta = formula says closing should be lower (data was removed after close)
     const formulaDelta = (opening + purchased + produced + freshReturn - used - sold - waste - damaged) - closing;
 
+    const prevClosing     = prevClosingCheck.get(item.productId);
+    const openingOutdated = prevClosing !== undefined && Math.abs(prevClosing - opening) > 0.001;
+
     return {
       id: item.id,
       productId: item.productId,
@@ -198,9 +224,12 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
       actualQty: item.actualQty != null ? Number(item.actualQty) : null,
       varianceQty: item.varianceQty != null ? Number(item.varianceQty) : null,
       notes: item.notes,
-      formulaDelta: Math.round(formulaDelta * 1000) / 1000, // round to 3 decimal places
+      formulaDelta: Math.round(formulaDelta * 1000) / 1000,
+      openingOutdated,
     };
   });
+
+  const openingOutdated = items.some((i) => i.openingOutdated);
 
   return {
     id: log.id,
@@ -210,6 +239,7 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
     createdAt: log.createdAt.toISOString(),
     closedAt: log.closedAt?.toISOString() ?? null,
     closedBy: log.closedBy,
+    openingOutdated,
     items,
   };
 }
@@ -226,29 +256,33 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
   const existing = await prisma.dailyLog.findUnique({ where: { logDate } });
   if (existing) throw new Error("A log already exists for this date");
 
-  // Prevent starting a new log if any previous log is still OPEN
-  // REOPENED and AUTO_ADJUSTED are treated as "closed enough" — they have valid closing qtys
-  const openLog = await prisma.dailyLog.findFirst({
-    where: { status: "OPEN", logDate: { lt: logDate } },
-    select: { logDate: true },
+  // Find the most recent log before this date to check its status.
+  const mostRecentPrior = await prisma.dailyLog.findFirst({
+    where: { logDate: { lt: logDate } },
     orderBy: { logDate: "desc" },
+    select: { status: true, logDate: true },
   });
-  if (openLog) {
-    const d = openLog.logDate.toISOString().slice(0, 10);
+
+  // OPEN = data is still being entered; block until it is closed.
+  if (mostRecentPrior?.status === "OPEN") {
+    const d = mostRecentPrior.logDate.toISOString().slice(0, 10);
     throw new Error(
-      `Close the daily log for ${d} first. Opening quantities carry over from the previous closed log.`
+      `Daily log for ${d} is still open — close it first. Opening quantities for the new day come from that day's closing figures.`
     );
   }
 
-  // Use previous closed/auto-adjusted log's closing quantities as opening quantities.
+  // REOPENED = admin is re-editing; its closing figures may still change.
+  // Skip it and use the most recent CLOSED / AUTO_ADJUSTED log's closing instead.
+  // (When the REOPENED log is eventually re-closed, cascade will propagate its
+  //  corrected closing to any already-closed future logs. OPEN future logs will
+  //  show an "opening may be outdated" warning until recreated.)
   const prevLog = await prisma.dailyLog.findFirst({
-    where: { status: { in: ["CLOSED", "REOPENED", "AUTO_ADJUSTED"] }, logDate: { lt: logDate } },
+    where: { logDate: { lt: logDate }, status: { in: ["CLOSED", "AUTO_ADJUSTED"] } },
     orderBy: { logDate: "desc" },
-    include: {
-      items: { select: { productId: true, closingQty: true } },
-    },
+    include: { items: { select: { productId: true, closingQty: true } } },
   });
 
+  // prevLog is CLOSED / AUTO_ADJUSTED (or null = first ever log): use its closing quantities.
   const prevClosingMap = new Map<string, number>(
     prevLog?.items.map((i) => [i.productId, Number(i.closingQty)]) ?? []
   );
@@ -578,6 +612,10 @@ export async function closeDailyLog(logId: string): Promise<void> {
       itemCount: log.items.length,
     },
   });
+
+  // Propagate this log's closing quantities to any already-closed future logs
+  // (handles the case where a REOPENED log was re-edited then re-closed).
+  await cascadeClosedDailyLogs({ fromDate: nextDay, triggerUserId: userId });
 
   revalidatePath("/daily-log");
   revalidatePath("/daily-log/history");

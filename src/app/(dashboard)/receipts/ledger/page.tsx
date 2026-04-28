@@ -136,10 +136,10 @@ export default async function ReceiptLedgerPage({
         <div id="receipt-ledger" className="font-sans text-sm text-gray-900">
 
           {/* Company header */}
-          <div className="text-center mb-5 pb-4 border-b-2 border-gray-900">
-            <p className="text-base font-bold uppercase tracking-widest">{COMPANY.name}</p>
-            <p className="text-xs text-gray-600 mt-0.5">{COMPANY.address} &nbsp;|&nbsp; {COMPANY.phone} &nbsp;|&nbsp; PAN: {COMPANY.pan}</p>
-            <p className="text-xl font-bold mt-1">RECEIPT LEDGER</p>
+          <div className="text-center mb-5 pb-4 border-b-2 border-red-700">
+            <p className="text-base font-bold uppercase tracking-widest text-red-700">{COMPANY.name}</p>
+            <p className="text-xs text-red-700 mt-0.5">{COMPANY.address} &nbsp;|&nbsp; {COMPANY.phone} &nbsp;|&nbsp; PAN: {COMPANY.pan}</p>
+            <p className="text-xl font-bold mt-1 text-red-700">RECEIPT LEDGER</p>
             <div className="flex justify-between items-end mt-2 text-xs text-gray-600">
               <span>Period: <span className="font-semibold text-gray-900">{periodLabel}</span></span>
               <span>{rows.length} entr{rows.length !== 1 ? "ies" : "y"}</span>

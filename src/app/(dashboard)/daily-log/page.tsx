@@ -4,7 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, BookOpen, CheckCircle2, Info, History } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle2, Info, History, AlertTriangle } from "lucide-react";
 import { getDailyLog } from "./actions";
 import { DailyLogTable } from "./_components/daily-log-table";
 import { CloseDayDialog } from "./_components/close-day-dialog";
@@ -161,6 +161,22 @@ export default async function DailyLogPage({ searchParams }: Props) {
                     Originally closed on {new Date(log.closedAt).toLocaleString()}
                   </span>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Outdated opening warning — shown when previous day was reopened after this log was started */}
+          {isOpen && log.openingOutdated && (
+            <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-300 px-4 py-3 text-sm text-amber-900">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+              <div>
+                <p className="font-semibold">Opening quantities may be outdated.</p>
+                <p className="text-xs text-amber-800 mt-1">
+                  The previous day&apos;s closing figures changed after this log was opened
+                  (likely because that day was reopened and re-edited).
+                  One or more products have opening values that no longer match the previous closing.
+                  Ask an admin to delete this log and recreate it to pull in the corrected opening quantities.
+                </p>
               </div>
             </div>
           )}

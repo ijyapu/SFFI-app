@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2, UserPlus, PackagePlus, ChevronDown } from "lucide-react";
+import { Plus, Trash2, UserPlus, PackagePlus, ChevronDown, AlertTriangle } from "lucide-react";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
@@ -38,6 +38,7 @@ type Props = {
   units:         Unit[];
   purchaseId?:   string;
   initialValues?: Partial<CreatePurchaseValues>;
+  openLogDate?:  string; // YYYY-MM-DD of the currently open daily log
 };
 
 // ── Product Combobox ─────────────────────────────────────────────────────────
@@ -152,7 +153,7 @@ function ProductCombobox({
 }
 
 // ── Main Form ────────────────────────────────────────────────────────────────
-export function PurchaseForm({ suppliers: initSuppliers, products: initProducts, categories, units, purchaseId, initialValues }: Props) {
+export function PurchaseForm({ suppliers: initSuppliers, products: initProducts, categories, units, purchaseId, initialValues, openLogDate }: Props) {
   const router = useRouter();
   const [suppliers, setSuppliers]       = useState(initSuppliers);
   const [products,  setProducts]        = useState(initProducts);
@@ -165,7 +166,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
     defaultValues: {
       invoiceNo:  initialValues?.invoiceNo  ?? "",
       supplierId: initialValues?.supplierId ?? "",
-      date:       initialValues?.date       ?? new Date().toISOString().split("T")[0],
+      date:       initialValues?.date       ?? openLogDate ?? new Date().toISOString().split("T")[0],
       notes:      initialValues?.notes      ?? "",
       invoiceUrl: initialValues?.invoiceUrl ?? "",
       items:      initialValues?.items      ?? [{ productId: "", productName: "", categoryId: "", unitId: "", description: "", quantity: 1, unitPrice: 0, vatPct: 0, excisePct: 0 }],
@@ -176,6 +177,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
 
   // eslint-disable-next-line react-hooks/incompatible-library
   const watchItems = form.watch("items");
+  const watchDate  = form.watch("date");
 
   const computedItems = watchItems.map((item) => {
     const gross       = (item.quantity || 0) * (item.unitPrice || 0);
@@ -336,6 +338,18 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                       <Input type="date" {...field} />
                     </FormControl>
                     <FormMessage />
+                    {!purchaseId && !openLogDate && (
+                      <p className="flex items-center gap-1.5 text-xs text-amber-600 mt-1">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        No daily log is currently open. This purchase won&apos;t appear in a production log until one is opened.
+                      </p>
+                    )}
+                    {!purchaseId && openLogDate && watchDate && watchDate !== openLogDate && (
+                      <p className="flex items-center gap-1.5 text-xs text-amber-600 mt-1">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                        Date doesn&apos;t match the open daily log ({openLogDate}). The log will be auto-adjusted, but verify this is intentional.
+                      </p>
+                    )}
                   </FormItem>
                 )}
               />

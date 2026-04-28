@@ -11,7 +11,7 @@ export const metadata = { title: "New Sales Order" };
 export default async function NewSalesOrderPage() {
   await requirePermission("sales");
 
-  const [rawSalesmen, products] = await Promise.all([
+  const [rawSalesmen, products, openLog] = await Promise.all([
     prisma.salesman.findMany({
       where: { deletedAt: null },
       orderBy: { name: "asc" },
@@ -31,7 +31,14 @@ export default async function NewSalesOrderPage() {
       include: { unit: true },
       orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
     }),
+    prisma.dailyLog.findFirst({
+      where: { status: { in: ["OPEN", "REOPENED"] } },
+      orderBy: { logDate: "desc" },
+      select: { logDate: true },
+    }),
   ]);
+
+  const openLogDate = openLog?.logDate.toISOString().slice(0, 10);
 
   const salesmen = rawSalesmen.map((c) => {
     const outstanding = Number(c.openingBalance) + c.salesOrders.reduce((acc, o) => {
@@ -81,7 +88,7 @@ export default async function NewSalesOrderPage() {
         </div>
       ) : (
         <div className="max-w-4xl">
-          <SoForm salesmen={salesmen} products={serialisedProducts} />
+          <SoForm salesmen={salesmen} products={serialisedProducts} openLogDate={openLogDate} />
         </div>
       )}
     </div>
