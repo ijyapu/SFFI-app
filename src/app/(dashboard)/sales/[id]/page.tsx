@@ -106,6 +106,7 @@ export default async function SalesOrderDetailPage({
       createdAt:    r.createdAt.toISOString(),
       items: r.items.map((i) => ({
         id:          i.id,
+        productId:   i.productId,
         productName: i.product?.name ?? "Deleted Product",
         unitName:    i.product?.unit?.name ?? "—",
         quantity:    Number(i.quantity),

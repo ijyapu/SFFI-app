@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Plus, Trash2, RotateCcw, PackageCheck, AlertCircle } from "lucide-react";
+import { Plus, Trash2, RotateCcw, PackageCheck, AlertCircle, SquarePen } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,12 +19,13 @@ type Product  = { id: string; name: string; unitName: string; sellingPrice: numb
 type LineItem = { key: number; productId: string; quantity: number | ""; unitPrice: number | "" };
 
 type PreviousReturnItem = {
-  id: string;
+  id:          string;
+  productId:   string;
   productName: string;
-  unitName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
+  unitName:    string;
+  quantity:    number;
+  unitPrice:   number;
+  totalPrice:  number;
 };
 
 type PreviousReturn = {
@@ -167,7 +169,7 @@ export function ReturnFormInline({
               <div key={r.id} className="px-4 py-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-semibold text-orange-700">{r.returnNumber}</span>
+                    <span className={`font-mono text-xs font-semibold ${isFresh ? "text-green-700" : "text-orange-700"}`}>{r.returnNumber}</span>
                     <span className="text-xs text-muted-foreground">
                       {new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
                     </span>
@@ -175,9 +177,18 @@ export function ReturnFormInline({
                       <span className="text-xs text-muted-foreground italic">· {r.notes}</span>
                     )}
                   </div>
-                  <span className={`text-sm font-bold tabular-nums ${isFresh ? "text-green-700" : "text-orange-700"}`}>
-                    − Rs {fmt(r.totalAmount)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-bold tabular-nums ${isFresh ? "text-green-700" : "text-orange-700"}`}>
+                      − Rs {fmt(r.totalAmount)}
+                    </span>
+                    <Link
+                      href={`/sales/${soId}/return/${r.id}/edit`}
+                      className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                      title="Edit return"
+                    >
+                      <SquarePen className="h-3.5 w-3.5" />
+                    </Link>
+                  </div>
                 </div>
                 <div className="rounded border divide-y text-xs bg-background">
                   <div className="grid grid-cols-[minmax(0,1fr)_7rem_9rem_9rem] px-3 py-1.5 text-muted-foreground font-medium bg-muted/30">
@@ -383,6 +394,7 @@ export function ReturnFormInline({
         </div>
 
       </div>
+
     </div>
   );
 }

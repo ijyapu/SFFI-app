@@ -1,14 +1,85 @@
+import { Fragment } from "react";
 import { format } from "date-fns";
 import { toNepaliDateString } from "@/lib/nepali-date";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 import { ExternalLink } from "lucide-react";
 import type { CustomerLedgerEntry } from "../actions";
 
 function fmt(n: number) {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+const METHOD_LABELS: Record<string, string> = {
+  CASH:          "Cash",
+  BANK_TRANSFER: "Bank Transfer",
+  CHECK:         "Cheque",
+  ESEWA:         "eSewa",
+  KHALTI:        "Khalti",
+  IME_PAY:       "IME Pay",
+  FONEPAY:       "fonePay",
+  OTHER:         "Other",
+};
+
+const TYPE_CONFIG = {
+  INVOICE:    { label: "Invoice",    colorRow: "hover:bg-blue-50/20 dark:hover:bg-blue-950/10",    amtClass: "text-blue-700",    sign: "+" },
+  RETURN:     { label: "Return",     colorRow: "hover:bg-orange-50/20 dark:hover:bg-orange-950/10", amtClass: "text-orange-700",  sign: "−" },
+  COMMISSION: { label: "Commission", colorRow: "hover:bg-amber-50/20 dark:hover:bg-amber-950/10",  amtClass: "text-amber-700",   sign: "−" },
+  PAYMENT:    { label: "Payment",    colorRow: "hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10", amtClass: "text-emerald-700", sign: "−" },
+} as const;
+
+const TYPE_ORDER: Record<string, number> = { INVOICE: 0, RETURN: 1, COMMISSION: 2, PAYMENT: 3 };
+
+function DateCell({ date }: { date: string }) {
+  const d = new Date(date);
+  return (
+    <div>
+      <div className="text-xs">{format(d, "dd MMM yyyy")}</div>
+      <div className="text-[10px] text-muted-foreground/60">{toNepaliDateString(d)}</div>
+    </div>
+  );
+}
+
+type OrderGroup = {
+  salesOrderId: string | null;
+  groupDate:    string;
+  orderRef:     string;
+  entries:      CustomerLedgerEntry[];
+};
+
+function buildGroups(entries: CustomerLedgerEntry[]): OrderGroup[] {
+  const map = new Map<string, OrderGroup>();
+  const groups: OrderGroup[] = [];
+
+  for (const e of entries) {
+    const key = e.salesOrderId ?? `__standalone__${e.id}`;
+    if (!map.has(key)) {
+      const g: OrderGroup = {
+        salesOrderId: e.salesOrderId,
+        groupDate:    e.date,
+        orderRef:     e.reference,
+        entries:      [],
+      };
+      map.set(key, g);
+      groups.push(g);
+    }
+    map.get(key)!.entries.push(e);
+  }
+
+  for (const g of groups) {
+    // Use the invoice date as the group anchor date (for sorting groups)
+    const inv = g.entries.find((e) => e.type === "INVOICE");
+    if (inv) g.groupDate = inv.date;
+
+    // Sort entries within the group: invoice → return → commission → payment
+    g.entries.sort((a, b) => (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9));
+  }
+
+  // Sort groups by their anchor date, then by order reference
+  groups.sort((a, b) => {
+    const diff = a.groupDate.localeCompare(b.groupDate);
+    return diff !== 0 ? diff : a.orderRef.localeCompare(b.orderRef);
+  });
+
+  return groups;
 }
 
 export function LedgerTable({
@@ -18,141 +89,127 @@ export function LedgerTable({
   from,
   to,
 }: {
-  entries: CustomerLedgerEntry[];
+  entries:        CustomerLedgerEntry[];
   openingBalance: number;
   closingBalance: number;
-  from: string;
-  to: string;
+  from:           string;
+  to:             string;
 }) {
+  const groups = buildGroups(entries);
+
   return (
     <div className="rounded-lg border overflow-x-auto">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-28">Date</TableHead>
-            <TableHead className="w-32">Reference</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead className="w-24">Type</TableHead>
-            <TableHead numeric className="w-32">Invoice (Rs)</TableHead>
-            <TableHead numeric className="w-32">Received (Rs)</TableHead>
-            <TableHead numeric className="w-32">Balance (Rs)</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {/* Opening balance row */}
-          <TableRow className="bg-amber-50/50 dark:bg-amber-950/10 font-medium">
-            <TableCell className="text-xs">
-              <div>{format(new Date(from), "dd MMM yyyy")}</div>
-              <div className="text-muted-foreground/60 text-[10px]">{toNepaliDateString(new Date(from))}</div>
-            </TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-            <TableCell className="text-sm font-semibold">Opening Balance</TableCell>
-            <TableCell>
-              <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-700 bg-amber-50">Opening</Badge>
-            </TableCell>
-            <TableCell />
-            <TableCell />
-            <TableCell numeric className={`font-bold ${openingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
-              {fmt(openingBalance)}
-            </TableCell>
-          </TableRow>
+      <table className="w-full text-sm border-collapse">
 
-          {entries.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+        {/* ── Opening Balance ── */}
+        <thead>
+          <tr className="bg-amber-50/60 dark:bg-amber-950/10 border-b">
+            <th className="px-4 py-3 text-left w-32 font-semibold text-amber-800">Opening Balance</th>
+            <th className="px-4 py-3 text-left text-amber-700 text-xs font-normal" colSpan={3}>
+              as of {format(new Date(from), "dd MMM yyyy")} · {toNepaliDateString(new Date(from))}
+            </th>
+            <th className={`px-4 py-3 text-right font-bold tabular-nums w-36 ${openingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
+              Rs {fmt(openingBalance)}
+            </th>
+          </tr>
+          <tr className="bg-muted/30 border-b text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+            <th className="px-4 py-1.5 text-left">Date</th>
+            <th className="px-4 py-1.5 text-left">Type</th>
+            <th className="px-4 py-1.5 text-left">Invoice / Ref No.</th>
+            <th className="px-4 py-1.5 text-left">Description</th>
+            <th className="px-4 py-1.5 text-right">Amount</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          {groups.length === 0 && (
+            <tr>
+              <td colSpan={5} className="px-4 py-8 text-center text-sm text-muted-foreground/60 italic">
                 No transactions in this period
-              </TableCell>
-            </TableRow>
+              </td>
+            </tr>
           )}
 
-          {entries.map((e) => (
-            <TableRow
-              key={e.id}
-              className={
-                e.type === "INVOICE"
-                  ? "hover:bg-blue-50/30 dark:hover:bg-blue-950/10"
-                  : e.type === "COMMISSION"
-                  ? "hover:bg-amber-50/30 dark:hover:bg-amber-950/10"
-                  : e.type === "RETURN"
-                  ? "hover:bg-orange-50/30 dark:hover:bg-orange-950/10"
-                  : "hover:bg-emerald-50/30 dark:hover:bg-emerald-950/10"
-              }
-            >
-              <TableCell className="text-xs">
-                <div>{format(new Date(e.date), "dd MMM yyyy")}</div>
-                <div className="text-muted-foreground/60 text-[10px]">{toNepaliDateString(new Date(e.date))}</div>
-              </TableCell>
-              <TableCell className="text-xs font-mono">
-                {e.salesOrderId ? (
-                  <a
-                    href={`/sales/${e.salesOrderId}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-1 text-primary hover:underline"
-                  >
-                    {e.reference}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                ) : (
-                  e.reference
-                )}
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">{e.description}</TableCell>
-              <TableCell>
-                {e.type === "INVOICE" && (
-                  <Badge variant="outline" className="text-[10px] border-blue-400 text-blue-700 bg-blue-50 dark:bg-blue-950/30">
-                    Invoice
-                  </Badge>
-                )}
-                {e.type === "COMMISSION" && (
-                  <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-700 bg-amber-50 dark:bg-amber-950/30">
-                    Commission
-                  </Badge>
-                )}
-                {e.type === "PAYMENT" && (
-                  <Badge variant="outline" className="text-[10px] border-emerald-500 text-emerald-700 bg-emerald-50 dark:bg-emerald-950/30">
-                    Payment
-                  </Badge>
-                )}
-                {e.type === "RETURN" && (
-                  <Badge variant="outline" className="text-[10px] border-orange-400 text-orange-700 bg-orange-50 dark:bg-orange-950/30">
-                    Return
-                  </Badge>
-                )}
-              </TableCell>
-              <TableCell numeric className="tabular-nums text-sm">
-                {e.invoiceAmount > 0 ? fmt(e.invoiceAmount) : "—"}
-              </TableCell>
-              <TableCell numeric className={`tabular-nums text-sm ${e.type === "COMMISSION" ? "text-amber-600" : "text-emerald-700"}`}>
-                {e.paymentAmount > 0 ? fmt(e.paymentAmount) : "—"}
-              </TableCell>
-              <TableCell numeric className={`tabular-nums text-sm font-medium ${e.balance > 0.005 ? "text-blue-600" : e.balance < -0.005 ? "text-orange-600" : "text-emerald-600"}`}>
-                {fmt(e.balance)}
-              </TableCell>
-            </TableRow>
-          ))}
+          {groups.map((group, gi) => (
+            <Fragment key={group.salesOrderId ?? `standalone-${gi}`}>
+              {/* Order group header */}
+              <tr className="bg-slate-50/80 dark:bg-slate-900/30 border-t-2 border-t-slate-200 dark:border-t-slate-700">
+                <td colSpan={5} className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
+                  {group.orderRef}
+                  <span className="ml-2 font-normal normal-case tracking-normal text-slate-400">
+                    {format(new Date(group.groupDate), "dd MMM yyyy")} · {toNepaliDateString(new Date(group.groupDate))}
+                  </span>
+                </td>
+              </tr>
 
-          {/* Closing balance row */}
-          <TableRow className={`font-semibold ${closingBalance > 0.005 ? "bg-blue-50/50 dark:bg-blue-950/10" : "bg-emerald-50/50 dark:bg-emerald-950/10"}`}>
-            <TableCell className="text-xs">
-              <div>{format(new Date(to), "dd MMM yyyy")}</div>
-              <div className="text-muted-foreground/60 text-[10px]">{toNepaliDateString(new Date(to))}</div>
-            </TableCell>
-            <TableCell className="text-xs text-muted-foreground">—</TableCell>
-            <TableCell className="text-sm font-bold">Closing Balance</TableCell>
-            <TableCell>
-              <Badge variant="outline" className={`text-[10px] ${closingBalance > 0.005 ? "border-blue-400 text-blue-700 bg-blue-50" : "border-emerald-500 text-emerald-700 bg-emerald-50"}`}>
-                Closing
-              </Badge>
-            </TableCell>
-            <TableCell />
-            <TableCell />
-            <TableCell numeric className={`font-bold text-base ${closingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
-              {fmt(closingBalance)}
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+              {/* Entries for this order */}
+              {group.entries.map((e) => {
+                const cfg = TYPE_CONFIG[e.type];
+                const amount = e.type === "INVOICE" ? e.invoiceAmount : e.paymentAmount;
+
+                return (
+                  <tr key={e.id} className={`border-b ${cfg.colorRow}`}>
+                    <td className="px-4 py-2.5 w-32">
+                      <DateCell date={e.date} />
+                    </td>
+                    <td className="px-4 py-2.5 w-28">
+                      <span className={`text-[9px] font-bold uppercase px-1.5 py-0.5 rounded ${
+                        e.type === "INVOICE"    ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40" :
+                        e.type === "RETURN"     ? "bg-orange-100 text-orange-700 dark:bg-orange-900/40" :
+                        e.type === "COMMISSION" ? "bg-amber-100 text-amber-700 dark:bg-amber-900/40" :
+                        "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40"
+                      }`}>
+                        {cfg.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs">
+                      {e.salesOrderId ? (
+                        <a
+                          href={`/sales/${e.salesOrderId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-0.5 text-primary hover:underline"
+                        >
+                          {e.reference} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ) : e.reference}
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                      {e.type === "PAYMENT"
+                        ? <>
+                            {METHOD_LABELS[e.paymentMethod] ?? e.paymentMethod}
+                            {e.description && ` · ${e.description}`}
+                          </>
+                        : e.description
+                      }
+                    </td>
+                    <td className={`px-4 py-2.5 text-right tabular-nums font-medium ${cfg.amtClass}`}>
+                      {cfg.sign} {fmt(amount)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </Fragment>
+          ))}
+        </tbody>
+
+        {/* ── Closing Balance ── */}
+        <tfoot>
+          <tr className={`border-t-2 ${closingBalance > 0.005 ? "bg-blue-50/60 dark:bg-blue-950/10" : "bg-emerald-50/60 dark:bg-emerald-950/10"}`}>
+            <td className="px-4 py-3 font-bold text-sm">Closing Balance</td>
+            <td className="px-4 py-3 text-xs text-muted-foreground" colSpan={2}>
+              as of {format(new Date(to), "dd MMM yyyy")} · {toNepaliDateString(new Date(to))}
+            </td>
+            <td className="px-4 py-3 text-xs text-muted-foreground text-right">
+              {closingBalance > 0.005 ? "Salesman owes you" : closingBalance < -0.005 ? "You owe salesman" : "Settled"}
+            </td>
+            <td className={`px-4 py-3 text-right font-bold text-base tabular-nums ${closingBalance > 0.005 ? "text-blue-700" : "text-emerald-600"}`}>
+              Rs {fmt(Math.abs(closingBalance))}
+            </td>
+          </tr>
+        </tfoot>
+
+      </table>
     </div>
   );
 }

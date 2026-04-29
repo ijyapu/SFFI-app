@@ -967,3 +967,126 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
   revalidatePath("/sales");
   revalidatePath("/inventory");
 }
+
+export async function updateSalesReturn(
+  returnId: string,
+  data: {
+    items: { productId: string; quantity: number; unitPrice: number }[];
+    notes?: string;
+  }
+) {
+  const userId = await requireSalesAccess();
+
+  const items = data.items.filter((i) => i.productId && i.quantity > 0 && i.unitPrice >= 0);
+  if (!items.length) throw new Error("At least one item is required");
+
+  const existing = await prisma.salesReturn.findUnique({
+    where: { id: returnId },
+    include: {
+      items: true,
+      salesOrder: {
+        select: {
+          id: true, orderNumber: true, totalAmount: true,
+          commissionPct: true, status: true,
+        },
+      },
+    },
+  });
+  if (!existing) throw new Error("Return not found");
+
+  const order = existing.salesOrder;
+  if (!order) throw new Error("Associated order not found");
+  if (["DRAFT", "CANCELLED", "LOST"].includes(order.status)) {
+    throw new Error("Cannot edit a return on a cancelled or voided order");
+  }
+
+  const newTotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0);
+
+  const otherReturns = await prisma.salesReturn.findMany({
+    where: { salesOrderId: order.id, id: { not: returnId } },
+    select: { totalAmount: true },
+  });
+  const otherReturnsTotal = otherReturns.reduce((s, r) => s + Number(r.totalAmount), 0);
+
+  const netAmount        = Number(order.totalAmount) - otherReturnsTotal - newTotal;
+  const commissionPct    = Number(order.commissionPct);
+  const commissionAmount = Math.round(netAmount * commissionPct) / 100;
+  const factoryAmount    = netAmount - commissionAmount;
+
+  const oldTotal = Number(existing.totalAmount);
+
+  await prisma.$transaction(async (tx) => {
+    if (existing.returnType === "FRESH") {
+      // Reverse old RETURN_IN movements (use RETURN_OUT to decrease stock back)
+      for (const oldItem of existing.items) {
+        await applyStockMovement(
+          {
+            productId:      oldItem.productId,
+            type:           StockMovementType.RETURN_OUT,
+            quantity:       Number(oldItem.quantity),
+            notes:          `Edit: reversing ${existing.returnNumber}`,
+            referenceId:    order.id,
+            referenceType:  "SalesReturn",
+            createdBy:      userId,
+            isAdminOverride: true,
+          },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      }
+      // Apply new RETURN_IN movements
+      for (const item of items) {
+        await applyStockMovement(
+          {
+            productId:     item.productId,
+            type:          StockMovementType.RETURN_IN,
+            quantity:      item.quantity,
+            unitCost:      item.unitPrice,
+            notes:         `Edited return via ${order.orderNumber}`,
+            referenceId:   order.id,
+            referenceType: "SalesReturn",
+            createdBy:     userId,
+          },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      }
+    }
+
+    // Replace items and update total/notes
+    await tx.salesReturnItem.deleteMany({ where: { salesReturnId: returnId } });
+    await tx.salesReturn.update({
+      where: { id: returnId },
+      data: {
+        totalAmount: newTotal,
+        notes: data.notes?.trim() || null,
+        items: {
+          createMany: {
+            data: items.map((i) => ({
+              productId: i.productId,
+              quantity:  i.quantity,
+              unitPrice: i.unitPrice,
+            })),
+          },
+        },
+      },
+    });
+
+    await tx.salesOrder.update({
+      where: { id: order.id },
+      data: { commissionAmount, factoryAmount },
+    });
+  });
+
+  await writeAuditLog({
+    userId,
+    action:     "SALES_RETURN_EDIT",
+    entityType: "SalesReturn",
+    entityId:   returnId,
+    before: { totalAmount: oldTotal, itemCount: existing.items.length },
+    after:  { totalAmount: newTotal, itemCount: items.length },
+  });
+
+  revalidatePath(`/sales/${order.id}`);
+  revalidatePath("/sales");
+  revalidatePath("/inventory");
+  revalidatePath("/salesmen/ledger");
+}

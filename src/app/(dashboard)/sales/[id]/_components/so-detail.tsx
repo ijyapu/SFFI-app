@@ -60,12 +60,13 @@ type Payment = {
 };
 
 type ReturnItem = {
-  id: string;
+  id:          string;
+  productId:   string;
   productName: string;
-  unitName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
+  unitName:    string;
+  quantity:    number;
+  unitPrice:   number;
+  totalPrice:  number;
 };
 
 type SalesReturn = {
