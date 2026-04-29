@@ -227,12 +227,12 @@ export default async function DailyLogPage({ searchParams }: Props) {
                 sub: "products received",
               },
               {
-                label: "Variances",
+                label: "Adjustments",
                 value: log.items.filter(
-                  (i) => i.varianceQty != null && Math.abs(i.varianceQty) > 0.001
+                  (i) => i.adjustInQty > 0.001 || i.adjustOutQty > 0.001
                 ).length,
-                sub: "items flagged",
-                alert: true,
+                sub: "items adjusted",
+                alert: false,
               },
             ].map(({ label, value, sub, alert }) => (
               <div

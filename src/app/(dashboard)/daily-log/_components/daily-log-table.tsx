@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { Check, Loader2, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { Check, Loader2, TrendingDown, TrendingUp } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -26,17 +26,18 @@ function calcClosing(row: RowState): number {
     row.openingQty +
     row.purchasedQty +
     row.producedQty +
-    row.freshReturnQty -
+    row.freshReturnQty +
+    row.adjustInQty -
     row.usedQty -
     row.soldQty -
     row.wasteQty -
-    row.damagedQty
+    row.damagedQty -
+    row.adjustOutQty
   );
 }
 
 function fmt(n: number): string {
   if (n === 0) return "0";
-  // Strip trailing zeros but keep up to 3 decimal places
   return parseFloat(n.toFixed(3)).toString();
 }
 
@@ -45,7 +46,6 @@ export function DailyLogTable({ items, isOpen }: Props) {
     items.map((item) => ({ ...item, _saving: false, _saved: false, _dirty: false }))
   );
 
-  // Keep a ref in sync so setTimeout callbacks can read the latest state
   const rowsRef = useRef<RowState[]>(rows);
   useEffect(() => { rowsRef.current = rows; });
 
@@ -67,28 +67,25 @@ export function DailyLogTable({ items, isOpen }: Props) {
 
       try {
         await updateDailyLogItem(itemId, {
-          producedQty: row.producedQty,
+          producedQty:    row.producedQty,
           freshReturnQty: row.freshReturnQty,
-          usedQty: row.usedQty,
-          soldQty: row.soldQty,
-          wasteQty: row.wasteQty,
-          damagedQty: row.damagedQty,
-          actualQty: row.actualQty,
-          notes: row.notes,
+          usedQty:        row.usedQty,
+          soldQty:        row.soldQty,
+          wasteQty:       row.wasteQty,
+          damagedQty:     row.damagedQty,
+          notes:          row.notes,
         });
 
         setRows((p) =>
           p.map((r) => r.id === itemId ? { ...r, _saving: false, _saved: true } : r)
         );
 
-        // Clear "saved" tick after 2s
         setTimeout(() => {
           setRows((p) =>
             p.map((r) => r.id === itemId ? { ...r, _saved: false } : r)
           );
         }, 2000);
       } catch (err) {
-        // Re-mark as dirty so the user knows the save failed
         setRows((p) =>
           p.map((r) => r.id === itemId ? { ...r, _saving: false, _dirty: true } : r)
         );
@@ -102,7 +99,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
   function updateField<
     K extends keyof Pick<
       RowState,
-      "producedQty" | "freshReturnQty" | "usedQty" | "soldQty" | "wasteQty" | "damagedQty" | "actualQty" | "notes"
+      "producedQty" | "freshReturnQty" | "usedQty" | "soldQty" | "wasteQty" | "damagedQty" | "notes"
     >,
   >(itemId: string, field: K, value: RowState[K]) {
     setRows((prev) =>
@@ -113,7 +110,6 @@ export function DailyLogTable({ items, isOpen }: Props) {
     scheduleSave(itemId);
   }
 
-  // Group items by category, preserving order
   const grouped: { catId: string; catName: string; rows: RowState[] }[] = [];
   const seen = new Map<string, number>();
   for (const row of rows) {
@@ -126,9 +122,6 @@ export function DailyLogTable({ items, isOpen }: Props) {
     }
   }
 
-  // Native <input> intentionally — Base UI's Input wraps onChange in a way
-  // that breaks controlled number inputs (decimal point is lost on re-render).
-  // Using defaultValue + onBlur avoids all controlled-input issues with type="number".
   const numInputClass =
     "h-8 w-24 rounded-md border border-input bg-transparent px-2 text-right text-sm tabular-nums " +
     "outline-none placeholder:text-muted-foreground/40 " +
@@ -187,12 +180,15 @@ export function DailyLogTable({ items, isOpen }: Props) {
             </TableHead>
             <TableHead className="w-22 text-right text-rose-600 font-semibold">Waste</TableHead>
             <TableHead className="w-22 text-right text-rose-600 font-semibold">Damaged</TableHead>
-            <TableHead className="w-22 text-right font-bold text-foreground border-l bg-muted/60">Closing</TableHead>
-            <TableHead className="w-22 text-right border-l font-semibold text-foreground/80">
-              Actual
-              <span className="block text-[10px] font-normal text-muted-foreground normal-case tracking-normal">count</span>
+            <TableHead className="w-22 text-right border-l text-teal-700 font-semibold">
+              Adj. In
+              <span className="block text-[10px] font-normal text-teal-500 normal-case tracking-normal">+stock</span>
             </TableHead>
-            <TableHead className="w-20 text-right font-semibold text-foreground/80">Variance</TableHead>
+            <TableHead className="w-22 text-right text-red-700 font-semibold">
+              Adj. Out
+              <span className="block text-[10px] font-normal text-red-400 normal-case tracking-normal">−stock</span>
+            </TableHead>
+            <TableHead className="w-22 text-right font-bold text-foreground border-l bg-muted/60">Closing</TableHead>
             <TableHead className="min-w-30 font-semibold text-foreground/80">Notes</TableHead>
             <TableHead className="w-6" />
           </TableRow>
@@ -208,32 +204,27 @@ export function DailyLogTable({ items, isOpen }: Props) {
           )}
 
           {grouped.map(({ catId, catName, rows: catRows }) => {
-            // Category totals for summary row
             const totals = catRows.reduce(
-              (acc, r) => {
-                return {
-                  produced: acc.produced + r.producedQty,
-                  used: acc.used + r.usedQty,
-                  sold: acc.sold + r.soldQty,
-                  waste: acc.waste + r.wasteQty + r.damagedQty,
-                };
-              },
-              { produced: 0, used: 0, sold: 0, waste: 0 }
+              (acc, r) => ({
+                produced:  acc.produced  + r.producedQty,
+                used:      acc.used      + r.usedQty,
+                sold:      acc.sold      + r.soldQty,
+                waste:     acc.waste     + r.wasteQty + r.damagedQty,
+                adjustIn:  acc.adjustIn  + r.adjustInQty,
+                adjustOut: acc.adjustOut + r.adjustOutQty,
+              }),
+              { produced: 0, used: 0, sold: 0, waste: 0, adjustIn: 0, adjustOut: 0 }
             );
 
             return (
               <React.Fragment key={catId}>
-                {/* Category header */}
                 <TableRow className="bg-primary/8 hover:bg-primary/8 border-y border-primary/15">
-                  <TableCell
-                    colSpan={15}
-                    className="py-2 px-3"
-                  >
+                  <TableCell colSpan={15} className="py-2 px-3">
                     <div className="flex items-center gap-3">
                       <span className="text-sm font-bold uppercase tracking-widest text-primary">{catName}</span>
                       <span className="text-xs text-muted-foreground/60">({catRows.length} items)</span>
                     </div>
-                    {(totals.produced > 0 || totals.used > 0 || totals.sold > 0 || totals.waste > 0) && (
+                    {(totals.produced > 0 || totals.used > 0 || totals.sold > 0 || totals.waste > 0 || totals.adjustIn > 0 || totals.adjustOut > 0) && (
                       <div className="flex flex-wrap gap-x-3 mt-0.5">
                         {totals.produced > 0 && (
                           <span className="text-[11px] text-emerald-600 font-medium">
@@ -257,17 +248,24 @@ export function DailyLogTable({ items, isOpen }: Props) {
                             {fmt(totals.waste)} waste/damaged
                           </span>
                         )}
+                        {totals.adjustIn > 0 && (
+                          <span className="text-[11px] text-teal-600 font-medium">
+                            +{fmt(totals.adjustIn)} adj. in
+                          </span>
+                        )}
+                        {totals.adjustOut > 0 && (
+                          <span className="text-[11px] text-red-600 font-medium">
+                            −{fmt(totals.adjustOut)} adj. out
+                          </span>
+                        )}
                       </div>
                     )}
                   </TableCell>
                 </TableRow>
 
-                {/* Product rows */}
                 {catRows.map((row) => {
-                  const closing = calcClosing(row);
-                  const hasActivity = row.producedQty + row.freshReturnQty + row.usedQty + row.soldQty + row.wasteQty + row.damagedQty > 0;
-                  const variance = row.actualQty != null ? row.actualQty - closing : null;
-                  const hasVariance = variance != null && Math.abs(variance) > 0.001;
+                  const closing    = calcClosing(row);
+                  const hasActivity = row.producedQty + row.freshReturnQty + row.usedQty + row.soldQty + row.wasteQty + row.damagedQty + row.adjustInQty + row.adjustOutQty > 0;
 
                   return (
                     <TableRow
@@ -306,7 +304,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
                       <TableCell className="text-right">{numInput(row, "soldQty")}</TableCell>
                       {/* Fresh Return */}
                       <TableCell className="text-right">{numInput(row, "freshReturnQty", "text-emerald-700")}</TableCell>
-                      {/* Waste Return (read-only, auto from sales returns) */}
+                      {/* Waste Return (read-only) */}
                       <TableCell className="text-right tabular-nums text-sm text-amber-600">
                         {row.wasteReturnQty > 0 ? fmt(row.wasteReturnQty) : (
                           <span className="text-muted-foreground/40">—</span>
@@ -317,7 +315,20 @@ export function DailyLogTable({ items, isOpen }: Props) {
                       {/* Damaged */}
                       <TableCell className="text-right">{numInput(row, "damagedQty")}</TableCell>
 
-                      {/* Closing (formula result) */}
+                      {/* Adj. In — read-only, sourced from Inventory adjustments */}
+                      <TableCell className="text-right tabular-nums text-sm border-l text-teal-700">
+                        {row.adjustInQty > 0 ? `+${fmt(row.adjustInQty)}` : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
+                      </TableCell>
+                      {/* Adj. Out — read-only, sourced from Inventory adjustments */}
+                      <TableCell className="text-right tabular-nums text-sm text-red-700">
+                        {row.adjustOutQty > 0 ? `−${fmt(row.adjustOutQty)}` : (
+                          <span className="text-muted-foreground/40">—</span>
+                        )}
+                      </TableCell>
+
+                      {/* Closing */}
                       <TableCell className="text-right tabular-nums text-sm font-semibold border-l">
                         {closing < 0 ? (
                           <span className="text-red-600 font-bold">{closing.toFixed(3)}</span>
@@ -325,41 +336,6 @@ export function DailyLogTable({ items, isOpen }: Props) {
                           <span className={hasActivity ? "text-foreground" : "text-muted-foreground/50"}>
                             {fmt(closing)}
                           </span>
-                        )}
-                      </TableCell>
-
-                      {/* Actual count */}
-                      <TableCell className="text-right border-l">
-                        <input
-                          key={`${row.id}-actual`}
-                          type="number"
-                          step="0.001"
-                          min="0"
-                          disabled={!isOpen}
-                          placeholder="—"
-                          defaultValue={row.actualQty == null || row.actualQty === 0 ? "" : row.actualQty}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            updateField(row.id, "actualQty", v === "" ? null : parseFloat(v) || 0);
-                          }}
-                          onBlur={(e) => {
-                            const v = e.target.value;
-                            updateField(row.id, "actualQty", v === "" ? null : parseFloat(v) || 0);
-                          }}
-                          className={numInputClass}
-                        />
-                      </TableCell>
-
-                      {/* Variance */}
-                      <TableCell className="text-right tabular-nums text-sm">
-                        {variance == null ? (
-                          <span className="text-muted-foreground/40">—</span>
-                        ) : !hasVariance ? (
-                          <span className="text-emerald-600 font-medium">✓</span>
-                        ) : variance > 0 ? (
-                          <span className="text-emerald-600 font-semibold">+{fmt(variance)}</span>
-                        ) : (
-                          <span className="text-red-600 font-semibold">{fmt(variance)}</span>
                         )}
                       </TableCell>
 
@@ -391,11 +367,6 @@ export function DailyLogTable({ items, isOpen }: Props) {
                             title="Unsaved"
                           />
                         )}
-                        {!row._saving && !row._dirty && hasVariance && (
-                          <span title={`Variance: ${fmt(variance!)} ${row.unitName}`}>
-                            <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                          </span>
-                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -422,7 +393,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
         </span>
         <span>
           <span className="font-medium">Closing</span>
-          {" = "}Opening + Purchased + Produced + Fresh Ret. − Used − Sold − Waste − Damaged
+          {" = "}Opening + Purchased + Produced + Fresh Ret. + Adj. In − Used − Sold − Waste − Damaged − Adj. Out
         </span>
       </div>
     </div>

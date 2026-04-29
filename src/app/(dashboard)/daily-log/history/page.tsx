@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/table";
 import {
   ArrowLeft, BookOpen, CheckCircle2, TrendingUp, TrendingDown,
-  AlertTriangle, ExternalLink,
+  ExternalLink,
 } from "lucide-react";
 import { getDailyLogHistory } from "../actions";
 import { ReopenDialog } from "../_components/reopen-dialog";
@@ -39,7 +39,7 @@ export default async function DailyLogHistoryPage() {
 
   const openCount = logs.filter((l) => l.status === "OPEN" || l.status === "REOPENED").length;
   const closedCount = logs.filter((l) => l.status === "CLOSED" || l.status === "AUTO_ADJUSTED").length;
-  const totalVariances = logs.reduce((s, l) => s + l.varianceCount, 0);
+  const totalAdjusted = logs.reduce((s, l) => s + l.adjustCount, 0);
 
   return (
     <div className="space-y-6">
@@ -75,7 +75,7 @@ export default async function DailyLogHistoryPage() {
           { label: "Total Logs", value: logs.length, sub: "last 60 days" },
           { label: "Open", value: openCount, sub: "not yet closed", warn: openCount > 1 },
           { label: "Closed", value: closedCount, sub: "completed days" },
-          { label: "Variances", value: totalVariances, sub: "items flagged", alert: totalVariances > 0 },
+          { label: "Adjustments", value: totalAdjusted, sub: "items adjusted", alert: false },
         ].map(({ label, value, sub, alert, warn }) => (
           <div key={label} className="rounded-lg border bg-card px-4 py-3">
             <div className={`text-2xl font-bold tabular-nums ${alert && value > 0 ? "text-amber-600" : warn && value > 0 ? "text-blue-600" : ""}`}>
@@ -107,7 +107,7 @@ export default async function DailyLogHistoryPage() {
                 <TableHead className="text-right text-orange-600">Used</TableHead>
                 <TableHead className="text-right text-rose-600">Sold</TableHead>
                 <TableHead className="text-right text-rose-600">Waste</TableHead>
-                <TableHead className="text-right">Variances</TableHead>
+                <TableHead className="text-right">Adjustments</TableHead>
                 <TableHead>Closed at</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
@@ -194,15 +194,12 @@ export default async function DailyLogHistoryPage() {
                     )}
                   </TableCell>
 
-                  {/* Variances */}
+                  {/* Adjustments */}
                   <TableCell className="text-right tabular-nums text-sm">
-                    {log.varianceCount > 0 ? (
-                      <span className="flex items-center justify-end gap-1 text-amber-600 font-medium">
-                        <AlertTriangle className="h-3.5 w-3.5" />
-                        {log.varianceCount}
+                    {log.adjustCount > 0 ? (
+                      <span className="text-teal-700 font-medium tabular-nums">
+                        {log.adjustCount}
                       </span>
-                    ) : log.status === "CLOSED" ? (
-                      <span className="text-emerald-600 text-xs">✓ Clean</span>
                     ) : (
                       <span className="text-muted-foreground/40">—</span>
                     )}

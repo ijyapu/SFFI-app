@@ -63,11 +63,11 @@ export type DailyLogItemRow = {
   wasteReturnQty: number;  // computed from WASTE SalesReturn records (informational, not deducted)
   wasteQty: number;
   damagedQty: number;
-  closingQty: number;
-  actualQty: number | null;
-  varianceQty: number | null;
+  closingQty:   number;
+  adjustInQty:  number;  // read-only: summed from StockMovement ADJUSTMENT_IN for this product/date
+  adjustOutQty: number;  // read-only: summed from StockMovement ADJUSTMENT_OUT for this product/date
   notes: string | null;
-  // opening + purchased + produced + freshReturn - used - sold - waste - damaged - closing
+  // opening + purchased + produced + freshReturn + adjustIn - used - sold - waste - damaged - adjustOut - closing
   // Should be 0; non-zero means the stored closing is stale vs live figures
   formulaDelta: number;
   // true when this product's openingQty doesn't match the previous log's closingQty
@@ -169,19 +169,46 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
   );
 
   // Always compute wasteReturnQty from WASTE sales returns (read-only, informational)
-  const wasteReturnSums = await prisma.salesReturnItem.groupBy({
-    by: ["productId"],
-    where: {
-      salesReturn: {
-        returnType: "WASTE",
-        salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
+  const productIds = log.items.map((i) => i.productId);
+
+  const [wasteReturnSums, adjustmentMovements] = await Promise.all([
+    prisma.salesReturnItem.groupBy({
+      by: ["productId"],
+      where: {
+        salesReturn: {
+          returnType: "WASTE",
+          salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } },
+        },
       },
-    },
-    _sum: { quantity: true },
-  });
+      _sum: { quantity: true },
+    }),
+    // Inventory adjustments for this date — exclude any legacy DailyLog-sourced ones
+    prisma.stockMovement.findMany({
+      where: {
+        productId:     { in: productIds },
+        type:          { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] },
+        referenceType: null,
+        createdAt:     { gte: logDate, lt: nextDay },
+      },
+      select: { productId: true, type: true, quantity: true },
+    }),
+  ]);
+
   const wasteReturnMap = new Map(
     wasteReturnSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)])
   );
+
+  const adjustInMap  = new Map<string, number>();
+  const adjustOutMap = new Map<string, number>();
+  for (const mv of adjustmentMovements) {
+    const pid = mv.productId;
+    const qty = Number(mv.quantity);
+    if (mv.type === StockMovementType.ADJUSTMENT_IN) {
+      adjustInMap.set(pid, (adjustInMap.get(pid) ?? 0) + qty);
+    } else {
+      adjustOutMap.set(pid, (adjustOutMap.get(pid) ?? 0) + qty);
+    }
+  }
 
   const items: DailyLogItemRow[] = log.items.map((item) => {
     const opening      = Number(item.openingQty);
@@ -194,10 +221,12 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
     const waste        = Number(item.wasteQty);
     const damaged      = Number(item.damagedQty);
     const closing      = Number(item.closingQty);
+    const adjustIn     = adjustInMap.get(item.productId) ?? 0;
+    const adjustOut    = adjustOutMap.get(item.productId) ?? 0;
 
     // Positive delta = formula says closing should be higher than stored (data was added after close)
     // Negative delta = formula says closing should be lower (data was removed after close)
-    const formulaDelta = (opening + purchased + produced + freshReturn - used - sold - waste - damaged) - closing;
+    const formulaDelta = (opening + purchased + produced + freshReturn + adjustIn - used - sold - waste - damaged - adjustOut) - closing;
 
     const prevClosing     = prevClosingCheck.get(item.productId);
     const openingOutdated = prevClosing !== undefined && Math.abs(prevClosing - opening) > 0.001;
@@ -219,9 +248,9 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
       wasteReturnQty: wasteReturn,
       wasteQty: waste,
       damagedQty: damaged,
-      closingQty: closing,
-      actualQty: item.actualQty != null ? Number(item.actualQty) : null,
-      varianceQty: item.varianceQty != null ? Number(item.varianceQty) : null,
+      closingQty:   closing,
+      adjustInQty:  adjustIn,
+      adjustOutQty: adjustOut,
       notes: item.notes,
       formulaDelta: Math.round(formulaDelta * 1000) / 1000,
       openingOutdated,
@@ -361,14 +390,13 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
 // ─────────────────────────────────────────────
 
 export type UpdateItemValues = {
-  producedQty: number;
-  usedQty: number;
-  soldQty: number;
+  producedQty:    number;
+  usedQty:        number;
+  soldQty:        number;
   freshReturnQty: number;
-  wasteQty: number;
-  damagedQty: number;
-  actualQty: number | null;
-  notes: string | null;
+  wasteQty:       number;
+  damagedQty:     number;
+  notes:          string | null;
 };
 
 export async function updateDailyLogItem(
@@ -397,7 +425,6 @@ export async function updateDailyLogItem(
       freshReturnQty: values.freshReturnQty,
       wasteQty:       values.wasteQty,
       damagedQty:     values.damagedQty,
-      actualQty:      values.actualQty,
       notes:          values.notes,
     },
   });
@@ -451,6 +478,27 @@ export async function closeDailyLog(logId: string): Promise<void> {
   const productIds = log.items.map((i) => i.productId);
   const ref = { referenceId: log.id, referenceType: "DailyLog" };
 
+  // Read inventory adjustments for this day BEFORE the transaction (read-only, no race risk)
+  const adjMovements = await prisma.stockMovement.findMany({
+    where: {
+      productId:     { in: productIds },
+      type:          { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] },
+      referenceType: { not: "DailyLog" },
+      createdAt:     { gte: logDate, lt: nextDay },
+    },
+    select: { productId: true, type: true, quantity: true },
+  });
+  const adjInMap  = new Map<string, number>();
+  const adjOutMap = new Map<string, number>();
+  for (const mv of adjMovements) {
+    const qty = Number(mv.quantity);
+    if (mv.type === StockMovementType.ADJUSTMENT_IN) {
+      adjInMap.set(mv.productId, (adjInMap.get(mv.productId) ?? 0) + qty);
+    } else {
+      adjOutMap.set(mv.productId, (adjOutMap.get(mv.productId) ?? 0) + qty);
+    }
+  }
+
   type PendingMovement = {
     productId: string;
     type: StockMovementType;
@@ -465,13 +513,11 @@ export async function closeDailyLog(logId: string): Promise<void> {
   // where a concurrent SALE between snapshot and commit would corrupt stock values.
   const pendingMovements: PendingMovement[] = [];
   const itemUpdates: Array<{
-    id: string;
-    productId: string;
-    closingQty: number;
-    soldQty: number;
+    id:            string;
+    productId:     string;
+    closingQty:    number;
+    soldQty:       number;
     freshReturnQty: number;
-    actualQty: number | null;
-    varianceQty: number | null;
   }> = [];
 
   await prisma.$transaction(
@@ -526,9 +572,9 @@ export async function closeDailyLog(logId: string): Promise<void> {
         const waste          = Number(item.wasteQty);
         const damaged        = Number(item.damagedQty);
 
-        const closing  = opening + purchased + produced + freshReturn - used - sold - waste - damaged;
-        const actual   = item.actualQty != null ? Number(item.actualQty) : null;
-        const variance = actual != null ? actual - closing : null;
+        const adjustIn  = adjInMap.get(item.productId)  ?? 0;
+        const adjustOut = adjOutMap.get(item.productId) ?? 0;
+        const closing   = opening + purchased + produced + freshReturn + adjustIn - used - sold - waste - damaged - adjustOut;
 
         const pid = item.productId;
         const addMovement = (type: StockMovementType, qty: number, label: string) => {
@@ -545,8 +591,10 @@ export async function closeDailyLog(logId: string): Promise<void> {
         // soldQty comes from confirmed SALE movements — skipping DAILY_OUT for sold prevents double-deduction
         addMovement(StockMovementType.DAILY_OUT, waste,    "waste");
         addMovement(StockMovementType.DAILY_OUT, damaged,  "damaged");
+        // Inventory adjustments are NOT replicated here — they already exist as StockMovements
+        // created from the Inventory section. The closing formula uses them read-only above.
 
-        itemUpdates.push({ id: item.id, productId: item.productId, closingQty: closing, soldQty: sold, freshReturnQty: freshReturn, actualQty: actual, varianceQty: variance });
+        itemUpdates.push({ id: item.id, productId: item.productId, closingQty: closing, soldQty: sold, freshReturnQty: freshReturn });
       }
 
       // Batch-create all stock movements
@@ -583,8 +631,6 @@ export async function closeDailyLog(logId: string): Promise<void> {
             soldQty:        upd.soldQty,
             freshReturnQty: upd.freshReturnQty,
             closingQty:     upd.closingQty,
-            actualQty:      upd.actualQty,
-            varianceQty:    upd.varianceQty,
           },
         });
       }
@@ -688,13 +734,13 @@ export async function reopenDailyLog(logId: string): Promise<void> {
       const pendingMovements: PendingMovement[] = [];
 
       for (const mv of movements) {
-        const reverseType =
-          mv.type === StockMovementType.DAILY_IN
-            ? StockMovementType.DAILY_OUT
-            : StockMovementType.DAILY_IN;
+        const reverseType = mv.type === StockMovementType.DAILY_IN
+          ? StockMovementType.DAILY_OUT
+          : StockMovementType.DAILY_IN;
         const qty    = Number(mv.quantity);
         const before = stockMap.get(mv.productId) ?? 0;
-        const after  = reverseType === StockMovementType.DAILY_OUT ? before - qty : before + qty;
+        const isOut  = reverseType === StockMovementType.DAILY_OUT;
+        const after  = isOut ? before - qty : before + qty;
         stockMap.set(mv.productId, after);
         pendingMovements.push({
           productId:     mv.productId,
@@ -730,15 +776,13 @@ export async function reopenDailyLog(logId: string): Promise<void> {
         });
       }
 
-      // Reset derived fields; preserve manually-entered data (producedQty, usedQty, wasteQty, etc.)
+      // Reset derived fields; preserve manually-entered data (producedQty, usedQty, wasteQty, adjustInQty, adjustOutQty, etc.)
       await tx.dailyLogItem.updateMany({
         where: { dailyLogId: logId },
         data: {
           soldQty:        0,
           freshReturnQty: 0,
           closingQty:     0,
-          actualQty:      null,
-          varianceQty:    null,
         },
       });
 
@@ -831,7 +875,7 @@ export type DailyLogSummary = {
   autoAdjustedAt: string | null;
   productCount: number;
   activeCount: number;
-  varianceCount: number;
+  adjustCount: number;
   totalProduced: number;
   totalUsed: number;
   totalSold: number;
@@ -851,11 +895,10 @@ export async function getDailyLogHistory(limitDays = 30): Promise<DailyLogSummar
       items: {
         select: {
           producedQty: true,
-          usedQty: true,
-          soldQty: true,
-          wasteQty: true,
-          damagedQty: true,
-          varianceQty: true,
+          usedQty:     true,
+          soldQty:     true,
+          wasteQty:    true,
+          damagedQty:  true,
         },
       },
     },
@@ -868,9 +911,7 @@ export async function getDailyLogHistory(limitDays = 30): Promise<DailyLogSummar
         Number(i.wasteQty) + Number(i.damagedQty) > 0
     ).length;
 
-    const varianceCount = log.items.filter(
-      (i) => i.varianceQty != null && Math.abs(Number(i.varianceQty)) > 0.001
-    ).length;
+    const adjustCount = 0; // computed live per-day view; not stored on history summary
 
     return {
       id: log.id,
@@ -882,7 +923,7 @@ export async function getDailyLogHistory(limitDays = 30): Promise<DailyLogSummar
       autoAdjustedAt: log.autoAdjustedAt?.toISOString() ?? null,
       productCount: log.items.length,
       activeCount,
-      varianceCount,
+      adjustCount,
       totalProduced: log.items.reduce((s, i) => s + Number(i.producedQty), 0),
       totalUsed: log.items.reduce((s, i) => s + Number(i.usedQty), 0),
       totalSold: log.items.reduce((s, i) => s + Number(i.soldQty), 0),

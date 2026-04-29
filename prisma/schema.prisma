@@ -214,10 +214,8 @@ model DailyLogItem {
   freshReturnQty Decimal @default(0) @db.Decimal(10, 3) // FRESH sales returns restocked today
   wasteQty       Decimal @default(0) @db.Decimal(10, 3)
   damagedQty     Decimal @default(0) @db.Decimal(10, 3)
-  closingQty  Decimal @default(0) @db.Decimal(10, 3) // stored when day is closed
-  actualQty   Decimal? @db.Decimal(10, 3)            // physical count (optional)
-  varianceQty Decimal? @db.Decimal(10, 3)            // actualQty − closingQty
-  notes       String?
+  closingQty   Decimal @default(0) @db.Decimal(10, 3) // stored when day is closed
+  notes        String?
 
   dailyLog DailyLog @relation(fields: [dailyLogId], references: [id])
   product  Product  @relation(fields: [productId], references: [id])
