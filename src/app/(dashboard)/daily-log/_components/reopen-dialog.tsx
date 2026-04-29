@@ -48,16 +48,18 @@ export function ReopenDialog({ logId, dateLabel }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Reopen Daily Log — {dateLabel}?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will reverse all stock movements applied when the day was closed.
+              This unlocks the log so you can correct produced, used, waste, or damaged quantities,
+              then close it again.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ul className="list-disc list-inside text-sm space-y-1 text-muted-foreground">
-            <li>All produced / used / sold / waste movements will be undone</li>
-            <li>All entered quantities will be reset to zero</li>
-            <li>Staff will need to re-enter and close the day again</li>
+            <li>Stock movements from closing are reversed</li>
+            <li><strong>Manually entered values are preserved</strong> — produced, used, waste, damaged</li>
+            <li>Sold and fresh-return quantities are re-synced live from sales orders</li>
+            <li>You must re-close the day to re-apply movements to inventory</li>
           </ul>
-          <p className="text-sm font-medium text-destructive">
-            This action is irreversible. Use only to correct a mistaken close.
+          <p className="text-sm font-medium text-amber-700">
+            Closing the day again will re-apply all movements. Re-close promptly to keep stock accurate.
           </p>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>

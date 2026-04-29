@@ -8,6 +8,7 @@ import { ArrowLeft, BookOpen, CheckCircle2, Info, History, AlertTriangle } from 
 import { getDailyLog } from "./actions";
 import { DailyLogTable } from "./_components/daily-log-table";
 import { CloseDayDialog } from "./_components/close-day-dialog";
+import { ReopenDialog } from "./_components/reopen-dialog";
 import { StartDayButton } from "./_components/start-day-button";
 
 export const metadata = { title: "Daily Log" };
@@ -111,6 +112,9 @@ export default async function DailyLogPage({ searchParams }: Props) {
             >
               Today
             </Link>
+          )}
+          {isClosed && log && (
+            <ReopenDialog logId={log.id} dateLabel={dateLabel} />
           )}
           {isOpen && log && (
             <CloseDayDialog logId={log.id} dateLabel={dateLabel} />
