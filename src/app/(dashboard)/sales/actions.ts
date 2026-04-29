@@ -772,12 +772,16 @@ export async function recordSalesmanPayment(soId: string, values: SalesmanPaymen
     const newPaid    = Number(current.amountPaid) + data.amount;
     const newStatus  = newPaid >= factoryDue - 0.001 ? "PAID" : "PARTIALLY_PAID";
 
+    const [y, m, d] = data.paidAt.split("-").map(Number);
+    const paidAtDate = new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0));
+
     await tx.salesmanPayment.create({
       data: {
         salesOrderId: soId,
         customerId:   so.customerId,
         amount:       data.amount,
         method:       data.method,
+        paidAt:       paidAtDate,
         reference:    data.reference || null,
         notes:        data.notes || null,
         createdBy:    userId,
@@ -795,6 +799,66 @@ export async function recordSalesmanPayment(soId: string, values: SalesmanPaymen
 
   revalidatePath(`/sales/${soId}`);
   revalidatePath("/sales");
+  revalidatePath("/sales/salesmen");
+}
+
+export async function updateSalesmanPayment(paymentId: string, values: SalesmanPaymentValues) {
+  const userId = await requireSalesAccess();
+  const data = salesmanPaymentSchema.parse(values);
+
+  const payment = await prisma.salesmanPayment.findUnique({
+    where: { id: paymentId },
+    select: { salesOrderId: true, customerId: true },
+  });
+  if (!payment) throw new Error("Payment not found");
+
+  const [y, m, d] = data.paidAt.split("-").map(Number);
+  const paidAtDate = new Date(Date.UTC(y!, m! - 1, d!, 12, 0, 0));
+
+  await prisma.$transaction(async (tx) => {
+    await tx.salesmanPayment.update({
+      where: { id: paymentId },
+      data: {
+        amount:    data.amount,
+        method:    data.method,
+        paidAt:    paidAtDate,
+        reference: data.reference || null,
+        notes:     data.notes || null,
+      },
+    });
+
+    // Recompute amountPaid from all payments for this order (no floating-point drift)
+    const allPayments = await tx.salesmanPayment.findMany({
+      where:  { salesOrderId: payment.salesOrderId },
+      select: { amount: true },
+    });
+    const totalPaid = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+
+    const so = await tx.salesOrder.findUnique({
+      where:  { id: payment.salesOrderId },
+      select: { factoryAmount: true },
+    });
+    const factoryDue = Number(so?.factoryAmount ?? 0);
+    const newStatus  = totalPaid >= factoryDue - 0.001 ? "PAID" : totalPaid > 0 ? "PARTIALLY_PAID" : "CONFIRMED";
+
+    await tx.salesOrder.update({
+      where: { id: payment.salesOrderId },
+      data:  { amountPaid: totalPaid, status: newStatus },
+    });
+  });
+
+  await writeAuditLog({
+    userId,
+    action:     "PAYMENT_EDIT",
+    entityType: "SalesmanPayment",
+    entityId:   paymentId,
+    after: { amount: data.amount, method: data.method, paidAt: paidAtDate.toISOString() },
+  });
+
+  revalidatePath(`/sales/${payment.salesOrderId}`);
+  revalidatePath("/sales");
+  revalidatePath("/sales/salesmen");
+  revalidatePath("/salesmen/ledger");
 }
 
 // ─── Sales Returns ────────────────────────────

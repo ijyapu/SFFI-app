@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { DateDisplay } from "@/components/ui/date-display";
 import {
-  CheckCircle, XCircle, CreditCard, Loader2, Pencil, AlertTriangle, Printer,
+  CheckCircle, XCircle, CreditCard, Loader2, Pencil, AlertTriangle, Printer, SquarePen,
 } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -23,7 +23,7 @@ import {
 import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
-import { SoPaymentForm }    from "./so-payment-form";
+import { SoPaymentForm, type ExistingPayment } from "./so-payment-form";
 import { ReturnFormInline } from "./return-form-inline";
 import { confirmSalesOrder, voidSalesOrder, markSalesOrderLost } from "../../actions";
 
@@ -51,12 +51,12 @@ type SoItem = {
 };
 
 type Payment = {
-  id: string;
-  amount: number;
-  method: string;
+  id:        string;
+  amount:    number;
+  method:    string;
   reference: string | null;
-  notes: string | null;
-  paidAt: string;
+  notes:     string | null;
+  paidAt:    string;
 };
 
 type ReturnItem = {
@@ -107,7 +107,8 @@ export function SoDetail(props: Props) {
     amountPaid, items, payments, returns, products, salesmanTotalOutstanding,
   } = props;
 
-  const [paymentOpen,  setPaymentOpen]  = useState(false);
+  const [paymentOpen,    setPaymentOpen]    = useState(false);
+  const [editingPayment, setEditingPayment] = useState<ExistingPayment | undefined>(undefined);
   const [confirming,   setConfirming]   = useState(false);
   const [voidOpen,     setVoidOpen]     = useState(false);
   const [voiding,      setVoiding]      = useState(false);
@@ -236,7 +237,7 @@ export function SoDetail(props: Props) {
             </Button>
           )}
           {canRecordPayment && (
-            <Button onClick={() => setPaymentOpen(true)}>
+            <Button onClick={() => { setEditingPayment(undefined); setPaymentOpen(true); }}>
               <CreditCard className="h-4 w-4" />
               Record Payment
             </Button>
@@ -404,15 +405,24 @@ export function SoDetail(props: Props) {
               </CardHeader>
               <CardContent className="space-y-2">
                 {payments.map((p) => (
-                  <div key={p.id} className="text-sm">
-                    <div className="flex justify-between">
-                      <span className="font-medium">Rs {p.amount.toFixed(2)}</span>
-                      <span className="text-muted-foreground">{METHOD_LABELS[p.method] ?? p.method}</span>
+                  <div key={p.id} className="flex items-start justify-between gap-2 text-sm">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Rs {p.amount.toFixed(2)}</span>
+                        <span className="text-muted-foreground">{METHOD_LABELS[p.method] ?? p.method}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        <DateDisplay date={p.paidAt} />
+                        {p.reference && ` · ${p.reference}`}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      <DateDisplay date={p.paidAt} />
-                      {p.reference && ` · ${p.reference}`}
-                    </div>
+                    <button
+                      onClick={() => { setEditingPayment(p); setPaymentOpen(true); }}
+                      className="shrink-0 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                      title="Edit payment"
+                    >
+                      <SquarePen className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 ))}
               </CardContent>
@@ -484,7 +494,8 @@ export function SoDetail(props: Props) {
         outstanding={outstanding}
         salesmanTotalOutstanding={salesmanTotalOutstanding}
         open={paymentOpen}
-        onClose={() => setPaymentOpen(false)}
+        editPayment={editingPayment}
+        onClose={() => { setPaymentOpen(false); setEditingPayment(undefined); }}
       />
 
       {/* Void Sale dialog */}

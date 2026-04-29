@@ -57,6 +57,7 @@ export type UpdateSoValues = z.infer<typeof updateSoSchema>;
 export const salesmanPaymentSchema = z.object({
   amount:    z.number().min(0, "Amount must be ≥ 0").max(9_999_999),
   method:    z.enum(["CASH", "BANK_TRANSFER", "CHECK", "ESEWA", "KHALTI", "IME_PAY", "FONEPAY", "OTHER"]),
+  paidAt:    z.string().min(1, "Date is required"),
   reference: z.string().max(100).optional(),
   notes:     z.string().max(2000).optional(),
 });
