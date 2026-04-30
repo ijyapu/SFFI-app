@@ -43,9 +43,10 @@ export default async function EmployeesPage() {
     address:       e.address ?? null,
     departmentId:  e.departmentId,
     position:      e.position,
-    basicSalary:   Number(e.basicSalary),
-    startDate:     e.startDate.toISOString(),
-    endDate:       e.endDate?.toISOString() ?? null,
+    basicSalary:    Number(e.basicSalary),
+    openingBalance: Number(e.openingBalance),
+    startDate:      e.startDate.toISOString(),
+    endDate:        e.endDate?.toISOString() ?? null,
     department:    { name: e.department.name },
   }));
 

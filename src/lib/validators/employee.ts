@@ -15,8 +15,9 @@ export const employeeSchema = z.object({
   address:       z.string().max(500).optional(),
   departmentId:  z.string().min(1, "Select a department"),
   position:      z.string().min(1, "Position is required").max(100),
-  basicSalary:   z.number().min(0, "Salary must be ≥ 0").max(1_000_000),
-  startDate:     z.string().min(1, "Start date is required"),
+  basicSalary:    z.number().min(0, "Salary must be ≥ 0").max(1_000_000),
+  openingBalance: z.number().min(0, "Opening balance must be ≥ 0").max(10_000_000),
+  startDate:      z.string().min(1, "Start date is required"),
   endDate:       z.string().optional(),
 });
 

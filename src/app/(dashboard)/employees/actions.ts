@@ -69,17 +69,18 @@ export async function createEmployee(values: EmployeeFormValues) {
   await prisma.employee.create({
     data: {
       employeeNo,
-      firstName:     data.firstName,
-      lastName:      data.lastName,
+      firstName:      data.firstName,
+      lastName:       data.lastName,
       email,
-      phone:         data.phone,
-      citizenshipId: data.citizenshipId || null,
-      address:       data.address || null,
-      departmentId:  data.departmentId,
-      position:      data.position,
-      basicSalary:   data.basicSalary,
-      startDate:     new Date(data.startDate),
-      endDate:       data.endDate ? new Date(data.endDate) : null,
+      phone:          data.phone,
+      citizenshipId:  data.citizenshipId || null,
+      address:        data.address || null,
+      departmentId:   data.departmentId,
+      position:       data.position,
+      basicSalary:    data.basicSalary,
+      openingBalance: data.openingBalance ?? 0,
+      startDate:      new Date(data.startDate),
+      endDate:        data.endDate ? new Date(data.endDate) : null,
     },
   });
 
@@ -101,17 +102,18 @@ export async function updateEmployee(id: string, values: EmployeeFormValues) {
   await prisma.employee.update({
     where: { id },
     data: {
-      firstName:     data.firstName,
-      lastName:      data.lastName,
+      firstName:      data.firstName,
+      lastName:       data.lastName,
       email,
-      phone:         data.phone,
-      citizenshipId: data.citizenshipId || null,
-      address:       data.address || null,
-      departmentId:  data.departmentId,
-      position:      data.position,
-      basicSalary:   data.basicSalary,
-      startDate:     new Date(data.startDate),
-      endDate:       data.endDate ? new Date(data.endDate) : null,
+      phone:          data.phone,
+      citizenshipId:  data.citizenshipId || null,
+      address:        data.address || null,
+      departmentId:   data.departmentId,
+      position:       data.position,
+      basicSalary:    data.basicSalary,
+      openingBalance: data.openingBalance ?? 0,
+      startDate:      new Date(data.startDate),
+      endDate:        data.endDate ? new Date(data.endDate) : null,
     },
   });
 
@@ -204,6 +206,9 @@ export async function createPayrollRun(values: PayrollRunFormValues) {
 
   const employees = await prisma.employee.findMany({
     where: { deletedAt: null, endDate: null },
+    select: {
+      id: true, basicSalary: true, openingBalance: true,
+    },
   });
 
   if (employees.length === 0) {
@@ -223,6 +228,23 @@ export async function createPayrollRun(values: PayrollRunFormValues) {
     for (const item of prevRun.items) {
       const remaining = Number(item.netPay);
       if (remaining > 0.005) carryoverMap.set(item.employeeId, remaining);
+    }
+  }
+
+  // For employees who have NEVER appeared in any payroll run, use their
+  // openingBalance as the initial carryover (represents pre-system salary dues).
+  const employeeIds = employees.map((e) => e.id);
+  const alreadyInPayroll = new Set(
+    (await prisma.payrollItem.findMany({
+      where:  { employeeId: { in: employeeIds } },
+      select: { employeeId: true },
+      distinct: ["employeeId"],
+    })).map((i) => i.employeeId)
+  );
+  for (const emp of employees) {
+    if (!carryoverMap.has(emp.id) && !alreadyInPayroll.has(emp.id)) {
+      const openingBal = Number(emp.openingBalance);
+      if (openingBal > 0.005) carryoverMap.set(emp.id, openingBal);
     }
   }
   // ─────────────────────────────────────────────────────────────────────────
@@ -461,6 +483,21 @@ export async function deletePayrollRun(id: string) {
     }
   }
 
+  // If there's no prevRun (we're deleting the very first run), fall back to each
+  // employee's openingBalance so carryover in the next run is still correct.
+  let openingBalanceMap = new Map<string, number>();
+  if (!prevRun && nextRun) {
+    const empIds = nextRun.items.map((i) => i.employeeId);
+    const emps   = await prisma.employee.findMany({
+      where:  { id: { in: empIds } },
+      select: { id: true, openingBalance: true },
+    });
+    for (const emp of emps) {
+      const bal = Number(emp.openingBalance);
+      if (bal > 0.005) openingBalanceMap.set(emp.id, bal);
+    }
+  }
+
   await prisma.$transaction(async (tx) => {
     // Delete deduction entries first (cascade should handle it, but be explicit)
     await tx.payrollDeduction.deleteMany({
@@ -472,7 +509,9 @@ export async function deletePayrollRun(id: string) {
     // Cascade: update next month's carryover from the now-previous month
     if (nextRun) {
       for (const item of nextRun.items) {
-        const newCarryover = prevCarryoverMap.get(item.employeeId) ?? 0;
+        const newCarryover = prevCarryoverMap.get(item.employeeId)
+          ?? openingBalanceMap.get(item.employeeId)
+          ?? 0;
         const newNetPay    = calcNetPay(Number(item.basicSalary), newCarryover, Number(item.deductions));
         await tx.payrollItem.update({
           where: { id: item.id },

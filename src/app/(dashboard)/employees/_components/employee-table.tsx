@@ -38,6 +38,7 @@ type Employee = {
   departmentId: string;
   position: string;
   basicSalary: number;
+  openingBalance: number;
   startDate: string;
   endDate: string | null;
   department: { name: string };

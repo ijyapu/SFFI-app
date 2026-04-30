@@ -26,6 +26,7 @@ type Employee = {
   departmentId: string;
   position: string;
   basicSalary: number;
+  openingBalance: number;
   startDate: string;
   endDate: string | null;
 };
@@ -46,6 +47,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
       firstName: "", lastName: "", email: "", phone: "",
       citizenshipId: "", address: "",
       departmentId: "", position: "", basicSalary: 0,
+      openingBalance: 0,
       startDate: "", endDate: "",
     },
   });
@@ -55,22 +57,24 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
       form.reset(
         employee
           ? {
-              firstName:     employee.firstName,
-              lastName:      employee.lastName,
-              email:         employee.email ?? "",
-              phone:         employee.phone,
-              citizenshipId: employee.citizenshipId ?? "",
-              address:       employee.address ?? "",
-              departmentId:  employee.departmentId,
-              position:      employee.position,
-              basicSalary:   employee.basicSalary,
-              startDate:     employee.startDate.slice(0, 10),
-              endDate:       employee.endDate?.slice(0, 10) ?? "",
+              firstName:      employee.firstName,
+              lastName:       employee.lastName,
+              email:          employee.email ?? "",
+              phone:          employee.phone,
+              citizenshipId:  employee.citizenshipId ?? "",
+              address:        employee.address ?? "",
+              departmentId:   employee.departmentId,
+              position:       employee.position,
+              basicSalary:    employee.basicSalary,
+              openingBalance: employee.openingBalance,
+              startDate:      employee.startDate.slice(0, 10),
+              endDate:        employee.endDate?.slice(0, 10) ?? "",
             }
           : {
               firstName: "", lastName: "", email: "", phone: "",
               citizenshipId: "", address: "",
               departmentId: "", position: "", basicSalary: 0,
+              openingBalance: 0,
               startDate: format(new Date(), "yyyy-MM-dd"), endDate: "",
             }
       );
@@ -220,26 +224,51 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
               />
             </div>
 
-            {/* Row 5: Salary */}
-            <FormField
-              control={form.control}
-              name="basicSalary"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Basic Salary (Rs) *</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={field.value === 0 ? "" : field.value}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Row 5: Salary + Opening Balance */}
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="basicSalary"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Basic Salary (Rs) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={field.value === 0 ? "" : field.value}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="openingBalance"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Opening Balance (Rs)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={field.value === 0 ? "" : field.value}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Unpaid salary owed before joining this system
+                    </p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Row 6: Dates */}
             <div className="grid grid-cols-2 gap-4">

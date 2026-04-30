@@ -16,12 +16,12 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       // Next.js App Router requires unsafe-inline for its streaming runtime scripts
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.clerk.com https://*.clerk.accounts.dev`,
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://*.clerk.com https://*.clerk.accounts.dev https://ssfi.work https://*.ssfi.work`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com",
+      "img-src 'self' data: blob: https://*.supabase.co https://img.clerk.com https://ssfi.work https://*.ssfi.work",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
-      "frame-src https://*.clerk.accounts.dev https://*.clerk.com",
+      "connect-src 'self' https://*.clerk.com https://*.clerk.accounts.dev https://ssfi.work https://*.ssfi.work https://*.supabase.co wss://*.supabase.co https://*.ingest.sentry.io https://*.ingest.us.sentry.io",
+      "frame-src https://*.clerk.accounts.dev https://*.clerk.com https://ssfi.work https://*.ssfi.work",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",
@@ -37,6 +37,8 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       { protocol: "https", hostname: "**.supabase.co" },
       { protocol: "https", hostname: "img.clerk.com" },
+      { protocol: "https", hostname: "ssfi.work" },
+      { protocol: "https", hostname: "**.ssfi.work" },
     ],
   },
   async headers() {

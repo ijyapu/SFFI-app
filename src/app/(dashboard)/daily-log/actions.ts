@@ -22,10 +22,9 @@ function parseDateParam(dateStr: string): Date {
   return new Date(Date.UTC(year!, month! - 1, day!));
 }
 
-/** Returns today's date as YYYY-MM-DD in local time */
+/** Returns today's date as YYYY-MM-DD in Nepal time (UTC+5:45) */
 export async function getTodayString(): Promise<string> {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kathmandu" });
 }
 
 // ─────────────────────────────────────────────
@@ -215,8 +214,12 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
     const purchased    = purchaseMap.get(item.productId) ?? 0;
     const produced     = Number(item.producedQty);
     const used         = Number(item.usedQty);
-    const sold         = confirmedSoldMap.get(item.productId) ?? Number(item.soldQty);
-    const freshReturn  = freshReturnMap.get(item.productId) ?? Number(item.freshReturnQty);
+    const confirmedSold  = confirmedSoldMap.get(item.productId) ?? 0;
+    const storedSold     = Number(item.soldQty);
+    const sold           = storedSold > confirmedSold ? storedSold : confirmedSold;
+    const confirmedFresh = freshReturnMap.get(item.productId) ?? 0;
+    const storedFresh    = Number(item.freshReturnQty);
+    const freshReturn    = storedFresh > confirmedFresh ? storedFresh : confirmedFresh;
     const wasteReturn  = wasteReturnMap.get(item.productId) ?? 0;
     const waste        = Number(item.wasteQty);
     const damaged      = Number(item.damagedQty);
@@ -411,6 +414,12 @@ export async function updateDailyLogItem(
   });
   if (!item) throw new Error("Item not found");
 
+  const numericFields: (keyof UpdateItemValues)[] = ["producedQty", "usedQty", "soldQty", "freshReturnQty", "wasteQty", "damagedQty"];
+  for (const f of numericFields) {
+    const v = values[f] as number;
+    if (typeof v === "number" && v < 0) throw new Error(`${f} cannot be negative`);
+  }
+
   // CLOSED and AUTO_ADJUSTED logs are locked; OPEN and REOPENED allow edits
   const { status } = item.dailyLog;
   if (status === "CLOSED") throw new Error("Log is closed");
@@ -479,11 +488,12 @@ export async function closeDailyLog(logId: string): Promise<void> {
   const ref = { referenceId: log.id, referenceType: "DailyLog" };
 
   // Read inventory adjustments for this day BEFORE the transaction (read-only, no race risk)
+  // referenceType: null → only movements created from the Inventory section (no referenceType set)
   const adjMovements = await prisma.stockMovement.findMany({
     where: {
       productId:     { in: productIds },
       type:          { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] },
-      referenceType: { not: "DailyLog" },
+      referenceType: null,
       createdAt:     { gte: logDate, lt: nextDay },
     },
     select: { productId: true, type: true, quantity: true },
@@ -575,6 +585,13 @@ export async function closeDailyLog(logId: string): Promise<void> {
         const adjustIn  = adjInMap.get(item.productId)  ?? 0;
         const adjustOut = adjOutMap.get(item.productId) ?? 0;
         const closing   = opening + purchased + produced + freshReturn + adjustIn - used - sold - waste - damaged - adjustOut;
+
+        if (closing < -0.001) {
+          throw new Error(
+            `Cannot close: "${item.product.name}" would have a negative closing quantity (${closing.toFixed(3)}). ` +
+            `Check waste, sold, or used quantities.`
+          );
+        }
 
         const pid = item.productId;
         const addMovement = (type: StockMovementType, qty: number, label: string) => {
@@ -701,17 +718,29 @@ export async function reopenDailyLog(logId: string): Promise<void> {
 
   const dateLabel = log.logDate.toISOString().slice(0, 10);
 
-  // Load the movements that this log created so we can reverse them
-  const movements = await prisma.stockMovement.findMany({
+  // Load ALL movements ever created for this log (close + any previous reopen reversals)
+  // so we can compute the true net stock impact and issue a single correct reversal.
+  // Using referenceType IN ["DailyLog", "DailyLogReopen"] prevents exponential corruption
+  // where each reopen reverses prior reversals as well as the original movements.
+  const allMovements = await prisma.stockMovement.findMany({
     where: {
       referenceId:   logId,
-      referenceType: "DailyLog",
-      type: { in: [StockMovementType.DAILY_IN, StockMovementType.DAILY_OUT] },
+      referenceType: { in: ["DailyLog", "DailyLogReopen"] },
+      type:          { in: [StockMovementType.DAILY_IN, StockMovementType.DAILY_OUT] },
     },
     select: { productId: true, type: true, quantity: true },
   });
 
-  const productIds = [...new Set(movements.map((m) => m.productId))];
+  // Net stock change per product: DAILY_IN adds, DAILY_OUT subtracts
+  const netMap = new Map<string, number>();
+  for (const mv of allMovements) {
+    const qty = Number(mv.quantity);
+    const delta = mv.type === StockMovementType.DAILY_IN ? qty : -qty;
+    netMap.set(mv.productId, (netMap.get(mv.productId) ?? 0) + delta);
+  }
+  // Only products with non-zero net need a reversal
+  const productsToReverse = [...netMap.entries()].filter(([, net]) => net !== 0);
+  const productIds = productsToReverse.map(([id]) => id);
 
   type PendingMovement = {
     productId: string;
@@ -733,22 +762,21 @@ export async function reopenDailyLog(logId: string): Promise<void> {
 
       const pendingMovements: PendingMovement[] = [];
 
-      for (const mv of movements) {
-        const reverseType = mv.type === StockMovementType.DAILY_IN
-          ? StockMovementType.DAILY_OUT
-          : StockMovementType.DAILY_IN;
-        const qty    = Number(mv.quantity);
-        const before = stockMap.get(mv.productId) ?? 0;
-        const isOut  = reverseType === StockMovementType.DAILY_OUT;
-        const after  = isOut ? before - qty : before + qty;
-        stockMap.set(mv.productId, after);
+      for (const [productId, net] of productsToReverse) {
+        // net > 0 means log added stock overall → reversal removes it (DAILY_OUT)
+        // net < 0 means log removed stock overall → reversal adds it (DAILY_IN)
+        const reverseType = net > 0 ? StockMovementType.DAILY_OUT : StockMovementType.DAILY_IN;
+        const qty    = Math.abs(net);
+        const before = stockMap.get(productId) ?? 0;
+        const after  = net > 0 ? before - qty : before + qty;
+        stockMap.set(productId, after);
         pendingMovements.push({
-          productId:     mv.productId,
+          productId,
           type:          reverseType,
           quantity:      qty,
           quantityBefore: before,
           quantityAfter:  after,
-          notes: `Reopen: reversal of daily log ${dateLabel}`,
+          notes: `Reopen: net reversal of daily log ${dateLabel}`,
         });
       }
 
@@ -762,7 +790,7 @@ export async function reopenDailyLog(logId: string): Promise<void> {
             quantityAfter:   m.quantityAfter,
             notes:           m.notes,
             referenceId:     logId,
-            referenceType:   "DailyLog",
+            referenceType:   "DailyLogReopen",
             isAdminOverride: true,
             createdBy:       userId,
           })),

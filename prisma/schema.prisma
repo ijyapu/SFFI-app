@@ -580,9 +580,10 @@ model Employee {
   citizenshipId String?
   address       String?
   departmentId  String
-  position      String
-  basicSalary   Decimal   @db.Decimal(10, 2)
-  startDate     DateTime
+  position       String
+  basicSalary    Decimal   @db.Decimal(10, 2)
+  openingBalance Decimal   @default(0) @db.Decimal(10, 2)
+  startDate      DateTime
   endDate       DateTime? // set when employee leaves
 
   clerkUserId String? @unique // links to Clerk user if they have app access

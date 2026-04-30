@@ -14,8 +14,8 @@ import { StartDayButton } from "./_components/start-day-button";
 export const metadata = { title: "Daily Log" };
 
 function getTodayStr(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  // Nepal is UTC+5:45; derive the local date explicitly so a UTC server shows the correct day
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kathmandu" });
 }
 
 function formatDate(dateStr: string): string {
