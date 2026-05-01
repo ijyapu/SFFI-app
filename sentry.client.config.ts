@@ -13,5 +13,7 @@ Sentry.init({
     "ResizeObserver loop limit exceeded",
     "ResizeObserver loop completed with undelivered notifications",
     "Non-Error promise rejection captured with value: undefined",
+    // Clerk throws this when checking session state for unauthenticated users — expected
+    "Unable to authenticate the request, you need to supply an active session",
   ],
 });
