@@ -389,6 +389,43 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
 }
 
 // ─────────────────────────────────────────────
+// SYNC MISSING PRODUCTS INTO AN OPEN LOG
+// ─────────────────────────────────────────────
+
+export async function syncMissingProducts(logId: string): Promise<{ added: number }> {
+  await requireDailyLogAccess();
+
+  const log = await prisma.dailyLog.findUnique({
+    where: { id: logId },
+    select: { status: true, items: { select: { productId: true } } },
+  });
+  if (!log) throw new Error("Log not found");
+  if (log.status !== "OPEN" && log.status !== "REOPENED") {
+    throw new Error("Can only sync products on an open log");
+  }
+
+  const existingProductIds = new Set(log.items.map((i) => i.productId));
+
+  const missingProducts = await prisma.product.findMany({
+    where: { deletedAt: null, id: { notIn: [...existingProductIds] } },
+    select: { id: true, currentStock: true },
+  });
+
+  if (missingProducts.length === 0) return { added: 0 };
+
+  await prisma.dailyLogItem.createMany({
+    data: missingProducts.map((p) => ({
+      dailyLogId: logId,
+      productId:  p.id,
+      openingQty: Number(p.currentStock),
+    })),
+  });
+
+  revalidatePath("/daily-log");
+  return { added: missingProducts.length };
+}
+
+// ─────────────────────────────────────────────
 // UPDATE ITEM (auto-save on blur)
 // ─────────────────────────────────────────────
 

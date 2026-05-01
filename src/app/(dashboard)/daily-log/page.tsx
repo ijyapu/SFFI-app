@@ -10,6 +10,7 @@ import { DailyLogTable } from "./_components/daily-log-table";
 import { CloseDayDialog } from "./_components/close-day-dialog";
 import { ReopenDialog } from "./_components/reopen-dialog";
 import { StartDayButton } from "./_components/start-day-button";
+import { SyncProductsButton } from "./_components/sync-products-button";
 
 export const metadata = { title: "Daily Log" };
 
@@ -188,6 +189,24 @@ export default async function DailyLogPage({ searchParams }: Props) {
                   These will update automatically once the previous day is re-closed.
                 </p>
               </div>
+            </div>
+          )}
+
+          {/* Missing products banner */}
+          {isOpen && log.items.length < productCount && (
+            <div className="flex items-center justify-between gap-4 rounded-lg bg-amber-50 border border-amber-300 px-4 py-3">
+              <div className="flex items-start gap-3 text-sm text-amber-900">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+                <div>
+                  <p className="font-semibold">
+                    {productCount - log.items.length} product{productCount - log.items.length !== 1 ? "s" : ""} added after this log was started
+                  </p>
+                  <p className="text-xs text-amber-800 mt-0.5">
+                    New products are not included automatically. Click to add them with their current stock as the opening quantity.
+                  </p>
+                </div>
+              </div>
+              <SyncProductsButton logId={log.id} missingCount={productCount - log.items.length} />
             </div>
           )}
 
