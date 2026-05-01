@@ -5,7 +5,7 @@ const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
 
-const FROM    = `${COMPANY.nameShort} ERP <onboarding@resend.dev>`;
+const FROM    = `${COMPANY.nameShort} ERP <noreply@ssfi.work>`;
 const ADMIN   = process.env.ADMIN_EMAIL ?? "admin@ssfi.com.np";
 const YEAR    = new Date().getFullYear();
 
