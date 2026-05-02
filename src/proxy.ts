@@ -16,6 +16,13 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Webhook routes must bypass Clerk entirely — returning undefined still
+  // triggers Clerk's session-handshake redirect (307), which webhook senders
+  // don't follow. NextResponse.next() skips all Clerk processing.
+  if (req.nextUrl.pathname.startsWith("/api/webhooks/")) {
+    return NextResponse.next();
+  }
+
   // Always let public routes through
   if (isPublicRoute(req)) return;
 
