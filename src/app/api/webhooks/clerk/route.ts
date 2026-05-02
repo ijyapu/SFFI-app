@@ -1,5 +1,3 @@
-"use server";
-
 import { headers } from "next/headers";
 import { Webhook } from "svix";
 import { sendRequestReceivedEmail, sendAdminNewRequestAlert } from "@/lib/email";
