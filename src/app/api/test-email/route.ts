@@ -12,16 +12,15 @@ export async function GET() {
 
   const resend = new Resend(key);
 
-  try {
-    const result = await resend.emails.send({
-      from:    "SSFI ERP <noreply@ssfi.work>",
-      to:      process.env.ADMIN_EMAIL ?? "shrestha.bikas23@gmail.com",
-      subject: "Resend test email",
-      html:    "<p>If you received this, Resend is working correctly.</p>",
-    });
+  const { data, error } = await resend.emails.send({
+    from:    "SSFI ERP <noreply@ssfi.work>",
+    to:      process.env.ADMIN_EMAIL ?? "shrestha.bikas23@gmail.com",
+    subject: "Resend test email",
+    html:    "<p>If you received this, Resend is working correctly.</p>",
+  });
 
-    return NextResponse.json({ ok: true, id: result.data?.id, error: result.error });
-  } catch (err) {
-    return NextResponse.json({ ok: false, error: String(err) }, { status: 500 });
+  if (error) {
+    return NextResponse.json({ ok: false, error }, { status: 400 });
   }
+  return NextResponse.json({ ok: true, id: data?.id });
 }

@@ -1,13 +1,42 @@
 import { Resend } from "resend";
 import { COMPANY } from "@/lib/company";
 
-const resend = process.env.RESEND_API_KEY
-  ? new Resend(process.env.RESEND_API_KEY)
-  : null;
+// ─── Config & env validation ──────────────────────────────────────────────────
 
-const FROM    = `${COMPANY.nameShort} ERP <noreply@ssfi.work>`;
-const ADMIN   = process.env.ADMIN_EMAIL ?? "admin@ssfi.com.np";
-const YEAR    = new Date().getFullYear();
+if (!process.env.RESEND_API_KEY)    console.warn("[email] RESEND_API_KEY is not set — all emails will be skipped");
+if (!process.env.ADMIN_EMAIL)       console.warn("[email] ADMIN_EMAIL is not set — using fallback");
+if (!process.env.RESEND_FROM_EMAIL) console.warn("[email] RESEND_FROM_EMAIL is not set — using fallback noreply@ssfi.work");
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const FROM   = `${COMPANY.nameShort} ERP <${process.env.RESEND_FROM_EMAIL ?? "noreply@ssfi.work"}>`;
+const ADMIN  = process.env.ADMIN_EMAIL ?? "shrestha.bikas23@gmail.com";
+const YEAR   = new Date().getFullYear();
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+
+function esc(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function logEmail(type: string, to: string, ok: boolean, detail?: unknown) {
+  const entry = { service: "email", type, to, ok, detail: detail ?? null, ts: new Date().toISOString() };
+  if (ok) console.log(JSON.stringify(entry));
+  else    console.error(JSON.stringify(entry));
+}
+
+type SendParams = Parameters<InstanceType<typeof Resend>["emails"]["send"]>[0];
+
+async function sendWithRetry(params: SendParams) {
+  const first = await resend!.emails.send(params);
+  if (!first.error) return first;
+  await new Promise<void>((r) => setTimeout(r, 1_000));
+  return resend!.emails.send(params);
+}
 
 // ─── Shared HTML primitives ───────────────────────────────────────────────────
 
@@ -17,9 +46,7 @@ function layout(accentColor: string, body: string): string {
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
 <div style="max-width:520px;margin:40px auto;background:#ffffff;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);">
-  <!-- Top accent -->
   <div style="height:4px;background:${accentColor};"></div>
-  <!-- Header -->
   <div style="background:#0f172a;padding:22px 32px;display:flex;align-items:center;gap:12px;">
     <div style="background:#dc2626;border-radius:6px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">
       <span style="color:#fff;font-size:11px;font-weight:800;letter-spacing:.5px;">SS</span>
@@ -29,15 +56,9 @@ function layout(accentColor: string, body: string): string {
       <p style="margin:2px 0 0;color:#64748b;font-size:10px;letter-spacing:.08em;text-transform:uppercase;">Enterprise Portal</p>
     </div>
   </div>
-  <!-- Body -->
-  <div style="padding:32px;">
-    ${body}
-  </div>
-  <!-- Footer -->
+  <div style="padding:32px;">${body}</div>
   <div style="background:#f8fafc;border-top:1px solid #e5e7eb;padding:14px 32px;">
-    <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">
-      © ${YEAR} ${COMPANY.name} · Nepal
-    </p>
+    <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">© ${YEAR} ${COMPANY.name} · Nepal</p>
   </div>
 </div>
 </body>
@@ -64,20 +85,22 @@ function btn(text: string, href: string, bg = "#dc2626"): string {
 }
 
 // ─── 1. Request received (to the applicant) ───────────────────────────────────
+// Called from: /api/webhooks/clerk (user.created) + /request-access/actions.ts
 
 export async function sendRequestReceivedEmail(to: string, name: string) {
-  if (!resend) { console.log("[email] RESEND_API_KEY not set — skipping request-received email"); return; }
+  if (!resend) { logEmail("request-received", to, false, "RESEND_API_KEY not set"); return; }
+
+  const safeName = esc(name);
 
   const body = `
     <h1 style="margin:0 0 6px;font-size:20px;font-weight:700;color:#111827;">Request Received</h1>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">
-      Hi <strong style="color:#111827;">${name}</strong>,
+      Hi <strong style="color:#111827;">${safeName}</strong>,
     </p>
     <p style="margin:0 0 20px;font-size:14px;color:#4b5563;line-height:1.7;">
       Thank you for submitting your access request to the <strong>${COMPANY.nameShort} Enterprise Portal</strong>.
       We have received your application and it is currently pending administrator review.
     </p>
-
     <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:14px 18px;">
       <p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:.05em;">What happens next</p>
       <p style="margin:0;font-size:13px;color:#78350f;line-height:1.6;">
@@ -85,45 +108,42 @@ export async function sendRequestReceivedEmail(to: string, name: string) {
         You will receive another email once your account has been approved or if additional information is needed.
       </p>
     </div>
-
     <p style="margin:20px 0 0;font-size:12px;color:#9ca3af;line-height:1.6;">
       If you did not submit this request, please contact <a href="mailto:${ADMIN}" style="color:#dc2626;text-decoration:none;">${ADMIN}</a> immediately.
     </p>
   `;
 
-  try {
-    await resend.emails.send({
-      from:    FROM,
-      to,
-      subject: "Access request received",
-      html:    layout("linear-gradient(90deg,#f59e0b,#fcd34d)", body),
-    });
-  } catch (err) {
-    console.error("[email] Failed to send request-received email:", err);
-  }
+  const { data, error } = await sendWithRetry({
+    from: FROM, to, subject: "Access request received",
+    html: layout("linear-gradient(90deg,#f59e0b,#fcd34d)", body),
+  });
+  logEmail("request-received", to, !error, error ?? { id: data?.id });
 }
 
 // ─── 2. Admin alert — new access request ─────────────────────────────────────
+// Called from: /api/webhooks/clerk (user.created) + /request-access/actions.ts
+// department and jobTitle are optional so this works for both Google OAuth
+// sign-ups (no form data) and manual access request form submissions.
 
 export async function sendAdminNewRequestAlert(request: {
-  fullName:   string;
-  workEmail:  string;
-  department: string;
-  jobTitle:   string;
-  phone?:     string | null;
-  reason?:    string | null;
+  fullName:    string;
+  workEmail:   string;
+  department?: string | null;
+  jobTitle?:   string | null;
+  phone?:      string | null;
+  reason?:     string | null;
 }) {
-  if (!resend) { console.log("[email] RESEND_API_KEY not set — skipping admin alert email"); return; }
+  if (!resend) { logEmail("admin-alert", ADMIN, false, "RESEND_API_KEY not set"); return; }
 
-  const adminUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/settings/access-requests`;
+  const adminUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ssfi.work"}/settings/access-requests`;
 
   const rows = [
-    infoRow("Name",       request.fullName),
-    infoRow("Email",      request.workEmail),
-    infoRow("Department", request.department),
-    infoRow("Job Title",  request.jobTitle),
-    ...(request.phone  ? [infoRow("Phone",  request.phone)]  : []),
-    ...(request.reason ? [infoRow("Reason", request.reason)] : []),
+    infoRow("Name",  esc(request.fullName)),
+    infoRow("Email", esc(request.workEmail)),
+    ...(request.department ? [infoRow("Department", esc(request.department))] : []),
+    ...(request.jobTitle   ? [infoRow("Job Title",  esc(request.jobTitle))]   : []),
+    ...(request.phone      ? [infoRow("Phone",      esc(request.phone))]      : []),
+    ...(request.reason     ? [infoRow("Reason",     esc(request.reason))]     : []),
   ].join("");
 
   const body = `
@@ -131,34 +151,30 @@ export async function sendAdminNewRequestAlert(request: {
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">
       A new user has submitted an access request and is awaiting your review.
     </p>
-
     ${table(rows)}
-
     <p style="margin:20px 0 0;font-size:13px;color:#4b5563;">
       Visit the admin panel to approve or reject this request and assign an access role.
     </p>
     ${btn("Review Request", adminUrl, "#111827")}
   `;
 
-  try {
-    await resend.emails.send({
-      from:    FROM,
-      to:      ADMIN,
-      subject: `New access request from ${request.fullName}`,
-      html:    layout("linear-gradient(90deg,#3b82f6,#60a5fa)", body),
-    });
-  } catch (err) {
-    console.error("[email] Failed to send admin alert email:", err);
-  }
+  const { data, error } = await sendWithRetry({
+    from: FROM, to: ADMIN,
+    subject: `New access request from ${esc(request.fullName)}`,
+    html: layout("linear-gradient(90deg,#3b82f6,#60a5fa)", body),
+  });
+  logEmail("admin-alert", ADMIN, !error, error ?? { id: data?.id });
 }
 
 // ─── 3. Approval email (to the user) ─────────────────────────────────────────
+// Called from: /settings/access-requests/actions.ts → approveRequest()
 
 export async function sendApprovalEmail(to: string, name: string, role: string) {
-  if (!resend) { console.log("[email] RESEND_API_KEY not set — skipping approval email"); return; }
+  if (!resend) { logEmail("approval", to, false, "RESEND_API_KEY not set"); return; }
 
+  const safeName  = esc(name);
   const roleLabel = role.charAt(0).toUpperCase() + role.slice(1);
-  const signInUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/sign-in`;
+  const signInUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ssfi.work"}/sign-in`;
 
   const body = `
     <div style="text-align:center;margin-bottom:24px;">
@@ -168,76 +184,63 @@ export async function sendApprovalEmail(to: string, name: string, role: string) 
       <h1 style="margin:0 0 6px;font-size:22px;font-weight:700;color:#111827;">Access Approved</h1>
       <p style="margin:0;font-size:14px;color:#6b7280;">Your account is ready to use</p>
     </div>
-
     <p style="margin:0 0 20px;font-size:14px;color:#4b5563;line-height:1.7;">
-      Hi <strong style="color:#111827;">${name}</strong>,<br><br>
+      Hi <strong style="color:#111827;">${safeName}</strong>,<br><br>
       Great news! Your access request has been approved. You can now sign in to the
       <strong>${COMPANY.nameShort} Enterprise Portal</strong> and access the features available to your role.
     </p>
-
-    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;display:flex;align-items:center;gap:12px;">
-      <div>
-        <p style="margin:0 0 2px;font-size:12px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;">Your assigned role</p>
-        <p style="margin:0;">${badge(roleLabel, "#166534", "#dcfce7")}</p>
-      </div>
+    <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:14px 18px;">
+      <p style="margin:0 0 2px;font-size:12px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.05em;">Your assigned role</p>
+      <p style="margin:0;">${badge(roleLabel, "#166534", "#dcfce7")}</p>
     </div>
-
     <p style="margin:16px 0 0;font-size:13px;color:#4b5563;line-height:1.6;">
-      Sign in using the same account you registered with. If you experience any issues accessing
-      the portal, contact your system administrator at
+      Sign in using the same account you registered with. If you experience any issues,
+      contact your system administrator at
       <a href="mailto:${ADMIN}" style="color:#dc2626;text-decoration:none;">${ADMIN}</a>.
     </p>
-
     ${btn(`Sign In to ${COMPANY.nameShort} ERP`, signInUrl, "#16a34a")}
   `;
 
-  try {
-    await resend.emails.send({
-      from:    FROM,
-      to,
-      subject: `Your ${COMPANY.nameShort} ERP access has been approved`,
-      html:    layout("linear-gradient(90deg,#16a34a,#4ade80)", body),
-    });
-  } catch (err) {
-    console.error("[email] Failed to send approval email:", err);
-  }
+  const { data, error } = await sendWithRetry({
+    from: FROM, to,
+    subject: `Your ${COMPANY.nameShort} ERP access has been approved`,
+    html: layout("linear-gradient(90deg,#16a34a,#4ade80)", body),
+  });
+  logEmail("approval", to, !error, error ?? { id: data?.id });
 }
 
 // ─── 4. Rejection email (to the user) ────────────────────────────────────────
+// Called from: /settings/access-requests/actions.ts → rejectRequest()
 
 export async function sendRejectionEmail(to: string, name: string, note?: string | null) {
-  if (!resend) { console.log("[email] RESEND_API_KEY not set — skipping rejection email"); return; }
+  if (!resend) { logEmail("rejection", to, false, "RESEND_API_KEY not set"); return; }
+
+  const safeName = esc(name);
+  const safeNote = note ? esc(note) : null;
 
   const body = `
     <h1 style="margin:0 0 6px;font-size:20px;font-weight:700;color:#111827;">Access Request Update</h1>
     <p style="margin:0 0 20px;font-size:14px;color:#6b7280;line-height:1.6;">
-      Hi <strong style="color:#111827;">${name}</strong>,
+      Hi <strong style="color:#111827;">${safeName}</strong>,
     </p>
     <p style="margin:0 0 20px;font-size:14px;color:#4b5563;line-height:1.7;">
       After reviewing your access request, we are unable to approve portal access at this time.
     </p>
-
-    ${note ? `
+    ${safeNote ? `
     <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:14px 18px;margin-bottom:20px;">
       <p style="margin:0 0 4px;font-size:12px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.05em;">Reason provided</p>
-      <p style="margin:0;font-size:13px;color:#7f1d1d;line-height:1.6;">${note}</p>
+      <p style="margin:0;font-size:13px;color:#7f1d1d;line-height:1.6;">${safeNote}</p>
     </div>` : ""}
-
-    <p style="margin:0 0 0;font-size:13px;color:#4b5563;line-height:1.6;">
-      If you believe this is a mistake or would like to discuss further, please contact your manager
-      or reach out to the system administrator at
+    <p style="margin:0;font-size:13px;color:#4b5563;line-height:1.6;">
+      If you believe this is a mistake, please contact your manager or the system administrator at
       <a href="mailto:${ADMIN}" style="color:#dc2626;text-decoration:none;">${ADMIN}</a>.
     </p>
   `;
 
-  try {
-    await resend.emails.send({
-      from:    FROM,
-      to,
-      subject: `Update on your ${COMPANY.nameShort} ERP access request`,
-      html:    layout("linear-gradient(90deg,#ef4444,#f87171)", body),
-    });
-  } catch (err) {
-    console.error("[email] Failed to send rejection email:", err);
-  }
+  const { data, error } = await sendWithRetry({
+    from: FROM, to,
+    subject: `Update on your ${COMPANY.nameShort} ERP access request`,
+    html: layout("linear-gradient(90deg,#ef4444,#f87171)", body),
+  });
+  logEmail("rejection", to, !error, error ?? { id: data?.id });
 }
