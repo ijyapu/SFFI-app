@@ -1,23 +1,33 @@
+import { Suspense } from "react";
 import { requirePermission, getCurrentRole } from "@/lib/auth";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { ExpenseTable } from "./_components/expense-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateFilter } from "@/components/ui/date-filter";
 import { Receipt, CheckCircle, Clock, XCircle } from "lucide-react";
 
 export const metadata = { title: "Expenses" };
 
-export default async function ExpensesPage() {
+type Props = { searchParams: Promise<{ from?: string; to?: string }> };
+
+export default async function ExpensesPage({ searchParams }: Props) {
   await requirePermission("expenses");
 
+  const { from: rawFrom, to: rawTo } = await searchParams;
   const { userId } = await auth();
   const role = await getCurrentRole();
   // Approvers: anyone except employee-only role
   const userCanApprove = role !== null && ["admin", "manager", "accountant"].includes(role);
 
+  const dateWhere = rawFrom || rawTo ? {
+    ...(rawFrom ? { gte: new Date(rawFrom + "T00:00:00.000Z") } : {}),
+    ...(rawTo   ? { lte: new Date(rawTo   + "T23:59:59.999Z") } : {}),
+  } : undefined;
+
   const [expenses, categories] = await Promise.all([
     prisma.expense.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ...(dateWhere ? { date: dateWhere } : {}) },
       include: { category: true },
       orderBy: { date: "desc" },
     }),
@@ -69,6 +79,10 @@ export default async function ExpensesPage() {
           {expenses.length} expense{expenses.length !== 1 ? "s" : ""} recorded
         </p>
       </div>
+
+      <Suspense>
+        <DateFilter from={rawFrom} to={rawTo} />
+      </Suspense>
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">

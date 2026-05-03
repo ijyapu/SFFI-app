@@ -1,18 +1,29 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateFilter } from "@/components/ui/date-filter";
 import { Banknote, TrendingDown, Calendar, BookOpen } from "lucide-react";
 import { ReceiptFormDialog } from "./_components/receipt-form-dialog";
 import { ReceiptTable } from "./_components/receipt-table";
 
 export const metadata = { title: "Receipts" };
 
-export default async function ReceiptsPage() {
+type Props = { searchParams: Promise<{ from?: string; to?: string }> };
+
+export default async function ReceiptsPage({ searchParams }: Props) {
   await requirePermission("receipts");
 
+  const { from: rawFrom, to: rawTo } = await searchParams;
+
+  const dateWhere = rawFrom || rawTo ? {
+    ...(rawFrom ? { gte: new Date(rawFrom + "T00:00:00.000Z") } : {}),
+    ...(rawTo   ? { lte: new Date(rawTo   + "T23:59:59.999Z") } : {}),
+  } : undefined;
+
   const receipts = await prisma.receipt.findMany({
-    where:   { deletedAt: null },
+    where:   { deletedAt: null, ...(dateWhere ? { receivedAt: dateWhere } : {}) },
     orderBy: { receivedAt: "desc" },
   });
 
@@ -58,6 +69,13 @@ export default async function ReceiptsPage() {
           </Link>
           <ReceiptFormDialog mode="create" />
         </div>
+      </div>
+
+      {/* Date filter */}
+      <div className="shrink-0">
+        <Suspense>
+          <DateFilter from={rawFrom} to={rawTo} />
+        </Suspense>
       </div>
 
       {/* Summary cards */}

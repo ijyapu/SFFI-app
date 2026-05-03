@@ -1,20 +1,31 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { PurchaseTable } from "./_components/purchase-table";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateFilter } from "@/components/ui/date-filter";
 import { Plus, ShoppingCart } from "lucide-react";
 
 export const metadata = { title: "Purchases" };
 
-export default async function PurchasesPage() {
+type Props = { searchParams: Promise<{ from?: string; to?: string }> };
+
+export default async function PurchasesPage({ searchParams }: Props) {
   await requirePermission("purchases");
+
+  const { from: rawFrom, to: rawTo } = await searchParams;
+
+  const dateWhere = rawFrom || rawTo ? {
+    ...(rawFrom ? { gte: new Date(rawFrom + "T00:00:00.000Z") } : {}),
+    ...(rawTo   ? { lte: new Date(rawTo   + "T23:59:59.999Z") } : {}),
+  } : undefined;
 
   const [purchases, suppliers] = await Promise.all([
     prisma.purchase.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ...(dateWhere ? { date: dateWhere } : {}) },
       include: { supplier: { select: { id: true, name: true } } },
       orderBy: { date: "desc" },
     }),
@@ -50,6 +61,10 @@ export default async function PurchasesPage() {
           New Purchase
         </Link>
       </div>
+
+      <Suspense>
+        <DateFilter from={rawFrom} to={rawTo} />
+      </Suspense>
 
       <Card className="max-w-xs">
         <CardHeader className="flex flex-row items-center justify-between pb-2">

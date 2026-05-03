@@ -1,20 +1,31 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { SoTable } from "./_components/so-table";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DateFilter } from "@/components/ui/date-filter";
 import { Plus, Users, TrendingUp, AlertCircle } from "lucide-react";
 
 export const metadata = { title: "Sales" };
 
-export default async function SalesPage() {
+type Props = { searchParams: Promise<{ from?: string; to?: string }> };
+
+export default async function SalesPage({ searchParams }: Props) {
   await requirePermission("sales");
+
+  const { from: rawFrom, to: rawTo } = await searchParams;
+
+  const dateWhere = rawFrom || rawTo ? {
+    ...(rawFrom ? { gte: new Date(rawFrom + "T00:00:00.000Z") } : {}),
+    ...(rawTo   ? { lte: new Date(rawTo   + "T23:59:59.999Z") } : {}),
+  } : undefined;
 
   const [orders, salesmen] = await Promise.all([
     prisma.salesOrder.findMany({
-      where: { deletedAt: null },
+      where: { deletedAt: null, ...(dateWhere ? { orderDate: dateWhere } : {}) },
       include: { salesman: true },
       orderBy: { createdAt: "desc" },
     }),
@@ -68,6 +79,13 @@ export default async function SalesPage() {
             New Order
           </Link>
         </div>
+      </div>
+
+      {/* Date filter */}
+      <div className="shrink-0">
+        <Suspense>
+          <DateFilter from={rawFrom} to={rawTo} />
+        </Suspense>
       </div>
 
       {/* Summary cards */}
