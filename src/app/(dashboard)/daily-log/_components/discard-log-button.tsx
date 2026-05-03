@@ -52,17 +52,10 @@ export function DiscardLogButton({ logId, dateLabel }: Props) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Discard this log?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <p>
-                  The log for <strong className="text-foreground">{dateLabel}</strong> will be
-                  permanently deleted — including any values you have already entered.
-                </p>
-                <p>
-                  Inventory is <strong className="text-foreground">not affected</strong> because
-                  stock movements are only created when you close the day.
-                </p>
-              </div>
+            <AlertDialogDescription>
+              The log for <strong>{dateLabel}</strong> will be permanently deleted — including
+              any values you have already entered. Inventory is not affected because stock
+              movements are only created when you close the day.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
