@@ -138,8 +138,8 @@ export function SoDetail(props: Props) {
   const isDraft    = status === "DRAFT";
 
   const canRecordReturn  = isActive;
-  const canVoid          = !isTerminal && status !== "PAID";
-  const canMarkLost      = status === "CONFIRMED" || status === "PARTIALLY_PAID";
+  const canVoid          = !isTerminal;
+  const canMarkLost      = !isDraft && !isTerminal;
   const canRecordPayment = isActive;
   const canEdit          = !isTerminal;
 
@@ -159,10 +159,12 @@ export function SoDetail(props: Props) {
     setVoiding(true);
     try {
       await voidSalesOrder(id);
-      const msg = (status === "CONFIRMED" || status === "PARTIALLY_PAID")
+      const msg = status === "PAID"
+        ? `Sale voided — stock restored. Refund Rs ${amountPaid.toFixed(2)} to the customer.`
+        : (status === "CONFIRMED" || status === "PARTIALLY_PAID")
         ? "Sale voided — stock restored to inventory"
         : "Sale voided";
-      toast.success(msg);
+      toast.success(msg, { duration: 6000 });
       setVoidOpen(false);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to void sale");
@@ -250,9 +252,16 @@ export function SoDetail(props: Props) {
       {status === "CANCELLED" && (
         <div className="flex items-start gap-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
           <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-          <div>
-            <span className="font-medium">Sale Voided.</span> This sale was voided because it did not happen.
-            All dispatched stock has been restored to inventory.
+          <div className="space-y-1">
+            <p>
+              <span className="font-medium">Sale Voided.</span>{" "}
+              This sale was cancelled and all dispatched stock has been restored to inventory.
+            </p>
+            {amountPaid > 0.001 && (
+              <p className="font-semibold">
+                Rs {amountPaid.toFixed(2)} was collected — a refund must be issued to the customer.
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -261,10 +270,19 @@ export function SoDetail(props: Props) {
       {status === "LOST" && (
         <div className="flex items-start gap-3 rounded-lg bg-orange-50 border border-orange-200 px-4 py-3 text-sm text-orange-800">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-          <div>
-            <span className="font-medium">Dispatched — Not Returned.</span>{" "}
-            Goods were physically taken and will not come back. Stock was NOT restored.
-            The financial obligation has been waived and is excluded from outstanding balances.
+          <div className="space-y-1">
+            <p>
+              <span className="font-medium">Dispatched — Not Returned.</span>{" "}
+              Goods were physically taken and will not come back. Stock was NOT restored.
+            </p>
+            {amountPaid > 0.001 ? (
+              <p>
+                Rs {amountPaid.toFixed(2)} was already collected.
+                The business absorbs the physical loss — no refund is issued.
+              </p>
+            ) : (
+              <p>The outstanding balance has been waived and is excluded from collections.</p>
+            )}
           </div>
         </div>
       )}
@@ -505,18 +523,39 @@ export function SoDetail(props: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Void This Sale?</AlertDialogTitle>
             <AlertDialogDescription>
-              Use this when the sale was entered by mistake or did not actually happen.
+              Use this when the sale did not happen or needs to be fully cancelled.
             </AlertDialogDescription>
-            {(status === "CONFIRMED" || status === "PARTIALLY_PAID") ? (
-              <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
-                <span className="font-medium">Stock will be restored.</span>{" "}
-                All items from this order will be returned to inventory.
+
+            {status === "PAID" ? (
+              <div className="space-y-2">
+                <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+                  <span className="font-medium">Stock will be restored.</span>{" "}
+                  All items will be returned to inventory.
+                </div>
+                <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+                  <span className="font-medium">Refund required:</span>{" "}
+                  Rs {amountPaid.toFixed(2)} was already collected and must be returned to the customer.
+                </div>
+              </div>
+            ) : status === "CONFIRMED" || status === "PARTIALLY_PAID" ? (
+              <div className="space-y-2">
+                <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+                  <span className="font-medium">Stock will be restored.</span>{" "}
+                  All items from this order will be returned to inventory.
+                </div>
+                {amountPaid > 0 && (
+                  <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
+                    <span className="font-medium">Partial refund required:</span>{" "}
+                    Rs {amountPaid.toFixed(2)} was collected and must be returned to the customer.
+                  </div>
+                )}
               </div>
             ) : (
               <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2 text-sm text-gray-700">
                 This is a draft — no stock was ever deducted.
               </div>
             )}
+
             <p className="text-sm font-medium text-destructive">
               This action cannot be undone.
             </p>
@@ -551,9 +590,16 @@ export function SoDetail(props: Props) {
               <p className="font-medium">Stock will NOT be restored.</p>
               <p>The goods are considered gone. This is a business loss absorbed by the factory.</p>
             </div>
-            <div className="rounded-md bg-blue-50 border border-blue-100 px-3 py-2 text-sm text-blue-800">
-              The salesman&apos;s outstanding balance will be cleared for this order.
-            </div>
+            {status === "PAID" ? (
+              <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+                Payment of <span className="font-medium">Rs {amountPaid.toFixed(2)}</span> was
+                already collected. No refund is issued — the business absorbs the physical loss.
+              </div>
+            ) : (
+              <div className="rounded-md bg-blue-50 border border-blue-100 px-3 py-2 text-sm text-blue-800">
+                The salesman&apos;s outstanding balance will be cleared for this order.
+              </div>
+            )}
             <p className="text-sm font-medium text-destructive">
               This action cannot be undone.
             </p>

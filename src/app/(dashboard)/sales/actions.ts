@@ -561,15 +561,16 @@ export async function voidSalesOrder(id: string) {
       status:      true,
       orderNumber: true,
       orderDate:   true,
+      amountPaid:  true,
       items: { select: { productId: true, quantity: true } },
     },
   });
   if (!so) throw new Error("Sales order not found");
-  if (so.status === "PAID")      throw new Error("Cannot void a fully paid order. Use Mark as Lost if goods will not be returned.");
   if (so.status === "CANCELLED") throw new Error("Order is already voided");
   if (so.status === "LOST")      throw new Error("Order is already marked as lost");
 
-  const stockWasDeducted = so.status === "CONFIRMED" || so.status === "PARTIALLY_PAID";
+  // Stock was deducted at confirmation and hasn't been reversed — restore it on void
+  const stockWasDeducted = so.status === "CONFIRMED" || so.status === "PARTIALLY_PAID" || so.status === "PAID";
 
   await prisma.$transaction(async (tx) => {
     if (stockWasDeducted) {
@@ -598,7 +599,11 @@ export async function voidSalesOrder(id: string) {
     entityType: "SalesOrder",
     entityId:   id,
     before: { orderNumber: so.orderNumber, status: so.status },
-    after:  { status: "CANCELLED", stockRestored: stockWasDeducted },
+    after:  {
+      status:        "CANCELLED",
+      stockRestored: stockWasDeducted,
+      refundDue:     so.status === "PAID" ? Number(so.amountPaid) : 0,
+    },
   });
 
   if (stockWasDeducted) {
