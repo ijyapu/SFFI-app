@@ -4,7 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, BookOpen, CheckCircle2, Info, History, AlertTriangle } from "lucide-react";
+import { ArrowLeft, BookOpen, CheckCircle2, Info, History, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
 import { getDailyLog } from "./actions";
 import { DailyLogTable } from "./_components/daily-log-table";
 import { CloseDayDialog } from "./_components/close-day-dialog";
@@ -30,6 +30,13 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function shiftDate(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y!, m! - 1, d!));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dt.toISOString().slice(0, 10);
+}
+
 type Props = {
   searchParams: Promise<{ date?: string }>;
 };
@@ -53,6 +60,8 @@ export default async function DailyLogPage({ searchParams }: Props) {
   const isToday = validDate === todayStr;
   const isClosed = log?.status === "CLOSED" || log?.status === "AUTO_ADJUSTED";
   const isOpen   = log?.status === "OPEN"   || log?.status === "REOPENED";
+  const prevDay  = shiftDate(validDate, -1);
+  const nextDay  = shiftDate(validDate, +1);
 
   return (
     <div className="space-y-6">
@@ -92,9 +101,30 @@ export default async function DailyLogPage({ searchParams }: Props) {
               </Badge>
             )}
           </div>
-          <p className="text-muted-foreground text-sm ml-9">
-            {dateLabel}{isToday ? " (today)" : ""}
-          </p>
+          {/* Date navigation */}
+          <div className="flex items-center gap-1 ml-9">
+            <Link
+              href={`/daily-log?date=${prevDay}`}
+              className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
+              title="Previous day"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+            <span className="text-muted-foreground text-sm px-1">
+              {dateLabel}{isToday ? " (today)" : ""}
+            </span>
+            <Link
+              href={`/daily-log?date=${nextDay}`}
+              className={cn(
+                buttonVariants({ variant: "ghost", size: "icon-sm" }),
+                isToday && "pointer-events-none opacity-30"
+              )}
+              title="Next day"
+              aria-disabled={isToday}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
         </div>
 
         {/* Controls */}
