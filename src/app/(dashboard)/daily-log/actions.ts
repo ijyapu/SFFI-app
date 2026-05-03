@@ -389,6 +389,40 @@ export async function startDailyLog(dateStr: string): Promise<{ id: string }> {
 }
 
 // ─────────────────────────────────────────────
+// DISCARD (delete an accidentally-started OPEN log)
+// ─────────────────────────────────────────────
+
+export async function discardDailyLog(logId: string): Promise<void> {
+  const { userId } = await requireDailyLogAccess();
+
+  const log = await prisma.dailyLog.findUnique({
+    where: { id: logId },
+    select: { status: true, logDate: true },
+  });
+  if (!log) throw new Error("Log not found");
+  if (log.status !== "OPEN") {
+    throw new Error("Only freshly-started (OPEN) logs can be discarded. Reopen then discard if needed.");
+  }
+
+  // OPEN logs have no stock movements — safe to hard-delete
+  await prisma.$transaction([
+    prisma.dailyLogItem.deleteMany({ where: { dailyLogId: logId } }),
+    prisma.dailyLog.delete({ where: { id: logId } }),
+  ]);
+
+  await writeAuditLog({
+    userId,
+    action:     "DAILY_LOG_DISCARD",
+    entityType: "DailyLog",
+    entityId:   logId,
+    after: { date: log.logDate.toISOString().slice(0, 10) },
+  });
+
+  revalidatePath("/daily-log");
+  revalidatePath("/daily-log/history");
+}
+
+// ─────────────────────────────────────────────
 // SYNC MISSING PRODUCTS INTO AN OPEN LOG
 // ─────────────────────────────────────────────
 

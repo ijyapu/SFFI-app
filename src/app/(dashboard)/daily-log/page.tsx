@@ -11,6 +11,7 @@ import { CloseDayDialog } from "./_components/close-day-dialog";
 import { ReopenDialog } from "./_components/reopen-dialog";
 import { StartDayButton } from "./_components/start-day-button";
 import { SyncProductsButton } from "./_components/sync-products-button";
+import { DiscardLogButton } from "./_components/discard-log-button";
 
 export const metadata = { title: "Daily Log" };
 
@@ -146,6 +147,9 @@ export default async function DailyLogPage({ searchParams }: Props) {
           )}
           {isClosed && log && (
             <ReopenDialog logId={log.id} dateLabel={dateLabel} />
+          )}
+          {log?.status === "OPEN" && (
+            <DiscardLogButton logId={log.id} dateLabel={dateLabel} />
           )}
           {isOpen && log && (
             <CloseDayDialog logId={log.id} dateLabel={dateLabel} />
