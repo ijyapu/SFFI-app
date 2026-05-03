@@ -37,7 +37,7 @@ export default clerkMiddleware(async (auth, req) => {
   const role = (sessionClaims?.publicMetadata?.role as AppRole | undefined) ?? null;
   const { pathname } = req.nextUrl;
 
-  if (role) {
+  if (role && role !== "superadmin") {
     const restricted = ROLE_PROTECTED_ROUTES.find((r) => r.pattern.test(pathname));
     if (restricted && !(restricted.allowed as AppRole[]).includes(role)) {
       return NextResponse.redirect(new URL("/unauthorized", req.url));

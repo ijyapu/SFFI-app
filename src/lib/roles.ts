@@ -1,9 +1,9 @@
 import type { AppRole } from "@/types/globals";
 
 // Role hierarchy — higher index = more permissions
-const ROLE_HIERARCHY: AppRole[] = ["employee", "accountant", "manager", "admin"];
+const ROLE_HIERARCHY: AppRole[] = ["employee", "accountant", "manager", "admin", "superadmin"];
 
-// Which roles can access each sensitive area
+// Which roles can access each sensitive area (superadmin bypasses all checks via hasPermission)
 export const ROLE_PERMISSIONS = {
   payroll:      ["admin", "accountant"] as AppRole[],
   profitLoss:   ["admin", "manager", "accountant"] as AppRole[],
@@ -21,9 +21,10 @@ export const ROLE_PERMISSIONS = {
 
 export type PermissionKey = keyof typeof ROLE_PERMISSIONS;
 
-/** Check if a role has access to a given permission area */
+/** Check if a role has access to a given permission area. Superadmin bypasses all checks. */
 export function hasPermission(role: AppRole | undefined | null, permission: PermissionKey): boolean {
   if (!role) return false;
+  if (role === "superadmin") return true;
   return (ROLE_PERMISSIONS[permission] as AppRole[]).includes(role);
 }
 

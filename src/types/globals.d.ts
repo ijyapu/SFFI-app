@@ -15,4 +15,4 @@ declare global {
   }
 }
 
-export type AppRole = "admin" | "manager" | "accountant" | "employee";
+export type AppRole = "superadmin" | "admin" | "manager" | "accountant" | "employee";

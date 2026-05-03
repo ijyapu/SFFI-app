@@ -1,12 +1,15 @@
 import { clerkClient, auth } from "@clerk/nextjs/server";
-import { requirePermission } from "@/lib/auth";
+import { requirePermission, getCurrentRole } from "@/lib/auth";
 import { UserRoleTable, type UserRow } from "./_components/user-role-table";
 import type { AppRole } from "@/types/globals";
 
 export const metadata = { title: "Users & Roles — Settings" };
 
 export default async function UsersPage() {
-  await requirePermission("settings");
+  const [currentRole] = await Promise.all([
+    getCurrentRole(),
+    requirePermission("settings"),
+  ]);
   const { userId: currentUserId } = await auth();
 
   const client = await clerkClient();
@@ -25,5 +28,5 @@ export default async function UsersPage() {
     isCurrentUser: u.id === currentUserId,
   }));
 
-  return <UserRoleTable users={users} />;
+  return <UserRoleTable users={users} currentRole={currentRole} />;
 }
