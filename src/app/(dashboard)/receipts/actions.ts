@@ -12,7 +12,7 @@ async function requireAccess() {
   const user = await currentUser();
   if (!user) throw new Error("Unauthenticated");
   const role = user.publicMetadata?.role as string | undefined;
-  if (!role || !["admin", "manager", "accountant"].includes(role)) {
+  if (!role || !["superadmin", "admin", "manager", "accountant"].includes(role)) {
     throw new Error("Unauthorized");
   }
   return user.id;

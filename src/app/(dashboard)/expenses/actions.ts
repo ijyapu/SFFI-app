@@ -14,7 +14,7 @@ async function getUser() {
 }
 
 function canApprove(role: string | null) {
-  return role !== null && ["admin", "manager", "accountant"].includes(role);
+  return role !== null && ["superadmin", "admin", "manager", "accountant"].includes(role);
 }
 
 export async function submitExpense(values: ExpenseFormValues & { attachmentUrl?: string }) {

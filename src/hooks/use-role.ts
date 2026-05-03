@@ -13,6 +13,6 @@ export function useRole() {
     role,
     can: (permission: PermissionKey) => hasPermission(role, permission),
     isAtLeast: (minRole: AppRole) => hasMinRole(role, minRole),
-    isAdmin: role === "admin",
+    isAdmin: hasMinRole(role, "admin"),
   };
 }

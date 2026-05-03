@@ -33,7 +33,7 @@ function fmt(n: number) {
 
 export default async function DailyLogHistoryPage() {
   const role = await requirePermission("inventory");
-  const isAdmin = role === "admin";
+  const isAdmin = role === "admin" || role === "superadmin";
 
   const logs = await getDailyLogHistory(60); // last 60 days
 

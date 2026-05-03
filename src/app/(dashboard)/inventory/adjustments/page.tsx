@@ -76,7 +76,7 @@ export default async function AdjustmentsPage() {
         <div className="lg:col-span-1">
           <AdjustmentForm
             products={serialisedProducts}
-            isAdmin={role === "admin"}
+            isAdmin={role === "admin" || role === "superadmin"}
           />
         </div>
 

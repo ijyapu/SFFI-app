@@ -18,7 +18,7 @@ export default async function ExpensesPage({ searchParams }: Props) {
   const { userId } = await auth();
   const role = await getCurrentRole();
   // Approvers: anyone except employee-only role
-  const userCanApprove = role !== null && ["admin", "manager", "accountant"].includes(role);
+  const userCanApprove = role !== null && ["superadmin", "admin", "manager", "accountant"].includes(role);
 
   const dateWhere = rawFrom || rawTo ? {
     ...(rawFrom ? { gte: new Date(rawFrom + "T00:00:00.000Z") } : {}),

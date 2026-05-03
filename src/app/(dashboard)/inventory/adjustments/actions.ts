@@ -11,7 +11,7 @@ async function requireStockAccess() {
   if (!userId) throw new Error("Unauthenticated");
   const user = await currentUser();
   const role = user?.publicMetadata?.role as string | undefined;
-  if (!role || !["admin", "manager", "accountant"].includes(role)) {
+  if (!role || !["superadmin", "admin", "manager", "accountant"].includes(role)) {
     throw new Error("Unauthorized");
   }
   return { userId, role };
@@ -22,7 +22,7 @@ export async function createAdjustment(values: AdjustmentFormValues) {
   const data = adjustmentSchema.parse(values);
 
   // Only admin can force negative stock
-  if (data.isAdminOverride && role !== "admin") {
+  if (data.isAdminOverride && role !== "admin" && role !== "superadmin") {
     throw new Error("Only admins can override the negative stock restriction");
   }
 

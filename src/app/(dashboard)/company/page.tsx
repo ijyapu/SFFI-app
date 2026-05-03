@@ -20,7 +20,8 @@ function Row({ icon: Icon, label, value }: { icon: React.ElementType; label: str
 
 export default async function CompanyPage() {
   const [info, user] = await Promise.all([getCompanyInfo(), currentUser()]);
-  const isAdmin = user?.publicMetadata?.role === "admin";
+  const role = user?.publicMetadata?.role as string | undefined;
+  const isAdmin = role === "admin" || role === "superadmin";
   const age = new Date().getFullYear() - info.established;
 
   return (

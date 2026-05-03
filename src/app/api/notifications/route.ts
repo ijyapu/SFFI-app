@@ -76,7 +76,7 @@ export async function GET() {
   }
 
   // ── Pending expense approvals ─────────────────────────────────────────────
-  if (role === "admin" || role === "manager" || role === "accountant") {
+  if (hasPermission(role, "expenses")) {
     const pendingExpenses = await prisma.expense.count({
       where: { deletedAt: null, status: "SUBMITTED" },
     });

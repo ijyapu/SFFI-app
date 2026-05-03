@@ -10,7 +10,7 @@ async function requireDailyLogAccess() {
   const user = await currentUser();
   if (!user) throw new Error("Unauthenticated");
   const role = user.publicMetadata?.role as string | undefined;
-  if (!role || !["admin", "manager", "accountant"].includes(role)) {
+  if (!role || !["superadmin", "admin", "manager", "accountant"].includes(role)) {
     throw new Error("Unauthorized");
   }
   return { userId: user.id, role };
@@ -776,7 +776,7 @@ export async function closeDailyLog(logId: string): Promise<void> {
 
 export async function reopenDailyLog(logId: string): Promise<void> {
   const { userId, role } = await requireDailyLogAccess();
-  if (role !== "admin") throw new Error("Only admins can reopen a closed log");
+  if (role !== "admin" && role !== "superadmin") throw new Error("Only admins can reopen a closed log");
 
   const log = await prisma.dailyLog.findUnique({
     where: { id: logId },

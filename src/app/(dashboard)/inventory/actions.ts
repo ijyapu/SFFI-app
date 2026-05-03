@@ -11,7 +11,7 @@ async function requireInventoryAccess() {
   if (!userId) throw new Error("Unauthenticated");
   const user = await currentUser();
   const role = user?.publicMetadata?.role as string | undefined;
-  if (!role || !["admin", "manager", "accountant"].includes(role)) {
+  if (!role || !["superadmin", "admin", "manager", "accountant"].includes(role)) {
     throw new Error("Unauthorized");
   }
   return userId;

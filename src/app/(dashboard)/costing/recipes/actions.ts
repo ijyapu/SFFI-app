@@ -10,7 +10,7 @@ async function requireCostingAccess() {
   const user = await currentUser();
   if (!user) throw new Error("Unauthenticated");
   const role = user.publicMetadata?.role as string | undefined;
-  if (role !== "admin") throw new Error("Unauthorized");
+  if (role !== "admin" && role !== "superadmin") throw new Error("Unauthorized");
   return user.id;
 }
 

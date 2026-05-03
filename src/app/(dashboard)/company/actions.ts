@@ -45,7 +45,7 @@ export async function saveCompanyInfo(data: CompanyInfo): Promise<void> {
   const user = await currentUser();
   if (!user) throw new Error("Unauthenticated");
   const role = user.publicMetadata?.role as string | undefined;
-  if (role !== "admin") throw new Error("Only admins can update company info");
+  if (role !== "admin" && role !== "superadmin") throw new Error("Only admins can update company info");
 
   const parsed = schema.parse(data);
 
