@@ -40,13 +40,13 @@ export default async function CompanyPage() {
 
       {/* Header card */}
       <div className="rounded-xl border bg-card overflow-hidden">
-        <div className="bg-red-700 px-6 py-5 flex items-center gap-4">
+        <div className="bg-primary px-6 py-5 flex items-center gap-4">
           <div className="rounded-xl bg-white overflow-hidden shadow-sm w-16 h-16 shrink-0 flex items-center justify-center">
             <Image src="/ssfi-logo.jpg" alt={info.nameShort} width={60} height={60} className="object-contain p-1" />
           </div>
           <div>
             <h2 className="text-xl font-bold text-white leading-tight">{info.name}</h2>
-            <p className="text-sm text-red-100 italic mt-0.5">&ldquo;{info.slogan}&rdquo;</p>
+            <p className="text-sm text-primary-foreground/70 italic mt-0.5">&ldquo;{info.slogan}&rdquo;</p>
           </div>
         </div>
         <div className="px-6 py-4 flex flex-wrap gap-2">

@@ -55,32 +55,34 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.505 0.215 27);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Brand red — matches SSFI logo (≈ #DC2626 / Tailwind red-600) */
+  --primary: oklch(0.528 0.239 25);
+  --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.96 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.96 0 0);
   --muted-foreground: oklch(0.50 0 0);
   --accent: oklch(0.96 0 0);
   --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.505 0.215 27);
+  /* Danger red — darker than primary so delete/error states are visually distinct (≈ #991B1B) */
+  --destructive: oklch(0.396 0.178 25);
   --border: oklch(0.908 0 0);
   --input: oklch(0.908 0 0);
-  --ring: oklch(0.505 0.215 27);
-  --chart-1: oklch(0.505 0.215 27);
-  --chart-2: oklch(0.42 0.18 27);
-  --chart-3: oklch(0.63 0.14 27);
-  --chart-4: oklch(0.75 0.09 27);
-  --chart-5: oklch(0.87 0.04 27);
+  --ring: oklch(0.528 0.239 25);
+  --chart-1: oklch(0.528 0.239 25);
+  --chart-2: oklch(0.420 0.185 25);
+  --chart-3: oklch(0.635 0.148 25);
+  --chart-4: oklch(0.752 0.092 25);
+  --chart-5: oklch(0.868 0.044 25);
   --radius: 0.625rem;
   --sidebar: oklch(0.175 0 0);
   --sidebar-foreground: oklch(0.82 0 0);
-  --sidebar-primary: oklch(0.505 0.215 27);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.528 0.239 25);
+  --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.26 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.24 0 0);
-  --sidebar-ring: oklch(0.505 0.215 27);
+  --sidebar-ring: oklch(0.528 0.239 25);
 }
 
 .dark {
@@ -90,31 +92,33 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.575 0.21 27);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Brand red — slightly brighter for dark backgrounds */
+  --primary: oklch(0.618 0.224 25);
+  --primary-foreground: oklch(1 0 0);
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.575 0.21 27);
+  /* Danger red — visibly darker than primary in dark mode too */
+  --destructive: oklch(0.510 0.208 25);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.575 0.21 27);
-  --chart-1: oklch(0.575 0.21 27);
-  --chart-2: oklch(0.48 0.19 27);
-  --chart-3: oklch(0.68 0.15 27);
-  --chart-4: oklch(0.78 0.09 27);
-  --chart-5: oklch(0.87 0.04 27);
+  --ring: oklch(0.618 0.224 25);
+  --chart-1: oklch(0.618 0.224 25);
+  --chart-2: oklch(0.510 0.200 25);
+  --chart-3: oklch(0.710 0.150 25);
+  --chart-4: oklch(0.800 0.088 25);
+  --chart-5: oklch(0.878 0.040 25);
   --sidebar: oklch(0.175 0 0);
   --sidebar-foreground: oklch(0.82 0 0);
-  --sidebar-primary: oklch(0.575 0.21 27);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.618 0.224 25);
+  --sidebar-primary-foreground: oklch(1 0 0);
   --sidebar-accent: oklch(0.26 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.24 0 0);
-  --sidebar-ring: oklch(0.575 0.21 27);
+  --sidebar-ring: oklch(0.618 0.224 25);
 }
 
 @layer base {
