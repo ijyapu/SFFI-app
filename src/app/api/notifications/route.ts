@@ -7,7 +7,7 @@ import { hasPermission } from "@/lib/roles";
 
 export interface Notification {
   id:          string;
-  type:        "low_stock" | "overdue_receivable" | "pending_expense" | "draft_order";
+  type:        "low_stock" | "overdue_receivable" | "pending_expense" | "draft_order" | "new_user";
   title:       string;
   description: string;
   href:        string;
@@ -121,6 +121,23 @@ export async function GET() {
         description: `${stalePOs} purchase order${stalePOs !== 1 ? "s" : ""} in draft for 7+ days`,
         href:        "/purchases",
         severity:    "info",
+      });
+    }
+  }
+
+  // ── Pending access requests (admin / superadmin only) ─────────────────────
+  if (role === "admin" || role === "superadmin") {
+    const pendingUsers = await prisma.accessRequest.count({
+      where: { status: "PENDING" },
+    });
+    if (pendingUsers > 0) {
+      notifications.push({
+        id:          "pending_access_requests",
+        type:        "new_user",
+        title:       "New access requests",
+        description: `${pendingUsers} user${pendingUsers !== 1 ? "s" : ""} waiting for role assignment`,
+        href:        "/settings/access-requests",
+        severity:    "warning",
       });
     }
   }

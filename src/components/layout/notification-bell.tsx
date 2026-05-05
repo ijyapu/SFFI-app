@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, Package, CreditCard, FileText, Clock, X } from "lucide-react";
+import { Bell, Package, CreditCard, FileText, Clock, UserPlus, X } from "lucide-react";
 import type { Notification } from "@/app/api/notifications/route";
 
 const SEVERITY_STYLES: Record<string, string> = {
@@ -22,6 +22,7 @@ const TYPE_ICON: Record<string, React.ElementType> = {
   overdue_receivable:  CreditCard,
   pending_expense:     FileText,
   draft_order:         Clock,
+  new_user:            UserPlus,
 };
 
 export function NotificationBell() {
