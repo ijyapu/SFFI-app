@@ -502,6 +502,14 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
         );
       }
     }
+
+    // Keep payment dates in sync with the order date
+    if (dateChanged) {
+      await tx.salesmanPayment.updateMany({
+        where: { salesOrderId: id },
+        data:  { paidAt: newOrderDate },
+      });
+    }
   }, { timeout: 30000 });
 
   await writeAuditLog({

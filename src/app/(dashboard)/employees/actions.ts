@@ -329,7 +329,7 @@ export async function updatePayrollItem(id: string, values: PayrollItemFormValue
 const payrollDeductionSchema = z.object({
   amount:      z.number().positive("Amount must be greater than 0"),
   givenBy:     z.string().optional(),
-  givenAt:     z.string().optional(),
+  givenAt:     z.string().min(1, "Date is required"),
   paymentMode: z.enum(["CASH", "ONLINE"]),
   notes:       z.string().optional(),
   photoUrl:    z.string().optional(),
@@ -340,7 +340,7 @@ export async function addPayrollDeduction(
   values: {
     amount: number;
     givenBy?: string;
-    givenAt?: string;
+    givenAt: string;
     paymentMode: "CASH" | "ONLINE";
     notes?: string;
     photoUrl?: string;
@@ -369,7 +369,7 @@ export async function addPayrollDeduction(
         payrollItemId,
         amount:      data.amount,
         givenBy:     data.givenBy || null,
-        givenAt:     data.givenAt ? new Date(data.givenAt) : new Date(),
+        givenAt:     new Date(data.givenAt),
         paymentMode: data.paymentMode,
         notes:       data.notes || null,
         photoUrl:    data.photoUrl || null,
