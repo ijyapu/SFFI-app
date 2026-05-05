@@ -1,7 +1,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { requirePermission, getCurrentRole } from "@/lib/auth";
+import { requirePermission } from "@/lib/auth";
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
@@ -104,11 +104,12 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     payrollItems,
   ] = await Promise.all([
     prisma.salesmanPayment.findMany({
-      where: { paidAt: { lte: cutoff } },
+      where: { salesOrder: { orderDate: { lte: cutoff } } },
       include: {
         salesOrder: {
           select: {
             orderNumber:      true,
+            orderDate:        true,
             totalAmount:      true,
             factoryAmount:    true,
             commissionAmount: true,
@@ -117,7 +118,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
         },
         salesman: { select: { name: true } },
       },
-      orderBy: { paidAt: "asc" },
+      orderBy: { salesOrder: { orderDate: "asc" } },
     }),
 
     prisma.receipt.findMany({
@@ -208,7 +209,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     // Gross inflow — full value collected from the customer for this portion
     allEntries.push({
       id: `${p.id}-gross`,
-      timestamp: p.paidAt,
+      timestamp: p.salesOrder.orderDate,
       category:    "Sales (gross)",
       subcategory: p.salesman.name,
       description: `${p.salesOrder.orderNumber}`,
@@ -222,7 +223,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     if (proratedComm > 0.005) {
       allEntries.push({
         id: `${p.id}-comm`,
-        timestamp: p.paidAt,
+        timestamp: p.salesOrder.orderDate,
         category:    "Commission",
         subcategory: p.salesman.name,
         description: `${commPct.toFixed(0)}% on ${p.salesOrder.orderNumber}`,
