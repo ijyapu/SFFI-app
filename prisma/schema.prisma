@@ -761,6 +761,29 @@ model Receipt {
 }
 
 // ─────────────────────────────────────────────
+// RECEIPT PAYMENTS (money paid back / disbursed from receipt pool)
+// ─────────────────────────────────────────────
+
+model ReceiptPayment {
+  id            String        @id @default(cuid())
+  paymentNumber String        @unique
+  paidTo        String        // name of person or entity paid
+  amount        Decimal       @db.Decimal(10, 2)
+  method        PaymentMethod
+  reference     String?       // cheque no, bank ref, etc.
+  notes         String?
+  photoUrl      String?
+  paidAt        DateTime      @default(now())
+
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([paidAt])
+}
+
+// ─────────────────────────────────────────────
 // AUDIT LOG
 // ─────────────────────────────────────────────
 

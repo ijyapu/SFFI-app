@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { receiptSchema, type ReceiptFormValues } from "@/lib/validators/receipts";
+import {
+  receiptSchema, type ReceiptFormValues,
+  receiptPaymentSchema, type ReceiptPaymentFormValues,
+} from "@/lib/validators/receipts";
 import { getNextDocumentNumber } from "@/lib/doc-counter";
 
 type Db = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
@@ -69,6 +72,65 @@ export async function updateReceipt(id: string, values: ReceiptFormValues) {
 export async function deleteReceipt(id: string) {
   await requireAccess();
   await prisma.receipt.update({
+    where: { id },
+    data:  { deletedAt: new Date() },
+  });
+  revalidatePath("/receipts");
+}
+
+// ─── Receipt Payments (money paid back / disbursed) ────────────────────────────
+
+async function generatePaymentNumber(db: Db = prisma): Promise<string> {
+  return getNextDocumentNumber(`RPY-${new Date().getFullYear()}-`, db);
+}
+
+export async function createReceiptPayment(values: ReceiptPaymentFormValues) {
+  const userId = await requireAccess();
+  const data   = receiptPaymentSchema.parse(values);
+
+  await prisma.$transaction(async (tx) => {
+    const paymentNumber = await generatePaymentNumber(tx as Db);
+    await tx.receiptPayment.create({
+      data: {
+        paymentNumber,
+        paidTo:    data.paidTo,
+        amount:    data.amount,
+        method:    data.method,
+        reference: data.reference || null,
+        notes:     data.notes || null,
+        photoUrl:  data.photoUrl ?? null,
+        paidAt:    new Date(data.paidAt),
+        createdBy: userId,
+      },
+    });
+  });
+
+  revalidatePath("/receipts");
+}
+
+export async function updateReceiptPayment(id: string, values: ReceiptPaymentFormValues) {
+  await requireAccess();
+  const data = receiptPaymentSchema.parse(values);
+
+  await prisma.receiptPayment.update({
+    where: { id },
+    data: {
+      paidTo:    data.paidTo,
+      amount:    data.amount,
+      method:    data.method,
+      reference: data.reference || null,
+      notes:     data.notes || null,
+      photoUrl:  data.photoUrl ?? null,
+      paidAt:    new Date(data.paidAt),
+    },
+  });
+
+  revalidatePath("/receipts");
+}
+
+export async function deleteReceiptPayment(id: string) {
+  await requireAccess();
+  await prisma.receiptPayment.update({
     where: { id },
     data:  { deletedAt: new Date() },
   });

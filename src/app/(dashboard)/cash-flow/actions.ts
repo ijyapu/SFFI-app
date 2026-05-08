@@ -93,6 +93,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
   const [
     salesmanPayments,
     receipts,
+    receiptPayments,
     supplierPayments,
     vendorPayments,
     expenses,
@@ -124,6 +125,11 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     prisma.receipt.findMany({
       where: { receivedAt: { lte: cutoff }, deletedAt: null },
       orderBy: { receivedAt: "asc" },
+    }),
+
+    prisma.receiptPayment.findMany({
+      where: { paidAt: { lte: cutoff }, deletedAt: null },
+      orderBy: { paidAt: "asc" },
     }),
 
     prisma.supplierPayment.findMany({
@@ -246,6 +252,20 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       direction: "in",
       method: fmtMethod(r.method),
       reference: r.reference ?? null,
+    });
+  }
+
+  for (const p of receiptPayments) {
+    allEntries.push({
+      id: p.id,
+      timestamp: p.paidAt,
+      category: "Receipt Payment",
+      subcategory: p.paidTo,
+      description: p.notes ?? "Payment made",
+      amount: Number(p.amount),
+      direction: "out",
+      method: fmtMethod(p.method),
+      reference: p.reference ?? null,
     });
   }
 
