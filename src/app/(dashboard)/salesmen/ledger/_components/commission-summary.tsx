@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import { TrendingDown, Percent } from "lucide-react";
 import type { CustomerLedgerData } from "../actions";
+import { toNepaliDateString } from "@/lib/nepali-date";
 
 function fmt(n: number) {
   return n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -46,6 +47,12 @@ export function CommissionSummary({ data }: { data: CustomerLedgerData }) {
             </tr>
           </thead>
           <tbody className="divide-y">
+            <tr className="bg-muted/10">
+              <td className="px-4 py-2.5 text-muted-foreground italic text-xs">Opening balance brought forward</td>
+              <td className={`px-4 py-2.5 text-right tabular-nums font-semibold text-sm ${data.openingBalance > 0.005 ? "text-amber-600" : data.openingBalance < -0.005 ? "text-emerald-600" : "text-muted-foreground"}`}>
+                {data.openingBalance !== 0 ? fmt(data.openingBalance) : "—"}
+              </td>
+            </tr>
             <tr>
               <td className="px-4 py-2.5">Total Invoiced ({cs.invoiceCount} invoice{cs.invoiceCount !== 1 ? "s" : ""})</td>
               <td className="px-4 py-2.5 text-right tabular-nums">{fmt(cs.totalInvoiced)}</td>
@@ -77,9 +84,9 @@ export function CommissionSummary({ data }: { data: CustomerLedgerData }) {
               <td className="px-4 py-2.5">Payments Received</td>
               <td className="px-4 py-2.5 text-right tabular-nums">({fmt(cs.totalReceived)})</td>
             </tr>
-            <tr className={`font-bold text-base border-t-2 ${data.closingBalance > 0.005 ? "text-blue-700 bg-blue-50/50" : "text-emerald-700 bg-emerald-50/50"}`}>
+            <tr className={`font-bold text-base border-t-2 ${data.closingBalance > 0.005 ? "text-amber-700 bg-amber-50/50 dark:bg-amber-950/10" : "text-emerald-700 bg-emerald-50/50 dark:bg-emerald-950/10"}`}>
               <td className="px-4 py-3">Outstanding Balance</td>
-              <td className="px-4 py-3 text-right tabular-nums">{fmt(data.closingBalance)}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{fmt(Math.abs(data.closingBalance))}</td>
             </tr>
           </tbody>
         </table>
@@ -96,6 +103,7 @@ export function CommissionSummary({ data }: { data: CustomerLedgerData }) {
               <thead>
                 <tr className="border-b bg-muted/40">
                   <th className="text-left px-3 py-2 font-medium text-muted-foreground">Invoice</th>
+                  <th className="text-left px-3 py-2 font-medium text-muted-foreground">Sale Date</th>
                   <th className="text-right px-3 py-2 font-medium text-muted-foreground">Invoiced (Rs)</th>
                   <th className="text-right px-3 py-2 font-medium text-muted-foreground">Waste (Rs)</th>
                   <th className="text-right px-3 py-2 font-medium text-muted-foreground">Net (Rs)</th>
@@ -117,6 +125,10 @@ export function CommissionSummary({ data }: { data: CustomerLedgerData }) {
                         {row.orderNumber}
                       </a>
                     </td>
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <div className="text-xs">{format(new Date(row.orderDate), "d MMM yyyy")}</div>
+                      <div className="text-[10px] text-muted-foreground/60">{toNepaliDateString(new Date(row.orderDate))}</div>
+                    </td>
                     <td className="px-3 py-2 text-right tabular-nums">{fmt(row.invoiceAmount)}</td>
                     <td className="px-3 py-2 text-right tabular-nums text-orange-600">
                       {row.wasteDeducted > 0.001 ? `(${fmt(row.wasteDeducted)})` : "—"}
@@ -134,6 +146,7 @@ export function CommissionSummary({ data }: { data: CustomerLedgerData }) {
                 {/* Totals row */}
                 <tr className="bg-muted/30 font-semibold border-t-2">
                   <td className="px-3 py-2">Total</td>
+                  <td className="px-3 py-2" />
                   <td className="px-3 py-2 text-right tabular-nums">{fmt(cs.totalInvoiced)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-orange-600">
                     {cs.totalWaste > 0.001 ? `(${fmt(cs.totalWaste)})` : "—"}

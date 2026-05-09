@@ -26,7 +26,10 @@ export async function getCompanyInfo(): Promise<CompanyInfo> {
   if (!role) throw new Error("Unauthorized");
   try {
     const row = await prisma.companySettings.findUnique({ where: { id: "main" } });
-    if (row) return row;
+    if (row) {
+      const { name, nameShort, slogan, address, phone, pan, owner, established } = row;
+      return { name, nameShort, slogan, address, phone, pan, owner, established };
+    }
   } catch {}
   // Fall back to static config if DB row doesn't exist yet
   return {

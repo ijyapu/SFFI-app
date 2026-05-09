@@ -4,21 +4,23 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 
 export type CustomerLedgerEntry = {
-  id:            string;
-  date:          string;
-  type:          "INVOICE" | "PAYMENT" | "RETURN" | "COMMISSION";
-  reference:     string;
-  description:   string;
-  invoiceAmount: number;
-  paymentAmount: number;
-  balance:       number;
-  paymentMethod: string;
-  salesOrderId:  string | null;
+  id:             string;
+  date:           string;
+  salesOrderDate: string; // always the originating order's dispatch date — used for day grouping
+  type:           "INVOICE" | "PAYMENT" | "RETURN" | "COMMISSION";
+  reference:      string;
+  description:    string;
+  invoiceAmount:  number;
+  paymentAmount:  number;
+  balance:        number;
+  paymentMethod:  string;
+  salesOrderId:   string | null;
 };
 
 export type CommissionInvoiceRow = {
   orderId:          string;
   orderNumber:      string;
+  orderDate:        string;
   invoiceAmount:    number;
   wasteDeducted:    number;
   netAmount:        number;
@@ -87,7 +89,7 @@ export async function getCustomerLedger(
     select: {
       id: true, returnNumber: true, createdAt: true, totalAmount: true, notes: true,
       salesOrderId: true,
-      salesOrder: { select: { orderNumber: true } },
+      salesOrder: { select: { orderNumber: true, orderDate: true } },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -116,7 +118,8 @@ export async function getCustomerLedger(
 
   // Build ledger entries within period
   const rawEntries: {
-    id: string; date: Date; type: "INVOICE" | "PAYMENT" | "RETURN" | "COMMISSION";
+    id: string; date: Date; salesOrderDate: Date;
+    type: "INVOICE" | "PAYMENT" | "RETURN" | "COMMISSION";
     reference: string; description: string;
     invoiceAmount: number; paymentAmount: number;
     paymentMethod: string; salesOrderId: string | null;
@@ -127,45 +130,48 @@ export async function getCustomerLedger(
     if (o.status === "CANCELLED") continue;
 
     rawEntries.push({
-      id:            `inv-${o.id}`,
-      date:          o.orderDate,
-      type:          "INVOICE",
-      reference:     o.orderNumber,
-      description:   `Sales Invoice${o.notes ? ` · ${o.notes}` : ""}`,
-      invoiceAmount: Number(o.totalAmount),
-      paymentAmount: 0,
-      paymentMethod: "",
-      salesOrderId:  o.id,
+      id:             `inv-${o.id}`,
+      date:           o.orderDate,
+      salesOrderDate: o.orderDate,
+      type:           "INVOICE",
+      reference:      o.orderNumber,
+      description:    `Sales Invoice${o.notes ? ` · ${o.notes}` : ""}`,
+      invoiceAmount:  Number(o.totalAmount),
+      paymentAmount:  0,
+      paymentMethod:  "",
+      salesOrderId:   o.id,
     });
 
     // Commission is the salesman's share — deduct it from what they owe
     const commAmt = Number(o.commissionAmount);
     if (commAmt > 0.001) {
       rawEntries.push({
-        id:            `comm-${o.id}`,
-        date:          o.orderDate,
-        type:          "COMMISSION",
-        reference:     o.orderNumber,
-        description:   `Commission (${Number(o.commissionPct)}%) on ${o.orderNumber}`,
-        invoiceAmount: 0,
-        paymentAmount: commAmt,
-        paymentMethod: "",
-        salesOrderId:  o.id,
+        id:             `comm-${o.id}`,
+        date:           o.orderDate,
+        salesOrderDate: o.orderDate,
+        type:           "COMMISSION",
+        reference:      o.orderNumber,
+        description:    `Commission (${Number(o.commissionPct)}%) on ${o.orderNumber}`,
+        invoiceAmount:  0,
+        paymentAmount:  commAmt,
+        paymentMethod:  "",
+        salesOrderId:   o.id,
       });
     }
 
     for (const p of o.payments) {
       if (p.paidAt < from || p.paidAt > to) continue;
       rawEntries.push({
-        id:            `pay-${p.id}`,
-        date:          p.paidAt,
-        type:          "PAYMENT",
-        reference:     o.orderNumber,
-        description:   `Payment for ${o.orderNumber}${p.notes ? ` · ${p.notes}` : ""}`,
-        invoiceAmount: 0,
-        paymentAmount: Number(p.amount),
-        paymentMethod: p.method,
-        salesOrderId:  o.id,
+        id:             `pay-${p.id}`,
+        date:           p.paidAt,
+        salesOrderDate: o.orderDate, // group under the sale date, not the payment date
+        type:           "PAYMENT",
+        reference:      o.orderNumber,
+        description:    `Payment for ${o.orderNumber}${p.notes ? ` · ${p.notes}` : ""}`,
+        invoiceAmount:  0,
+        paymentAmount:  Number(p.amount),
+        paymentMethod:  p.method,
+        salesOrderId:   o.id,
       });
     }
   }
@@ -173,15 +179,16 @@ export async function getCustomerLedger(
   for (const r of allReturns) {
     if (r.createdAt < from || r.createdAt > to) continue;
     rawEntries.push({
-      id:            `ret-${r.id}`,
-      date:          r.createdAt,
-      type:          "RETURN",
-      reference:     r.returnNumber,
-      description:   `Waste Return · ${r.salesOrder.orderNumber}${r.notes ? ` · ${r.notes}` : ""}`,
-      invoiceAmount: 0,
-      paymentAmount: Number(r.totalAmount),
-      paymentMethod: "",
-      salesOrderId:  r.salesOrderId,
+      id:             `ret-${r.id}`,
+      date:           r.createdAt,
+      salesOrderDate: r.salesOrder.orderDate, // group under the sale date, not the return date
+      type:           "RETURN",
+      reference:      r.returnNumber,
+      description:    `Waste Return · ${r.salesOrder.orderNumber}${r.notes ? ` · ${r.notes}` : ""}`,
+      invoiceAmount:  0,
+      paymentAmount:  Number(r.totalAmount),
+      paymentMethod:  "",
+      salesOrderId:   r.salesOrderId,
     });
   }
 
@@ -195,7 +202,7 @@ export async function getCustomerLedger(
   let balance = computedOpening;
   const entries: CustomerLedgerEntry[] = rawEntries.map((e) => {
     balance += e.invoiceAmount - e.paymentAmount;
-    return { ...e, date: e.date.toISOString(), balance };
+    return { ...e, date: e.date.toISOString(), salesOrderDate: e.salesOrderDate.toISOString(), balance };
   });
 
   const closingBalance = balance;
@@ -220,7 +227,7 @@ export async function getCustomerLedger(
     const commissionPct    = Number(o.commissionPct);
     const commissionAmount = Number(o.commissionAmount); // already recalculated on each return
     const factoryAmount    = Number(o.factoryAmount);
-    return { orderId: o.id, orderNumber: o.orderNumber, invoiceAmount, wasteDeducted, netAmount, commissionPct, commissionAmount, factoryAmount };
+    return { orderId: o.id, orderNumber: o.orderNumber, orderDate: o.orderDate.toISOString(), invoiceAmount, wasteDeducted, netAmount, commissionPct, commissionAmount, factoryAmount };
   });
 
   const paymentEntries = rawEntries.filter((e) => e.type === "PAYMENT");

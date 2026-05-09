@@ -5,10 +5,12 @@ import { getAllCustomers, getCustomerLedger } from "./actions";
 import { getNepalFYDates, getCurrentNepalFYYear } from "@/app/(dashboard)/vendors/ledger/nepal-fy";
 import { LedgerFilters } from "./_components/ledger-filters";
 import { LedgerTable } from "./_components/ledger-table";
+import { DayLedgerTable } from "./_components/day-ledger-table";
 import { CommissionSummary } from "./_components/commission-summary";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import { BookMarked } from "lucide-react";
 import { COMPANY } from "@/lib/company";
+import { formatAmount } from "@/lib/format";
 
 export const metadata = { title: "Salesman Ledger" };
 
@@ -141,32 +143,32 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
 
         {/* ── KPI cards (screen only) ── */}
         {ledgerData && (
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 no-print">
-            <div className="rounded-lg border p-4 space-y-1">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 print:hidden">
+            <div className="rounded-lg border bg-card px-4 py-3 space-y-1 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Opening Balance</p>
-              <p className={`text-xl font-bold tabular-nums ${ledgerData.openingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
-                Rs {ledgerData.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              <p className={`text-xl font-bold tabular-nums ${ledgerData.openingBalance > 0.005 ? "text-amber-600" : "text-emerald-600"}`}>
+                {formatAmount(ledgerData.openingBalance)}
               </p>
               <p className="text-xs text-muted-foreground">{format(new Date(from), "d MMM yyyy")}</p>
             </div>
-            <div className="rounded-lg border p-4 space-y-1">
+            <div className="rounded-lg border bg-card px-4 py-3 space-y-1 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Invoiced</p>
               <p className="text-xl font-bold tabular-nums">
-                Rs {ledgerData.commissionSummary.totalInvoiced.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                {formatAmount(ledgerData.commissionSummary.totalInvoiced)}
               </p>
               <p className="text-xs text-muted-foreground">{ledgerData.commissionSummary.invoiceCount} invoice{ledgerData.commissionSummary.invoiceCount !== 1 ? "s" : ""}</p>
             </div>
-            <div className="rounded-lg border p-4 space-y-1">
+            <div className="rounded-lg border bg-card px-4 py-3 space-y-1 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Commission Deducted</p>
               <p className="text-xl font-bold tabular-nums text-amber-600">
-                Rs {ledgerData.commissionSummary.totalCommission.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                {formatAmount(ledgerData.commissionSummary.totalCommission)}
               </p>
               <p className="text-xs text-muted-foreground">{ledgerData.salesman.commissionPct}% rate</p>
             </div>
-            <div className={`rounded-lg border p-4 space-y-1 ${ledgerData.closingBalance > 0.005 ? "border-blue-500/40 bg-blue-50/30 dark:bg-blue-950/10" : "border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/10"}`}>
+            <div className={`rounded-lg border px-4 py-3 space-y-1 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${ledgerData.closingBalance > 0.005 ? "border-amber-300 bg-amber-50/40" : "border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/10"}`}>
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Closing Balance</p>
-              <p className={`text-xl font-bold tabular-nums ${ledgerData.closingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
-                Rs {ledgerData.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+              <p className={`text-xl font-bold tabular-nums ${ledgerData.closingBalance > 0.005 ? "text-amber-700" : "text-emerald-600"}`}>
+                {formatAmount(Math.abs(ledgerData.closingBalance))}
               </p>
               <p className="text-xs text-muted-foreground">
                 {ledgerData.closingBalance > 0.005 ? "Salesman owes you" : ledgerData.closingBalance < -0.005 ? "You owe salesman" : "Settled"}
@@ -175,11 +177,29 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
           </div>
         )}
 
-        {/* ── Printable area — only this renders on paper ── */}
+        {/* ── Screen ledger — day-grouped accordion ── */}
+        {ledgerData && (
+          <div className="print:hidden">
+            <DayLedgerTable
+              entries={ledgerData.entries}
+              openingBalance={ledgerData.openingBalance}
+              closingBalance={ledgerData.closingBalance}
+            />
+          </div>
+        )}
+
+        {/* ── Commission summary (screen) ── */}
+        {ledgerData && (
+          <div className="print:hidden mt-2">
+            <CommissionSummary data={ledgerData} />
+          </div>
+        )}
+
+        {/* ── Printable area — flat table + commission summary ── */}
         {ledgerData && (
           <div id="salesman-ledger-print">
 
-            {/* Company header (always visible inside print area; hidden on screen via CSS parent) */}
+            {/* Company header — print only */}
             <div className="hidden print:block mb-4">
               <div className="flex justify-between items-start border-b-2 border-red-700 pb-3 mb-4">
                 <div>
@@ -199,19 +219,22 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
               </div>
             </div>
 
-            {/* Ledger table */}
-            <LedgerTable
-              entries={ledgerData.entries}
-              openingBalance={ledgerData.openingBalance}
-              closingBalance={ledgerData.closingBalance}
-              from={from}
-              to={to}
-            />
+            {/* Flat ledger table — print only */}
+            <div className="hidden print:block">
+              <LedgerTable
+                entries={ledgerData.entries}
+                openingBalance={ledgerData.openingBalance}
+                closingBalance={ledgerData.closingBalance}
+                from={from}
+                to={to}
+              />
+            </div>
 
-            {/* Commission summary — new page */}
-            <div className="print-break mt-6">
+            {/* Commission summary — print only */}
+            <div className="print-break hidden print:block">
               <CommissionSummary data={ledgerData} />
             </div>
+
           </div>
         )}
       </div>

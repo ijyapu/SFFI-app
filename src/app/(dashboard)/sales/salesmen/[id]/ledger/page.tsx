@@ -28,15 +28,16 @@ export default async function SalesmanLedgerPage({
     where: { customerId: id, deletedAt: null, status: { notIn: ["CANCELLED", "LOST"] } },
     orderBy: { orderDate: "desc" },
     include: {
-      returns:  { select: { totalAmount: true } },
+      returns:  { select: { totalAmount: true, returnType: true } },
       payments: { select: { amount: true } },
     },
   });
 
   const rows = orders.map((o) => {
     const totalTaken      = Number(o.totalAmount);
-    const wasteReturned   = o.returns.reduce((s, r) => s + Number(r.totalAmount), 0);
-    const netAmount       = totalTaken - wasteReturned;
+    const freshReturned   = o.returns.filter(r => r.returnType === "FRESH").reduce((s, r) => s + Number(r.totalAmount), 0);
+    const wasteReturned   = o.returns.filter(r => r.returnType === "WASTE").reduce((s, r) => s + Number(r.totalAmount), 0);
+    const netAmount       = totalTaken - freshReturned - wasteReturned;
     const commissionPct   = Number(o.commissionPct);
     const commissionAmount = Number(o.commissionAmount);
     const factoryAmount   = Number(o.factoryAmount);
@@ -48,6 +49,7 @@ export default async function SalesmanLedgerPage({
       orderDate:       o.orderDate.toISOString(),
       status:          o.status,
       totalTaken,
+      freshReturned,
       wasteReturned,
       netAmount,
       commissionPct,
