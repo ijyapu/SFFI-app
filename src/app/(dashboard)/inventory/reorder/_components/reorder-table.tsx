@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { ExternalLink, Printer } from "lucide-react";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,11 +68,11 @@ export function ReorderTable({ items }: { items: ReorderItem[] }) {
         </Button>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             {(() => { const sp = { sortKey, sortDir, toggle }; return (
-            <TableRow>
+            <TableRow className="bg-muted/40">
               <TableHead><SortButton col="name"         label="Product"        {...sp} /></TableHead>
               <TableHead><SortButton col="category"     label="Category"       {...sp} /></TableHead>
               <TableHead numeric><SortButton col="currentStock" label="Current Stock"  {...sp} className="justify-end" /></TableHead>
@@ -86,11 +86,7 @@ export function ReorderTable({ items }: { items: ReorderItem[] }) {
           </TableHeader>
           <TableBody>
             {sorted.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
-                  All stock levels are healthy — no reorders needed.
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow colSpan={8} message="All stock levels are healthy — no reorders needed." />
             )}
             {sorted.map((item) => (
               <TableRow

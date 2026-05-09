@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Package, AlertTriangle, XCircle, TrendingUp } from "lucide-react";
+import { formatAmount } from "@/lib/format";
 
 type Props = {
   totalProducts: number;
@@ -15,71 +15,50 @@ export function StockSummaryCards({
   totalValue,
 }: Props) {
   return (
-    <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Total Products
-          </CardTitle>
+    <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+      <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-muted-foreground font-medium">Total Products</div>
           <Package className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-bold">{totalProducts}</p>
-          <p className="text-xs text-muted-foreground mt-1">Active SKUs</p>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="text-2xl font-bold tabular-nums">{totalProducts}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">Active SKUs</div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Low Stock
-          </CardTitle>
-          <AlertTriangle className="h-4 w-4 text-amber-500" />
-        </CardHeader>
-        <CardContent>
-          <p className={`text-2xl font-bold ${lowStockCount > 0 ? "text-amber-600" : ""}`}>
-            {lowStockCount}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {lowStockCount > 0 ? "Need restocking" : "All levels OK"}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-muted-foreground font-medium">Low Stock</div>
+          <AlertTriangle className={`h-4 w-4 ${lowStockCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+        </div>
+        <div className={`text-2xl font-bold tabular-nums ${lowStockCount > 0 ? "text-amber-600" : "text-muted-foreground"}`}>
+          {lowStockCount}
+        </div>
+        <div className="text-xs text-muted-foreground mt-0.5">
+          {lowStockCount > 0 ? "Need restocking" : "All levels OK"}
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Out of Stock
-          </CardTitle>
-          <XCircle className="h-4 w-4 text-destructive" />
-        </CardHeader>
-        <CardContent>
-          <p className={`text-2xl font-bold ${outOfStockCount > 0 ? "text-destructive" : ""}`}>
-            {outOfStockCount}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {outOfStockCount > 0 ? "Zero stock" : "None"}
-          </p>
-        </CardContent>
-      </Card>
+      <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-muted-foreground font-medium">Out of Stock</div>
+          <XCircle className={`h-4 w-4 ${outOfStockCount > 0 ? "text-destructive" : "text-muted-foreground"}`} />
+        </div>
+        <div className={`text-2xl font-bold tabular-nums ${outOfStockCount > 0 ? "text-destructive" : "text-muted-foreground"}`}>
+          {outOfStockCount}
+        </div>
+        <div className="text-xs text-muted-foreground mt-0.5">
+          {outOfStockCount > 0 ? "Zero stock" : "None"}
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            Inventory Value
-          </CardTitle>
+      <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-xs text-muted-foreground font-medium">Inventory Value</div>
           <TrendingUp className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-bold">
-            Rs {totalValue.toLocaleString(undefined, {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">At cost price</p>
-        </CardContent>
-      </Card>
+        </div>
+        <div className="text-2xl font-bold tabular-nums">{formatAmount(totalValue)}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">At cost price</div>
+      </div>
     </div>
   );
 }

@@ -3,8 +3,8 @@ import { requirePermission, getCurrentRole } from "@/lib/auth";
 import { auth, clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { ExpenseTable } from "./_components/expense-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateFilter } from "@/components/ui/date-filter";
+import { formatAmount } from "@/lib/format";
 import { Receipt, CheckCircle, Clock, XCircle } from "lucide-react";
 
 export const metadata = { title: "Expenses" };
@@ -85,60 +85,48 @@ export default async function ExpensesPage({ searchParams }: Props) {
       </Suspense>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Submitted</CardTitle>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground">Total Submitted</p>
             <Receipt className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              Rs {totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">All expenses</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold mt-1">{formatAmount(totalAmount)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">All expenses</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Paid</CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground">Paid</p>
             <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-green-600">
-              Rs {approvedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Confirmed spend</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold text-green-600 mt-1">{formatAmount(approvedAmount)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Confirmed spend</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Pending Review</CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground">Pending Review</p>
             <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${pendingCount > 0 ? "text-amber-600" : ""}`}>
-              {pendingCount}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {pendingCount > 0 ? "Awaiting approval" : "All reviewed"}
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className={`text-2xl font-bold mt-1 ${pendingCount > 0 ? "text-amber-600" : ""}`}>
+            {pendingCount}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {pendingCount > 0 ? "Awaiting approval" : "All reviewed"}
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Rejected</CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground">Rejected</p>
             <XCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${rejectedCount > 0 ? "text-destructive" : ""}`}>
-              {rejectedCount}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Declined expenses</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className={`text-2xl font-bold mt-1 ${rejectedCount > 0 ? "text-destructive" : ""}`}>
+            {rejectedCount}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">Declined expenses</p>
+        </div>
       </div>
 
       <ExpenseTable

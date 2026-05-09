@@ -69,7 +69,7 @@ export function PayrollList({ runs }: { runs: PayrollRun[] }) {
         </Button>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             {(() => { const sp = { sortKey, sortDir, toggle }; return (

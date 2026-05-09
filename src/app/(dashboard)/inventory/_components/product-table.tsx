@@ -166,7 +166,7 @@ export function ProductTable({ products, categories, units }: Props) {
       <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-muted/40">
               <TableHead><SortButton col="name"         label="Product"    {...sp} /></TableHead>
               <TableHead><SortButton col="sku"          label="SKU"        {...sp} /></TableHead>
               <TableHead>Unit</TableHead>
@@ -206,25 +206,25 @@ export function ProductTable({ products, categories, units }: Props) {
               return (
                 <React.Fragment key={catId}>
                   {/* Category section header */}
-                  <TableRow className="bg-red-700 hover:bg-red-700 border-y border-red-800">
+                  <TableRow className="bg-muted/40 hover:bg-muted/50 border-y">
                     <TableCell colSpan={7} className="py-2 px-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2.5">
-                          <span className="text-xs font-bold uppercase tracking-widest text-white">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-foreground/70">
                             {catName}
                           </span>
-                          <span className="text-xs text-red-200/80">
+                          <span className="text-xs text-muted-foreground">
                             {rows.length} {rows.length === 1 ? "product" : "products"}
                           </span>
                           {lowCount > 0 && (
-                            <span className="flex items-center gap-1 text-xs text-amber-300 font-medium">
+                            <span className="flex items-center gap-1 text-xs text-amber-600 font-medium">
                               <AlertTriangle className="h-3 w-3" />
-                              {lowCount} low stock
+                              {lowCount} low
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-red-200 tabular-nums">
-                          Value: Rs {totalStock.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          Rs {totalStock.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                         </span>
                       </div>
                     </TableCell>

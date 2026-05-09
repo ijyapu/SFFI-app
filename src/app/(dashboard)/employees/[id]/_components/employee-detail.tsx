@@ -5,10 +5,10 @@ import Image from "next/image";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { WithdrawalForm } from "./withdrawal-form";
 import { deleteWithdrawal } from "../../actions";
+import { formatAmount } from "@/lib/format";
 
 export interface WithdrawalRow {
   id: string;
@@ -31,9 +31,6 @@ interface Props {
   totalWithdrawn: number;
   allTimeWithdrawals: WithdrawalRow[];
 }
-
-const Rs = (n: number) =>
-  "Rs " + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -68,68 +65,54 @@ export function EmployeeDetail({
   return (
     <div className="space-y-6">
       {/* Summary cards */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Salary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{Rs(monthlySalary)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Fixed monthly amount</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <div className="text-xs text-muted-foreground mb-2">Monthly Salary</div>
+          <div className="text-2xl font-bold tabular-nums">{formatAmount(monthlySalary)}</div>
+          <div className="text-xs text-muted-foreground mt-1">Fixed monthly amount</div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Deducted — {MONTHS[selectedMonth - 1]} {selectedYear}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${totalWithdrawn > monthlySalary ? "text-destructive" : "text-amber-600"}`}>
-              {Rs(totalWithdrawn)}
-            </p>
-            <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
-              <div
-                className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-destructive" : pct >= 75 ? "bg-amber-500" : "bg-primary"}`}
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <div className="text-xs text-muted-foreground mb-2">
+            Deducted — {MONTHS[selectedMonth - 1]} {selectedYear}
+          </div>
+          <div className={`text-2xl font-bold tabular-nums ${totalWithdrawn > monthlySalary ? "text-destructive" : "text-amber-600"}`}>
+            {formatAmount(totalWithdrawn)}
+          </div>
+          <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all ${pct >= 100 ? "bg-destructive" : pct >= 75 ? "bg-amber-500" : "bg-primary"}`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Remaining Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${remaining < 0 ? "text-destructive" : "text-emerald-600"}`}>
-              {Rs(remaining)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {remaining < 0 ? "Over-deducted this month" : "Still available this month"}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <div className="text-xs text-muted-foreground mb-2">Remaining Balance</div>
+          <div className={`text-2xl font-bold tabular-nums ${remaining < 0 ? "text-destructive" : "text-emerald-600"}`}>
+            {formatAmount(remaining)}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {remaining < 0 ? "Over-deducted this month" : "Still available this month"}
+          </div>
+        </div>
       </div>
 
       {/* Deductions table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Deductions — {MONTHS[selectedMonth - 1]} {selectedYear}</CardTitle>
-              <p className="text-sm text-muted-foreground mt-1">
-                {withdrawals.length} deduction{withdrawals.length !== 1 ? "s" : ""}
-              </p>
-            </div>
-            <Button onClick={() => setFormOpen(true)} size="sm">
-              <Plus className="h-4 w-4" />
-              Record Deduction
-            </Button>
+      <div className="rounded-lg border overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30">
+          <div>
+            <p className="text-sm font-semibold">Deductions — {MONTHS[selectedMonth - 1]} {selectedYear}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {withdrawals.length} deduction{withdrawals.length !== 1 ? "s" : ""}
+            </p>
           </div>
-        </CardHeader>
-        <CardContent className="p-0">
+          <Button onClick={() => setFormOpen(true)} size="sm">
+            <Plus className="h-4 w-4" />
+            Record Deduction
+          </Button>
+        </div>
+        <div>
           {withdrawals.length === 0 ? (
             <div className="px-4 py-10 text-center text-muted-foreground text-sm">
               No deductions recorded for this month.
@@ -137,7 +120,7 @@ export function EmployeeDetail({
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="border-b border-border bg-muted/30">
+                <thead className="border-b bg-muted/30">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground whitespace-nowrap">Date</th>
                     <th className="px-4 py-3 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">Amount</th>
@@ -151,18 +134,18 @@ export function EmployeeDetail({
                 </thead>
                 <tbody>
                   {withdrawals.map((w) => (
-                    <tr key={w.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                    <tr key={w.id} className="border-b last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-3 whitespace-nowrap">
                         {format(parseISO(w.takenAt), "d MMM yyyy")}
                       </td>
                       <td className="px-4 py-3 text-right tabular-nums font-semibold whitespace-nowrap">
-                        {Rs(w.amount)}
+                        {formatAmount(w.amount)}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                        <span className={`inline-flex items-center rounded px-1.5 py-0.5 text-[11px] font-medium ${
                           w.paymentMode === "ONLINE"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-amber-100 text-amber-700"
+                            ? "bg-slate-100 text-slate-700"
+                            : "bg-muted text-muted-foreground"
                         }`}>
                           {w.paymentMode === "ONLINE" ? "Online" : "Cash"}
                         </span>
@@ -208,15 +191,15 @@ export function EmployeeDetail({
                       Month total
                     </td>
                     <td colSpan={3} className="px-4 py-2 text-right tabular-nums font-bold">
-                      {Rs(totalWithdrawn)}
+                      {formatAmount(totalWithdrawn)}
                     </td>
                   </tr>
                 </tfoot>
               </table>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <WithdrawalForm
         employeeId={employeeId}

@@ -7,9 +7,10 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  ArrowLeft, BookOpen, CheckCircle2, TrendingUp, TrendingDown,
+  BookOpen, CheckCircle2, TrendingUp, TrendingDown,
   ExternalLink,
 } from "lucide-react";
+import { ERPPageHeader } from "@/components/ui/erp-page-header";
 import { getDailyLogHistory } from "../actions";
 import { ReopenDialog } from "../_components/reopen-dialog";
 
@@ -43,31 +44,17 @@ export default async function DailyLogHistoryPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Link
-              href="/daily-log"
-              className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-            <h1 className="text-2xl font-semibold">Daily Log History</h1>
-          </div>
-          <p className="text-muted-foreground text-sm ml-9">
-            Last 60 days · {logs.length} logs
-          </p>
-        </div>
-
-        <Link
-          href="/daily-log"
-          className={cn(buttonVariants({ variant: "outline" }))}
-        >
-          <BookOpen className="h-4 w-4" />
-          Today&apos;s Log
-        </Link>
-      </div>
+      <ERPPageHeader
+        title="Daily Log History"
+        subtitle={`Last 60 days · ${logs.length} log${logs.length !== 1 ? "s" : ""}`}
+        backHref="/daily-log"
+        action={
+          <Link href="/daily-log" className={cn(buttonVariants({ variant: "outline" }))}>
+            <BookOpen className="h-4 w-4" />
+            Today&apos;s Log
+          </Link>
+        }
+      />
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -78,7 +65,7 @@ export default async function DailyLogHistoryPage() {
           { label: "Adjustments", value: totalAdjusted, sub: "items adjusted", alert: false },
         ].map(({ label, value, sub, alert, warn }) => (
           <div key={label} className="rounded-lg border bg-card px-4 py-3">
-            <div className={`text-2xl font-bold tabular-nums ${alert && value > 0 ? "text-amber-600" : warn && value > 0 ? "text-blue-600" : ""}`}>
+            <div className={`text-2xl font-bold tabular-nums ${(alert || warn) && value > 0 ? "text-amber-600" : ""}`}>
               {value}
             </div>
             <div className="text-xs text-muted-foreground mt-0.5">
@@ -102,12 +89,12 @@ export default async function DailyLogHistoryPage() {
               <TableRow className="bg-muted/40">
                 <TableHead>Date</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Active</TableHead>
-                <TableHead className="text-right text-emerald-700">Produced</TableHead>
-                <TableHead className="text-right text-orange-600">Used</TableHead>
-                <TableHead className="text-right text-rose-600">Sold</TableHead>
-                <TableHead className="text-right text-rose-600">Waste</TableHead>
-                <TableHead className="text-right">Adjustments</TableHead>
+                <TableHead numeric>Active</TableHead>
+                <TableHead numeric className="text-emerald-700">Produced</TableHead>
+                <TableHead numeric className="text-orange-600">Used</TableHead>
+                <TableHead numeric className="text-rose-600">Sold</TableHead>
+                <TableHead numeric className="text-rose-600">Waste</TableHead>
+                <TableHead numeric>Adjustments</TableHead>
                 <TableHead>Closed at</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
@@ -134,9 +121,9 @@ export default async function DailyLogHistoryPage() {
                         log.status === "CLOSED"
                           ? "bg-emerald-100 text-emerald-700"
                           : log.status === "AUTO_ADJUSTED"
-                          ? "bg-blue-100 text-blue-700"
+                          ? "bg-slate-100 text-slate-700"
                           : log.status === "REOPENED"
-                          ? "bg-blue-100 text-blue-700"
+                          ? "bg-amber-100 text-amber-700"
                           : "bg-amber-100 text-amber-700"
                       }
                     >
@@ -153,7 +140,7 @@ export default async function DailyLogHistoryPage() {
                   </TableCell>
 
                   {/* Active rows */}
-                  <TableCell className="text-right tabular-nums text-sm">
+                  <TableCell numeric className="text-sm">
                     <span className={log.activeCount > 0 ? "text-foreground" : "text-muted-foreground"}>
                       {log.activeCount}
                       <span className="text-muted-foreground">/{log.productCount}</span>
@@ -161,7 +148,7 @@ export default async function DailyLogHistoryPage() {
                   </TableCell>
 
                   {/* Produced */}
-                  <TableCell className="text-right tabular-nums text-sm">
+                  <TableCell numeric className="text-sm">
                     {log.totalProduced > 0 ? (
                       <span className="text-emerald-700 flex items-center justify-end gap-0.5">
                         <TrendingUp className="h-3 w-3" />
@@ -173,17 +160,17 @@ export default async function DailyLogHistoryPage() {
                   </TableCell>
 
                   {/* Used */}
-                  <TableCell className="text-right tabular-nums text-sm text-orange-600">
+                  <TableCell numeric className="text-sm text-orange-600">
                     {fmt(log.totalUsed)}
                   </TableCell>
 
                   {/* Sold */}
-                  <TableCell className="text-right tabular-nums text-sm text-rose-600">
+                  <TableCell numeric className="text-sm text-rose-600">
                     {fmt(log.totalSold)}
                   </TableCell>
 
                   {/* Waste */}
-                  <TableCell className="text-right tabular-nums text-sm">
+                  <TableCell numeric className="text-sm">
                     {log.totalWaste > 0 ? (
                       <span className="text-rose-500 flex items-center justify-end gap-0.5">
                         <TrendingDown className="h-3 w-3" />
@@ -195,9 +182,9 @@ export default async function DailyLogHistoryPage() {
                   </TableCell>
 
                   {/* Adjustments */}
-                  <TableCell className="text-right tabular-nums text-sm">
+                  <TableCell numeric className="text-sm">
                     {log.adjustCount > 0 ? (
-                      <span className="text-teal-700 font-medium tabular-nums">
+                      <span className="text-teal-700 font-medium">
                         {log.adjustCount}
                       </span>
                     ) : (

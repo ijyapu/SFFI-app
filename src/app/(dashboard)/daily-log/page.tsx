@@ -85,9 +85,9 @@ export default async function DailyLogPage({ searchParams }: Props) {
                   log.status === "CLOSED"
                     ? "bg-emerald-100 text-emerald-700"
                     : log.status === "AUTO_ADJUSTED"
-                    ? "bg-blue-100 text-blue-700"
+                    ? "bg-slate-100 text-slate-700"
                     : log.status === "REOPENED"
-                    ? "bg-blue-100 text-blue-700"
+                    ? "bg-amber-100 text-amber-700"
                     : "bg-amber-100 text-amber-700"
                 }
               >
@@ -168,81 +168,73 @@ export default async function DailyLogPage({ searchParams }: Props) {
       {/* Log exists */}
       {log && (
         <>
-          {/* Info banner for closed logs */}
+          {/* Closed / auto-adjusted — quiet confirmation, no colored box */}
           {log.status === "CLOSED" && (
-            <div className="flex items-start gap-3 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
-              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-              <div>
-                This log is closed. All activity has been applied to inventory.
+            <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <span>
+                Log closed — inventory updated.
                 {log.closedAt && (
-                  <span className="block text-xs text-green-600 mt-0.5">
-                    Closed on {new Date(log.closedAt).toLocaleString()}
+                  <span className="ml-1.5 text-xs">
+                    {new Date(log.closedAt).toLocaleString()}
                   </span>
                 )}
-              </div>
+              </span>
             </div>
           )}
           {log.status === "AUTO_ADJUSTED" && (
-            <div className="flex items-start gap-3 rounded-lg bg-purple-50 border border-purple-200 px-4 py-3 text-sm text-purple-800">
-              <CheckCircle2 className="h-4 w-4 mt-0.5 shrink-0" />
-              <div>
-                This log was auto-adjusted after a backdated sale or return changed the figures.
-                The closing quantities have been recalculated. Stock movements are unaffected.
+            <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
+              <Info className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                Auto-adjusted after a backdated sale or return — closing quantities recalculated, stock movements unaffected.
                 {log.closedAt && (
-                  <span className="block text-xs text-purple-600 mt-0.5">
-                    Originally closed on {new Date(log.closedAt).toLocaleString()}
-                  </span>
+                  <span className="ml-1.5 text-xs">Originally closed {new Date(log.closedAt).toLocaleString()}</span>
                 )}
-              </div>
+              </span>
             </div>
           )}
 
-          {/* Outdated opening warning */}
+          {/* Outdated opening — amber warning, no bg box */}
           {isOpen && log.openingOutdated && (
-            <div className="flex items-start gap-3 rounded-lg bg-amber-50 border border-amber-300 px-4 py-3 text-sm text-amber-900">
-              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
-              <div>
-                <p className="font-semibold">Opening quantities may be outdated.</p>
-                <p className="text-xs text-amber-800 mt-1">
-                  The previous day&apos;s closing figures changed after this log was opened
-                  (likely because that day was reopened and re-edited).
-                  One or more products have opening values that no longer match the previous closing.
-                  These will update automatically once the previous day is re-closed.
-                </p>
-              </div>
+            <div className="flex items-start gap-2.5 text-sm text-amber-700">
+              <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>
+                <span className="font-semibold">Opening quantities may be outdated.</span>{" "}
+                <span className="text-xs text-amber-600">
+                  The previous day&apos;s closing changed after this log was opened. Affected rows are marked ⚠.
+                  Values update automatically once the previous day is re-closed.
+                </span>
+              </span>
             </div>
           )}
 
-          {/* Missing products banner */}
+          {/* Missing products — amber, kept as a box because it has an action button */}
           {isOpen && log.items.length < productCount && (
-            <div className="flex items-center justify-between gap-4 rounded-lg bg-amber-50 border border-amber-300 px-4 py-3">
-              <div className="flex items-start gap-3 text-sm text-amber-900">
-                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
-                <div>
-                  <p className="font-semibold">
-                    {productCount - log.items.length} product{productCount - log.items.length !== 1 ? "s" : ""} added after this log was started
-                  </p>
-                  <p className="text-xs text-amber-800 mt-0.5">
-                    New products are not included automatically. Click to add them with their current stock as the opening quantity.
-                  </p>
-                </div>
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-amber-200 bg-amber-50/50 px-3 py-2.5">
+              <div className="flex items-center gap-2.5 text-sm text-amber-800">
+                <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+                <span>
+                  <span className="font-semibold">
+                    {productCount - log.items.length} product{productCount - log.items.length !== 1 ? "s" : ""} added after this log was started.
+                  </span>
+                  <span className="ml-1 text-xs text-amber-700">Click to add with current stock as opening quantity.</span>
+                </span>
               </div>
               <SyncProductsButton logId={log.id} missingCount={productCount - log.items.length} />
             </div>
           )}
 
-          {/* Info tip for open logs */}
+          {/* Info tip for open logs — quiet muted callout */}
           {isOpen && (
-            <div className="flex items-start gap-3 rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 text-sm text-blue-800">
+            <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
               <Info className="h-4 w-4 mt-0.5 shrink-0" />
-              <div>
-                Enter today&apos;s activity below. Changes save automatically.
-                Click <strong>Close Day</strong> when done to apply activity to inventory.
-                <span className="block text-xs text-blue-600 mt-0.5">
-                  Purchases recorded today appear in the <span className="font-medium">Purchased</span> column automatically.
-                  They are already in stock — Close Day will not re-add them.
+              <p>
+                Enter today&apos;s activity below — changes save automatically. Click{" "}
+                <strong className="text-foreground">Close Day</strong> when done to apply to inventory.
+                <span className="block text-xs mt-0.5">
+                  The <span className="font-medium text-foreground/70">Purchased</span> column is auto-pulled from today&apos;s purchase orders and is already in stock.
                 </span>
-              </div>
+              </p>
             </div>
           )}
 

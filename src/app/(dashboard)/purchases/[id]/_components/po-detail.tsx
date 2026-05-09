@@ -10,17 +10,17 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { SortButton } from "@/components/ui/sort-icon";
 import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { ReceiveForm } from "./receive-form";
 import { PaymentForm } from "./payment-form";
 import { confirmPurchaseOrder, cancelPurchaseOrder } from "../../actions";
+import { ERPSection } from "@/components/ui/erp-section";
+import { formatAmount } from "@/lib/format";
 
 const STATUS_CONFIG = {
-  DRAFT:              { label: "Draft",               className: "bg-gray-100 text-gray-700" },
-  CONFIRMED:          { label: "Confirmed",           className: "bg-blue-100 text-blue-700" },
+  DRAFT:              { label: "Draft",               className: "bg-muted text-muted-foreground" },
+  CONFIRMED:          { label: "Confirmed",           className: "bg-slate-100 text-slate-700" },
   PARTIALLY_RECEIVED: { label: "Partially Received", className: "bg-amber-100 text-amber-700" },
   RECEIVED:           { label: "Received",            className: "bg-emerald-100 text-emerald-700" },
   CANCELLED:          { label: "Cancelled",           className: "bg-red-100 text-red-700" },
@@ -187,11 +187,8 @@ export function PoDetail(props: Props) {
         {/* Items table — takes 2 cols */}
         <div className="lg:col-span-2 space-y-4">
           {/* PO info */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Order Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1 text-sm">
+          <ERPSection header={<h3 className="text-sm font-medium text-muted-foreground">Order Details</h3>}>
+            <div className="px-4 py-3 space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Vendor</span>
                 <span className="font-medium">{supplierName}</span>
@@ -206,15 +203,15 @@ export function PoDetail(props: Props) {
                   <span className="text-right">{notes}</span>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </ERPSection>
 
           {/* Items */}
-          <div className="rounded-lg border">
+          <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader>
                 {(() => { const sp = { sortKey, sortDir, toggle }; return (
-                <TableRow>
+                <TableRow className="bg-muted/40">
                   <TableHead><SortButton col="productName" label="Product"   {...sp} /></TableHead>
                   <TableHead numeric><SortButton col="quantity"    label="Ordered"   {...sp} className="justify-end" /></TableHead>
                   <TableHead numeric><SortButton col="receivedQty" label="Received"  {...sp} className="justify-end" /></TableHead>
@@ -257,28 +254,25 @@ export function PoDetail(props: Props) {
         {/* Summary sidebar */}
         <div className="space-y-4">
           {/* Totals */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+          <ERPSection header={<h3 className="text-sm font-medium text-muted-foreground">Summary</h3>}>
+            <div className="px-4 py-3 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Subtotal</span>
-                <span>Rs {subtotal.toFixed(2)}</span>
+                <span className="tabular-nums">{formatAmount(subtotal)}</span>
               </div>
-              <Separator />
+              <div className="border-t" />
               <div className="flex justify-between font-semibold">
                 <span>Total</span>
-                <span>Rs {totalAmount.toFixed(2)}</span>
+                <span className="tabular-nums">{formatAmount(totalAmount)}</span>
               </div>
               <div className="flex justify-between text-green-600">
                 <span>Paid</span>
-                <span>Rs {amountPaid.toFixed(2)}</span>
+                <span className="tabular-nums">{formatAmount(amountPaid)}</span>
               </div>
               {outstanding > 0.001 && (
                 <div className="flex justify-between font-semibold text-destructive">
                   <span>Outstanding</span>
-                  <span>Rs {outstanding.toFixed(2)}</span>
+                  <span className="tabular-nums">{formatAmount(outstanding)}</span>
                 </div>
               )}
               {outstanding <= 0.001 && amountPaid > 0 && (
@@ -287,20 +281,17 @@ export function PoDetail(props: Props) {
                   Fully paid
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </ERPSection>
 
           {/* Payment history */}
           {payments.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Payments</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
+            <ERPSection header={<h3 className="text-sm font-medium text-muted-foreground">Payments</h3>}>
+              <div className="px-4 py-3 space-y-2">
                 {payments.map((p) => (
                   <div key={p.id} className="text-sm">
                     <div className="flex justify-between">
-                      <span className="font-medium">Rs {p.amount.toFixed(2)}</span>
+                      <span className="font-medium tabular-nums">{formatAmount(p.amount)}</span>
                       <span className="text-muted-foreground">{METHOD_LABELS[p.method] ?? p.method}</span>
                     </div>
                     <div className="text-xs text-muted-foreground">
@@ -309,8 +300,8 @@ export function PoDetail(props: Props) {
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </ERPSection>
           )}
         </div>
       </div>

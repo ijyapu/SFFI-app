@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { EmployeeTable } from "./_components/employee-table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, UserCheck, DollarSign, Building2 } from "lucide-react";
+import { formatAmount } from "@/lib/format";
 
 export const metadata = { title: "Employees" };
 
@@ -62,56 +62,46 @@ export default async function EmployeesPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Staff</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{activeEmployees.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Currently employed</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <UserCheck className="h-3.5 w-3.5 shrink-0" />
+            <span>Active Staff</span>
+          </div>
+          <div className="text-2xl font-bold">{activeEmployees.length}</div>
+          <div className="text-xs text-muted-foreground mt-1">Currently employed</div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Departments</CardTitle>
-            <Building2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{departments.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">Active departments</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <Building2 className="h-3.5 w-3.5 shrink-0" />
+            <span>Departments</span>
+          </div>
+          <div className="text-2xl font-bold">{departments.length}</div>
+          <div className="text-xs text-muted-foreground mt-1">Active departments</div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Payroll</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              Rs {totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Base salaries only</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <DollarSign className="h-3.5 w-3.5 shrink-0" />
+            <span>Monthly Payroll</span>
+          </div>
+          <div className="text-2xl font-bold tabular-nums">{formatAmount(totalPayroll)}</div>
+          <div className="text-xs text-muted-foreground mt-1">Base salaries only</div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Salary</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              Rs {activeEmployees.length > 0
-                ? (totalPayroll / activeEmployees.length).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                : "0.00"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Per active employee</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <Users className="h-3.5 w-3.5 shrink-0" />
+            <span>Avg. Salary</span>
+          </div>
+          <div className="text-2xl font-bold tabular-nums">
+            {activeEmployees.length > 0
+              ? formatAmount(totalPayroll / activeEmployees.length)
+              : formatAmount(0)}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">Per active employee</div>
+        </div>
       </div>
 
       <EmployeeTable employees={serialised} departments={departments} />

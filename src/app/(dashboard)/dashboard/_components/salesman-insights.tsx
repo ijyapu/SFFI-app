@@ -1,5 +1,5 @@
 import { Medal, RotateCcw } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ERPSection } from "@/components/ui/erp-section";
 
 type SalesmanItem = {
   name: string;
@@ -63,45 +63,41 @@ function SalesmanRankList({
 export function SalesmanInsights({ topBySales, topByReturns, monthLabel }: Props) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      {/* Top salesmen by sales */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Top Salesmen — {monthLabel}
-            </CardTitle>
-            <Medal className="h-4 w-4 text-amber-500" />
+      <ERPSection header={
+        <>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Top Salesmen — {monthLabel}</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">By confirmed sales amount</p>
           </div>
-          <p className="text-[11px] text-muted-foreground/60">By confirmed sales amount</p>
-        </CardHeader>
-        <CardContent>
+          <Medal className="h-4 w-4 text-amber-500 shrink-0" />
+        </>
+      }>
+        <div className="px-4 py-4">
           <SalesmanRankList
             items={topBySales}
             barColor="bg-amber-400"
             emptyText="No confirmed sales this month"
           />
-        </CardContent>
-      </Card>
+        </div>
+      </ERPSection>
 
-      {/* Top salesmen by returns */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Most Returns — {monthLabel}
-            </CardTitle>
-            <RotateCcw className="h-4 w-4 text-orange-500" />
+      <ERPSection header={
+        <>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Most Returns — {monthLabel}</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">By total return amount</p>
           </div>
-          <p className="text-[11px] text-muted-foreground/60">By total return amount</p>
-        </CardHeader>
-        <CardContent>
+          <RotateCcw className="h-4 w-4 text-orange-500 shrink-0" />
+        </>
+      }>
+        <div className="px-4 py-4">
           <SalesmanRankList
             items={topByReturns}
             barColor="bg-orange-400"
             emptyText="No returns this month"
           />
-        </CardContent>
-      </Card>
+        </div>
+      </ERPSection>
     </div>
   );
 }

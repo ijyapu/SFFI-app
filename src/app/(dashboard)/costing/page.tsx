@@ -2,8 +2,9 @@ import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ERPSection } from "@/components/ui/erp-section";
 import { TrendingUp, TrendingDown, Package, BarChart2 } from "lucide-react";
+import { formatAmount } from "@/lib/format";
 import { CostingDatePicker } from "./_components/costing-date-picker";
 import { ProductMarginTable, type ProductCostRow } from "./_components/product-margin-table";
 
@@ -98,9 +99,6 @@ export default async function CostingPage({
   // Bottom 5 by actual margin (only products with sales and positive revenue)
   const bottom5 = [...soldRows].sort((a, b) => (a.actualMargin ?? 0) - (b.actualMargin ?? 0)).slice(0, 5);
 
-  const Rs = (n: number) =>
-    "Rs " + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -119,70 +117,61 @@ export default async function CostingPage({
       </Suspense>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Revenue</CardTitle>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground">Revenue</p>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{Rs(totalRevenue)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Non-cancelled orders</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold mt-1">{formatAmount(totalRevenue)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Non-cancelled orders</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Est. COGS</CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground">Est. COGS</p>
             <TrendingDown className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{Rs(totalCogs)}</p>
-            <p className="text-xs text-muted-foreground mt-1">Units sold × cost price</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold mt-1">{formatAmount(totalCogs)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Units sold × cost price</p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Gross Profit</CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground">Gross Profit</p>
             <BarChart2 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${totalGP < 0 ? "text-destructive" : "text-emerald-600"}`}>
-              {Rs(totalGP)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {overallMargin !== null ? `${overallMargin.toFixed(1)}% margin` : "No sales in period"}
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className={`text-2xl font-bold mt-1 ${totalGP < 0 ? "text-destructive" : "text-emerald-600"}`}>
+            {formatAmount(totalGP)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {overallMargin !== null ? `${overallMargin.toFixed(1)}% margin` : "No sales in period"}
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Products</CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground">Active Products</p>
             <Package className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">{activeProducts}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              of {rows.length} products sold in period
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold mt-1">{activeProducts}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            of {rows.length} products sold in period
+          </p>
+        </div>
       </div>
 
       {/* Top / Bottom performers */}
       {soldRows.length > 0 && (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* Top earners */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-emerald-500" />
-                Top 5 by Gross Profit
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <ERPSection header={
+            <span className="text-sm font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              Top 5 by Gross Profit
+            </span>
+          }>
+            <div className="px-4 py-3 space-y-3">
               {top5.map((r, i) => (
                 <div key={r.id} className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground w-5 shrink-0">{i + 1}.</span>
@@ -191,25 +180,24 @@ export default async function CostingPage({
                     <div className="text-xs text-muted-foreground">{r.category}</div>
                   </div>
                   <div className="text-right shrink-0">
-                    <div className="text-sm font-semibold text-emerald-600">{Rs(r.grossProfit)}</div>
+                    <div className="text-sm font-semibold text-emerald-600">{formatAmount(r.grossProfit)}</div>
                     <div className="text-xs text-muted-foreground">
                       {r.actualMargin !== null ? `${r.actualMargin.toFixed(1)}% margin` : ""}
                     </div>
                   </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </ERPSection>
 
           {/* Lowest margins */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <TrendingDown className="h-4 w-4 text-amber-500" />
-                Lowest 5 by Actual Margin
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <ERPSection header={
+            <span className="text-sm font-medium flex items-center gap-2">
+              <TrendingDown className="h-4 w-4 text-amber-500" />
+              Lowest 5 by Actual Margin
+            </span>
+          }>
+            <div className="px-4 py-3 space-y-3">
               {bottom5.map((r, i) => (
                 <div key={r.id} className="flex items-center gap-3">
                   <span className="text-sm text-muted-foreground w-5 shrink-0">{i + 1}.</span>
@@ -222,13 +210,13 @@ export default async function CostingPage({
                       {r.actualMargin !== null ? `${r.actualMargin.toFixed(1)}%` : "—"}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {Rs(r.grossProfit)}
+                      {formatAmount(r.grossProfit)}
                     </div>
                   </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </ERPSection>
         </div>
       )}
 

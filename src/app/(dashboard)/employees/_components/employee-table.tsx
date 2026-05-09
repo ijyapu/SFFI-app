@@ -156,7 +156,7 @@ export function EmployeeTable({ employees, departments }: Props) {
         </div>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -193,8 +193,8 @@ export function EmployeeTable({ employees, departments }: Props) {
                     <Badge variant="secondary">{emp.department.name}</Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{emp.position}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {emp.basicSalary.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  <TableCell numeric className="font-medium tabular-nums">
+                    Rs {emp.basicSalary.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell className="text-muted-foreground text-sm">
                     <DateDisplay date={emp.startDate} />
@@ -203,7 +203,7 @@ export function EmployeeTable({ employees, departments }: Props) {
                     {isActive ? (
                       <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">Active</Badge>
                     ) : (
-                      <Badge variant="secondary" className="bg-gray-100 text-gray-600">
+                      <Badge variant="secondary" className="bg-muted text-muted-foreground">
                         <UserX className="h-3 w-3 mr-1" />
                         Left {format(new Date(emp.endDate!), "MMM yyyy")}
                       </Badge>

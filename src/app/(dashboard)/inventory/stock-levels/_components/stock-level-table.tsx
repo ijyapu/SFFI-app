@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -114,11 +114,11 @@ export function StockLevelTable({ items, totalValue }: Props) {
       </div>
 
       {/* Table */}
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             {(() => { const sp = { sortKey, sortDir, toggle }; return (
-            <TableRow>
+            <TableRow className="bg-muted/40">
               <TableHead><SortButton col="name"         label="Product"       {...sp} /></TableHead>
               <TableHead><SortButton col="category"     label="Category"      {...sp} /></TableHead>
               <TableHead numeric><SortButton col="currentStock" label="Current Stock" {...sp} className="justify-end" /></TableHead>
@@ -130,11 +130,7 @@ export function StockLevelTable({ items, totalValue }: Props) {
           </TableHeader>
           <TableBody>
             {sorted.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-10">
-                  No products match your filters.
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow colSpan={6} message="No products match your filters." />
             )}
             {sorted.map((item) => {
               const cfg = STATUS_CONFIG[item.status];

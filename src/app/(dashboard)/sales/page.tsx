@@ -5,8 +5,8 @@ import { requirePermission } from "@/lib/auth";
 import { SoTable } from "./_components/so-table";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateFilter } from "@/components/ui/date-filter";
+import { formatAmount } from "@/lib/format";
 import { Plus, Users, TrendingUp, AlertCircle } from "lucide-react";
 
 export const metadata = { title: "Sales" };
@@ -90,55 +90,37 @@ export default async function SalesPage({ searchParams }: Props) {
 
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 shrink-0">
-        <Card className="py-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Commission Given</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-0">
-            <p className="text-2xl font-bold text-amber-600">
-              Rs {totalCommission.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Total paid to salesmen</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Commission Given</p>
+          <p className="text-2xl font-bold text-amber-600 mt-1">{formatAmount(totalCommission)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Total paid to salesmen</p>
+        </div>
 
-        <Card className="py-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Factory Revenue</CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Factory Revenue</p>
             <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="px-4 pb-0">
-            <p className="text-2xl font-bold">
-              Rs {totalRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">After commission deductions</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold mt-1">{formatAmount(totalRevenue)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">After commission deductions</p>
+        </div>
 
-        <Card className="py-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collected</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-0">
-            <p className="text-2xl font-bold text-green-600">
-              Rs {totalCollected.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Payments received</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Collected</p>
+          <p className="text-2xl font-bold text-green-600 mt-1">{formatAmount(totalCollected)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Payments received</p>
+        </div>
 
-        <Card className="py-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Outstanding</CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Outstanding</p>
             <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="px-4 pb-0">
-            <p className={`text-2xl font-bold ${totalOutstanding > 0 ? "text-destructive" : "text-green-600"}`}>
-              Rs {totalOutstanding.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Incl. opening balances</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className={`text-2xl font-bold mt-1 ${totalOutstanding > 0 ? "text-destructive" : "text-green-600"}`}>
+            {formatAmount(totalOutstanding)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">Incl. opening balances</p>
+        </div>
       </div>
 
       <div className="flex-1 min-h-0">

@@ -6,7 +6,7 @@ import { DateDisplay } from "@/components/ui/date-display";
 import { toast } from "sonner";
 import { ExternalLink, Trash2 } from "lucide-react";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,8 +24,8 @@ import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { deletePurchaseOrder } from "../actions";
 
 const STATUS_CONFIG = {
-  DRAFT:              { label: "Draft",               className: "bg-gray-100 text-gray-700" },
-  CONFIRMED:          { label: "Confirmed",           className: "bg-blue-100 text-blue-700" },
+  DRAFT:              { label: "Draft",               className: "bg-muted text-muted-foreground" },
+  CONFIRMED:          { label: "Confirmed",           className: "bg-slate-100 text-slate-700" },
   PARTIALLY_RECEIVED: { label: "Partial",             className: "bg-amber-100 text-amber-700" },
   RECEIVED:           { label: "Received",            className: "bg-emerald-100 text-emerald-700" },
   CANCELLED:          { label: "Cancelled",           className: "bg-red-100 text-red-700" },
@@ -95,11 +95,11 @@ export function PoTable({ orders }: { orders: PO[] }) {
         </Select>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             {(() => { const sp = { sortKey, sortDir, toggle }; return (
-            <TableRow>
+            <TableRow className="bg-muted/40">
               <TableHead><SortButton col="orderNumber"  label="PO Number"   {...sp} /></TableHead>
               <TableHead><SortButton col="supplierName" label="Vendor"    {...sp} /></TableHead>
               <TableHead><SortButton col="orderDate"    label="Date"        {...sp} /></TableHead>
@@ -112,13 +112,10 @@ export function PoTable({ orders }: { orders: PO[] }) {
           </TableHeader>
           <TableBody>
             {sorted.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                  {search || statusFilter !== "all"
-                    ? "No orders match your filters."
-                    : "No purchase orders yet."}
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow
+                colSpan={7}
+                message={search || statusFilter !== "all" ? "No orders match your filters." : "No purchase orders yet."}
+              />
             )}
             {sorted.map((po) => {
               const cfg = STATUS_CONFIG[po.status];

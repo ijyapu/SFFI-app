@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { DateDisplay } from "@/components/ui/date-display";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ type Movement = {
 };
 
 const TYPE_STYLES: Record<string, { label: string; className: string }> = {
-  PURCHASE:       { label: "Purchase",    className: "bg-blue-100 text-blue-700" },
+  PURCHASE:       { label: "Purchase",    className: "bg-slate-100 text-slate-700" },
   SALE:           { label: "Sale",        className: "bg-amber-100 text-amber-700" },
   ADJUSTMENT_IN:  { label: "Adj. In",    className: "bg-emerald-100 text-emerald-700" },
   ADJUSTMENT_OUT: { label: "Adj. Out",   className: "bg-red-100 text-red-700" },
@@ -86,28 +86,24 @@ export function MovementTable({ movements }: Props) {
         </Select>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             {(() => { const sp = { sortKey, sortDir, toggle }; return (
-            <TableRow>
+            <TableRow className="bg-muted/40">
               <TableHead><SortButton col="createdAt" label="Date"    {...sp} /></TableHead>
               <TableHead><SortButton col="product"   label="Product" {...sp} /></TableHead>
               <TableHead><SortButton col="type"      label="Type"    {...sp} /></TableHead>
-              <TableHead className="text-right"><SortButton col="quantity" label="Qty" {...sp} className="justify-end" /></TableHead>
-              <TableHead className="text-right">Before</TableHead>
-              <TableHead className="text-right">After</TableHead>
+              <TableHead numeric><SortButton col="quantity" label="Qty" {...sp} className="justify-end" /></TableHead>
+              <TableHead numeric>Before</TableHead>
+              <TableHead numeric>After</TableHead>
               <TableHead>Notes</TableHead>
             </TableRow>
             ); })()}
           </TableHeader>
           <TableBody>
             {sorted.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center text-muted-foreground py-10">
-                  No movements found.
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow colSpan={7} message="No movements found." />
             )}
             {sorted.map((m) => {
               const isDecrease = DECREASE_TYPES.includes(m.type);
@@ -142,10 +138,10 @@ export function MovementTable({ movements }: Props) {
                       {m.product.unit.name}
                     </span>
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground text-sm">
+                  <TableCell numeric className="text-muted-foreground text-sm">
                     {Number(m.quantityBefore).toLocaleString(undefined, { maximumFractionDigits: 3 })}
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell numeric className="text-sm">
                     {Number(m.quantityAfter).toLocaleString(undefined, { maximumFractionDigits: 3 })}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-48 truncate">

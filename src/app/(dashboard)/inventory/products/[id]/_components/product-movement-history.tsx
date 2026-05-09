@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { DateDisplay } from "@/components/ui/date-display";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,7 +23,7 @@ type Movement = {
 const TYPE_LABELS: Record<string, { label: string; color: string }> = {
   ADJUSTMENT_IN:  { label: "Adjustment In",  color: "bg-emerald-100 text-emerald-700" },
   ADJUSTMENT_OUT: { label: "Adjustment Out", color: "bg-red-100 text-red-700" },
-  PURCHASE:       { label: "Purchase",        color: "bg-blue-100 text-blue-700" },
+  PURCHASE:       { label: "Purchase",        color: "bg-slate-100 text-slate-700" },
   SALE:           { label: "Sale",            color: "bg-amber-100 text-amber-700" },
   PRODUCTION_IN:  { label: "Production In",  color: "bg-emerald-100 text-emerald-700" },
   PRODUCTION_OUT: { label: "Production Out", color: "bg-amber-100 text-amber-700" },
@@ -66,25 +66,21 @@ export function ProductMovementHistory({
         <span className="text-sm text-muted-foreground">{filtered.length} records</span>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="bg-muted/40">
               <TableHead>Date</TableHead>
               <TableHead>Type</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead className="text-right">Before</TableHead>
-              <TableHead className="text-right">After</TableHead>
+              <TableHead numeric>Qty</TableHead>
+              <TableHead numeric>Before</TableHead>
+              <TableHead numeric>After</TableHead>
               <TableHead>Notes</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
-                  No movements recorded.
-                </TableCell>
-              </TableRow>
+              <TableEmptyRow colSpan={6} message="No movements recorded." />
             )}
             {filtered.map((m) => {
               const cfg = TYPE_LABELS[m.type] ?? { label: m.type, color: "bg-gray-100 text-gray-700" };
@@ -105,10 +101,10 @@ export function ProductMovementHistory({
                     </span>
                     <span className="text-xs text-muted-foreground ml-1">{unit}</span>
                   </TableCell>
-                  <TableCell className="text-right text-muted-foreground text-sm">
+                  <TableCell numeric className="text-muted-foreground text-sm">
                     {m.stockBefore.toLocaleString(undefined, { maximumFractionDigits: 3 })}
                   </TableCell>
-                  <TableCell className="text-right text-sm font-medium">
+                  <TableCell numeric className="text-sm font-medium">
                     {m.stockAfter.toLocaleString(undefined, { maximumFractionDigits: 3 })}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-xs truncate">

@@ -10,6 +10,7 @@ import { RecordPaymentButton } from "./_components/record-payment-dialog";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import { BookOpen } from "lucide-react";
 import { COMPANY } from "@/lib/company";
+import { formatAmount } from "@/lib/format";
 
 export const metadata = { title: "Vendor Ledger" };
 
@@ -186,31 +187,31 @@ export default async function VendorLedgerPage({ searchParams }: PageProps) {
 
             {/* ── KPI cards ── */}
             <div className="grid grid-cols-2 gap-3 xl:grid-cols-4 no-print">
-              <div className="rounded-lg border p-4 space-y-1">
+              <div className="rounded-lg border bg-card px-4 py-3 space-y-1 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Opening Balance</p>
                 <p className={`text-xl font-bold tabular-nums ${ledgerData.openingBalance > 0.005 ? "text-destructive" : "text-emerald-600"}`}>
-                  Rs {ledgerData.openingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  {formatAmount(ledgerData.openingBalance)}
                 </p>
                 <p className="text-xs text-muted-foreground">{format(new Date(from), "d MMM yyyy")}</p>
               </div>
-              <div className="rounded-lg border p-4 space-y-1">
+              <div className="rounded-lg border bg-card px-4 py-3 space-y-1 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Invoiced</p>
                 <p className="text-xl font-bold tabular-nums">
-                  Rs {ledgerData.taxSummary.totalInvoiced.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  {formatAmount(ledgerData.taxSummary.totalInvoiced)}
                 </p>
                 <p className="text-xs text-muted-foreground">{ledgerData.taxSummary.invoiceCount} invoice{ledgerData.taxSummary.invoiceCount !== 1 ? "s" : ""}</p>
               </div>
-              <div className="rounded-lg border p-4 space-y-1">
+              <div className="rounded-lg border bg-card px-4 py-3 space-y-1 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Paid</p>
                 <p className="text-xl font-bold tabular-nums text-emerald-600">
-                  Rs {ledgerData.taxSummary.totalPaid.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  {formatAmount(ledgerData.taxSummary.totalPaid)}
                 </p>
                 <p className="text-xs text-muted-foreground">Payments made</p>
               </div>
-              <div className={`rounded-lg border p-4 space-y-1 ${ledgerData.closingBalance > 0.005 ? "border-destructive/40 bg-destructive/5" : "border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/10"}`}>
+              <div className={`rounded-lg border px-4 py-3 space-y-1 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${ledgerData.closingBalance > 0.005 ? "border-destructive/40 bg-destructive/5" : "border-emerald-500/30 bg-emerald-50/30 dark:bg-emerald-950/10"}`}>
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">Closing Balance</p>
                 <p className={`text-xl font-bold tabular-nums ${ledgerData.closingBalance > 0.005 ? "text-destructive" : "text-emerald-600"}`}>
-                  Rs {ledgerData.closingBalance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                  {formatAmount(ledgerData.closingBalance)}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {ledgerData.closingBalance > 0.005 ? "You owe vendor" : ledgerData.closingBalance < -0.005 ? "Vendor owes you" : "Settled"}

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatAmount } from "@/lib/format";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -43,8 +43,8 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_BADGE: Record<string, string> = {
-  DRAFT:          "bg-gray-100 text-gray-600",
-  CONFIRMED:      "bg-blue-100 text-blue-700",
+  DRAFT:          "bg-muted text-muted-foreground",
+  CONFIRMED:      "bg-slate-100 text-slate-700",
   PARTIALLY_PAID: "bg-amber-100 text-amber-700",
   PAID:           "bg-emerald-100 text-emerald-700",
   CANCELLED:      "bg-red-100 text-red-600",
@@ -96,46 +96,30 @@ export function SalesmanLedger({ commissionPct, openingBalance, rows }: Props) {
     <div className="space-y-4">
       {/* Summary cards */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-xs text-muted-foreground font-medium">Total Dispatched</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-xl font-bold">Rs {totals.totalTaken.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">{rows.length} order{rows.length !== 1 ? "s" : ""}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-xs text-muted-foreground font-medium">Commission ({commissionPct}%)</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-xl font-bold text-amber-600">Rs {totals.commissionAmount.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">deducted from factory</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-xs text-muted-foreground font-medium">Total Collected</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className="text-xl font-bold text-green-700">Rs {totals.collected.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">of Rs {totals.factoryAmount.toFixed(2)} owed</p>
-          </CardContent>
-        </Card>
-        <Card className={totalOutstanding > 0.005 ? "border-amber-300 bg-amber-50/40" : "border-green-300 bg-green-50/40"}>
-          <CardHeader className="pb-1 pt-4 px-4">
-            <CardTitle className="text-xs text-muted-foreground font-medium">Outstanding Balance</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4 pb-4">
-            <p className={`text-xl font-bold ${totalOutstanding > 0.005 ? "text-amber-700" : "text-green-700"}`}>
-              Rs {Math.abs(totalOutstanding).toFixed(2)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {totalOutstanding > 0.005 ? "still owed to factory" : totalOutstanding < -0.005 ? "credit / overpaid" : "fully settled"}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <p className="text-xs text-muted-foreground font-medium">Total Dispatched</p>
+          <p className="text-xl font-bold mt-1">{formatAmount(totals.totalTaken)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{rows.length} order{rows.length !== 1 ? "s" : ""}</p>
+        </div>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <p className="text-xs text-muted-foreground font-medium">Commission ({commissionPct}%)</p>
+          <p className="text-xl font-bold text-amber-600 mt-1">{formatAmount(totals.commissionAmount)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">deducted from factory</p>
+        </div>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <p className="text-xs text-muted-foreground font-medium">Total Collected</p>
+          <p className="text-xl font-bold text-green-700 mt-1">{formatAmount(totals.collected)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">of {formatAmount(totals.factoryAmount)} owed</p>
+        </div>
+        <div className={`rounded-lg border px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${totalOutstanding > 0.005 ? "border-amber-300 bg-amber-50/40" : "border-green-300 bg-green-50/40"}`}>
+          <p className="text-xs text-muted-foreground font-medium">Outstanding Balance</p>
+          <p className={`text-xl font-bold mt-1 ${totalOutstanding > 0.005 ? "text-amber-700" : "text-green-700"}`}>
+            {formatAmount(Math.abs(totalOutstanding))}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {totalOutstanding > 0.005 ? "still owed to factory" : totalOutstanding < -0.005 ? "credit / overpaid" : "fully settled"}
+          </p>
+        </div>
       </div>
 
       {rows.length === 0 ? (
@@ -149,7 +133,7 @@ export function SalesmanLedger({ commissionPct, openingBalance, rows }: Props) {
               {(() => {
                 const sp = { sortKey, sortDir, toggle };
                 return (
-                  <TableRow>
+                  <TableRow className="bg-muted/40">
                     <TableHead><SortButton col="orderDate"        label="Date"        {...sp} /></TableHead>
                     <TableHead><SortButton col="orderNumber"      label="Dispatch #"  {...sp} /></TableHead>
                     <TableHead>Status</TableHead>

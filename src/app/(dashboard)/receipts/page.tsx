@@ -2,9 +2,9 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateFilter } from "@/components/ui/date-filter";
-import { Banknote, TrendingDown, Calendar, BookOpen, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import { formatAmount } from "@/lib/format";
+import { Banknote, Calendar, BookOpen, ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import { ReceiptFormDialog } from "./_components/receipt-form-dialog";
 import { ReceiptTable } from "./_components/receipt-table";
 import { ReceiptPaymentFormDialog } from "./_components/receipt-payment-form-dialog";
@@ -102,65 +102,43 @@ export default async function ReceiptsPage({ searchParams }: Props) {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 shrink-0">
-        <Card className="py-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Total Received
-            </CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Received</p>
             <ArrowDownLeft className="h-3.5 w-3.5 text-green-600" />
-          </CardHeader>
-          <CardContent className="px-4 pb-0">
-            <p className="text-2xl font-bold text-green-600">
-              Rs {totalReceived.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">{rawFrom || rawTo ? "Filtered period" : "All time"}</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold text-green-600 mt-1">{formatAmount(totalReceived)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{rawFrom || rawTo ? "Filtered period" : "All time"}</p>
+        </div>
 
-        <Card className="py-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Total Paid Out
-            </CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Paid Out</p>
             <ArrowUpRight className="h-3.5 w-3.5 text-red-500" />
-          </CardHeader>
-          <CardContent className="px-4 pb-0">
-            <p className="text-2xl font-bold text-red-600">
-              Rs {totalPaid.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">{rawFrom || rawTo ? "Filtered period" : "All time"}</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold text-red-600 mt-1">{formatAmount(totalPaid)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">{rawFrom || rawTo ? "Filtered period" : "All time"}</p>
+        </div>
 
-        <Card className="py-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Net Balance
-            </CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Net Balance</p>
             <Banknote className="h-3.5 w-3.5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="px-4 pb-0">
-            <p className={`text-2xl font-bold ${netBalance >= 0 ? "text-green-600" : "text-red-600"}`}>
-              Rs {netBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Received minus paid out</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className={`text-2xl font-bold mt-1 ${netBalance >= 0 ? "text-green-600" : "text-red-600"}`}>
+            {formatAmount(netBalance)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">Received minus paid out</p>
+        </div>
 
-        <Card className="py-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-1 px-4">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              This Month
-            </CardTitle>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">This Month</p>
             <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-          </CardHeader>
-          <CardContent className="px-4 pb-0">
-            <p className="text-2xl font-bold">
-              Rs {thisMonthReceipts.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">Receipts this month</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold mt-1">{formatAmount(thisMonthReceipts)}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Receipts this month</p>
+        </div>
       </div>
 
       {/* Receipts (money in) */}

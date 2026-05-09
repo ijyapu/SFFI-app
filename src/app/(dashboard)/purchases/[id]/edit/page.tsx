@@ -1,10 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { cn } from "@/lib/utils";
-import { ArrowLeft } from "lucide-react";
+import { ERPPageHeader } from "@/components/ui/erp-page-header";
 import { PurchaseForm } from "../../new/_components/po-form";
 
 export const metadata = { title: "Edit Purchase" };
@@ -63,15 +60,11 @@ export default async function EditPurchasePage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Link href="/purchases" className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}>
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold">Edit Purchase</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">{purchase.invoiceNo}</p>
-        </div>
-      </div>
+      <ERPPageHeader
+        title="Edit Purchase"
+        subtitle={purchase.invoiceNo}
+        backHref="/purchases"
+      />
 
       <PurchaseForm
         suppliers={suppliers.map((s) => ({ id: s.id, name: s.name, contactName: s.contactName, phone: s.phone }))}

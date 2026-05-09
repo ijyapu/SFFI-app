@@ -2,8 +2,8 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { clerkClient } from "@clerk/nextjs/server";
 import { PayrollList } from "./_components/payroll-list";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, Lock, FileText, AlertCircle } from "lucide-react";
+import { formatAmount } from "@/lib/format";
 
 export const metadata = { title: "Payroll" };
 
@@ -58,66 +58,56 @@ export default async function PayrollPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Draft Runs</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${draftCount > 0 ? "text-amber-600" : ""}`}>
-              {draftCount}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">Pending finalization</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <FileText className="h-3.5 w-3.5 shrink-0" />
+            <span>Draft Runs</span>
+          </div>
+          <div className={`text-2xl font-bold tabular-nums ${draftCount > 0 ? "text-amber-600" : ""}`}>
+            {draftCount}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">Pending finalization</div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Last Finalized</CardTitle>
-            <Lock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {latestFinalized
-                ? `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][latestFinalized.month - 1]} ${latestFinalized.year}`
-                : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {latestFinalized
-                ? `Rs ${latestFinalized.totalPayroll.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                : "No finalized runs"}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <Lock className="h-3.5 w-3.5 shrink-0" />
+            <span>Last Finalized</span>
+          </div>
+          <div className="text-2xl font-bold">
+            {latestFinalized
+              ? `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][latestFinalized.month - 1]} ${latestFinalized.year}`
+              : "—"}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {latestFinalized
+              ? formatAmount(latestFinalized.totalPayroll)
+              : "No finalized runs"}
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Paid Out</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              Rs {totalPaidOut.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">All finalized runs</p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <DollarSign className="h-3.5 w-3.5 shrink-0" />
+            <span>Total Paid Out</span>
+          </div>
+          <div className="text-2xl font-bold tabular-nums">{formatAmount(totalPaidOut)}</div>
+          <div className="text-xs text-muted-foreground mt-1">All finalized runs</div>
+        </div>
 
-        <Card className={totalCarryover > 0.005 ? "border-orange-300" : ""}>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Still Owed</CardTitle>
-            <AlertCircle className={`h-4 w-4 ${totalCarryover > 0.005 ? "text-orange-500" : "text-muted-foreground"}`} />
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${totalCarryover > 0.005 ? "text-orange-600" : ""}`}>
-              Rs {totalCarryover.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {totalCarryover > 0.005 ? "Carries to next month" : "All caught up"}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            <span>Still Owed</span>
+          </div>
+          <div className={`text-2xl font-bold tabular-nums ${totalCarryover > 0.005 ? "text-amber-600" : ""}`}>
+            {formatAmount(totalCarryover)}
+          </div>
+          <div className="text-xs text-muted-foreground mt-1">
+            {totalCarryover > 0.005 ? "Carries to next month" : "All caught up"}
+          </div>
+        </div>
       </div>
 
       <PayrollList runs={serialised} />

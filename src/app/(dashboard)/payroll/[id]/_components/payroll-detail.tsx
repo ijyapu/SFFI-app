@@ -6,12 +6,12 @@ import { Lock, Loader2, Printer, ArrowRight } from "lucide-react";
 import { COMPANY } from "@/lib/company";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
 import { SortButton } from "@/components/ui/sort-icon";
+import { ERPSection } from "@/components/ui/erp-section";
+import { formatAmount, formatNumber } from "@/lib/format";
 import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { DeductionDialog } from "./deduction-dialog";
 import { finalizePayrollRun } from "../../../employees/actions";
@@ -103,9 +103,6 @@ export function PayrollDetail({ id, month, year, status, notes, items, autoPrint
 
   const openItem = items.find((i) => i.id === openItemId) ?? null;
 
-  const fmt = (n: number) =>
-    n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
   return (
     <div className="space-y-6">
       {/* Print styles */}
@@ -178,8 +175,8 @@ export function PayrollDetail({ id, month, year, status, notes, items, autoPrint
             {items.length} employee{items.length !== 1 ? "s" : ""}
           </span>
           {totalRemaining > 0 && (
-            <Badge variant="secondary" className="bg-blue-50 text-blue-700 text-xs">
-              Rs {fmt(totalRemaining)} remaining to pay
+            <Badge variant="secondary" className="bg-amber-100 text-amber-700 text-xs">
+              {formatAmount(totalRemaining)} remaining to pay
             </Badge>
           )}
         </div>
@@ -208,7 +205,7 @@ export function PayrollDetail({ id, month, year, status, notes, items, autoPrint
                   <TableHead className="w-48"><SortButton col="employeeName" label="Employee"       {...sp} /></TableHead>
                   <TableHead numeric><SortButton col="basicSalary"  label="Salary (Rs)"    {...sp} className="justify-end" /></TableHead>
                   {hasCarryover && (
-                    <TableHead numeric className="text-blue-600"><SortButton col="carryoverIn" label="Carryover (Rs)" {...sp} className="justify-end" /></TableHead>
+                    <TableHead numeric className="text-amber-700"><SortButton col="carryoverIn" label="Carryover (Rs)" {...sp} className="justify-end" /></TableHead>
                   )}
                   <TableHead numeric>Total Owed (Rs)</TableHead>
                   <TableHead numeric><SortButton col="totalPaid"    label="Paid (Rs)"      {...sp} className="justify-end" /></TableHead>
@@ -234,19 +231,19 @@ export function PayrollDetail({ id, month, year, status, notes, items, autoPrint
                         )}
                       </TableCell>
                       <TableCell numeric>
-                        {fmt(item.basicSalary)}
+                        {formatNumber(item.basicSalary)}
                       </TableCell>
                       {hasCarryover && (
-                        <TableCell numeric className="text-blue-600">
-                          {item.carryoverIn > 0 ? `+${fmt(item.carryoverIn)}` : "—"}
+                        <TableCell numeric className="text-amber-700">
+                          {item.carryoverIn > 0 ? `+${formatNumber(item.carryoverIn)}` : "—"}
                         </TableCell>
                       )}
                       <TableCell numeric className="font-medium">
-                        {fmt(totalOwedItem)}
+                        {formatNumber(totalOwedItem)}
                       </TableCell>
                       <TableCell numeric>
                         {item.totalPaid > 0 ? (
-                          <span className="text-emerald-600 font-medium">{fmt(item.totalPaid)}</span>
+                          <span className="text-emerald-600 font-medium">{formatNumber(item.totalPaid)}</span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}
@@ -256,7 +253,7 @@ export function PayrollDetail({ id, month, year, status, notes, items, autoPrint
                           <span className="text-muted-foreground text-xs">Fully paid</span>
                         ) : (
                           <span className={`font-semibold ${item.remaining > 0 ? "text-amber-600" : ""}`}>
-                            {fmt(item.remaining)}
+                            {formatNumber(item.remaining)}
                             {item.carryoverIn === 0 && item.remaining > 0 && (
                               <span className="flex items-center justify-end gap-0.5 text-xs font-normal text-muted-foreground mt-0.5">
                                 <ArrowRight className="h-3 w-3" />
@@ -286,61 +283,53 @@ export function PayrollDetail({ id, month, year, status, notes, items, autoPrint
 
         {/* Summary sidebar */}
         <div className="space-y-4 payroll-summary">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {period} Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+          <ERPSection header={<p className="text-xs font-medium text-muted-foreground">{period} Summary</p>}>
+            <div className="px-4 py-3 space-y-2 text-sm">
               {notes && <p className="text-muted-foreground italic text-xs mb-3">{notes}</p>}
 
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Monthly Salaries</span>
-                <span>Rs {fmt(totalSalary)}</span>
+                <span className="tabular-nums">{formatAmount(totalSalary)}</span>
               </div>
 
               {hasCarryover && (
-                <div className="flex justify-between text-blue-600">
+                <div className="flex justify-between text-amber-700">
                   <span>+ Carried Over</span>
-                  <span>Rs {fmt(totalCarryover)}</span>
+                  <span className="tabular-nums">{formatAmount(totalCarryover)}</span>
                 </div>
               )}
 
               <div className="flex justify-between font-medium">
                 <span>Total Owed</span>
-                <span>Rs {fmt(totalOwed)}</span>
+                <span className="tabular-nums">{formatAmount(totalOwed)}</span>
               </div>
 
-              <Separator />
+              <div className="border-t" />
 
               <div className="flex justify-between text-emerald-600">
                 <span>Paid So Far</span>
-                <span>Rs {fmt(totalPaid)}</span>
+                <span className="tabular-nums">{formatAmount(totalPaid)}</span>
               </div>
 
               <div className="flex justify-between font-bold text-base">
                 <span>Remaining</span>
-                <span className={totalRemaining > 0 ? "text-amber-600" : ""}>
-                  Rs {fmt(totalRemaining)}
+                <span className={`tabular-nums ${totalRemaining > 0 ? "text-amber-600" : ""}`}>
+                  {formatAmount(totalRemaining)}
                 </span>
               </div>
 
               {totalRemaining > 0 && (
                 <p className="text-xs text-muted-foreground pt-1 flex items-center gap-1">
                   <ArrowRight className="h-3 w-3 shrink-0" />
-                  Rs {fmt(totalRemaining)} will carry over to next month
+                  {formatAmount(totalRemaining)} will carry over to next month
                 </p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </ERPSection>
 
           {/* Payment progress per employee */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Payment Progress</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
+          <ERPSection header={<p className="text-xs font-medium text-muted-foreground">Payment Progress</p>}>
+            <div className="px-4 py-3 space-y-3">
               {items.map((item) => {
                 const totalOwedItem = item.basicSalary + item.carryoverIn;
                 const pct = totalOwedItem > 0
@@ -361,8 +350,8 @@ export function PayrollDetail({ id, month, year, status, notes, items, autoPrint
                   </div>
                 );
               })}
-            </CardContent>
-          </Card>
+            </div>
+          </ERPSection>
         </div>
       </div>
 

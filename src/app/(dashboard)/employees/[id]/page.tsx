@@ -196,7 +196,7 @@ export default async function EmployeeDetailPage({
       </div>
 
       {/* Employee info strip */}
-      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground rounded-lg border border-border bg-muted/20 px-4 py-3">
+      <div className="flex flex-wrap gap-4 text-sm text-muted-foreground rounded-lg border bg-muted/20 px-4 py-3">
         <span className="flex items-center gap-1.5">
           <Building2 className="h-3.5 w-3.5" />
           {employee.department.name}
@@ -313,7 +313,7 @@ export default async function EmployeeDetailPage({
                           entry.type === "salary"
                             ? "bg-emerald-50/40 hover:bg-emerald-50/60"
                             : entry.type === "opening"
-                            ? "bg-blue-50/40 hover:bg-blue-50/60"
+                            ? "bg-muted/20 hover:bg-muted/30"
                             : ""
                         }
                       >
@@ -341,7 +341,7 @@ export default async function EmployeeDetailPage({
                               variant="secondary"
                               className={`text-[10px] px-1.5 py-0 ${
                                 entry.paymentMode === "ONLINE"
-                                  ? "bg-blue-100 text-blue-700"
+                                  ? "bg-slate-100 text-slate-700"
                                   : "bg-muted text-muted-foreground"
                               }`}
                             >

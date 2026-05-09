@@ -43,7 +43,7 @@ export function RevenueChart({ data }: { data: DataPoint[] }) {
             `Rs ${Number(value).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
             name,
           ]}
-          contentStyle={{ fontSize: 12, borderRadius: "8px", border: "1px solid #e5e7eb", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+          contentStyle={{ fontSize: 12, borderRadius: "8px", border: "1px solid #e5e7eb" }}
         />
         <Legend wrapperStyle={{ fontSize: 12, paddingTop: "12px" }} />
         <Area

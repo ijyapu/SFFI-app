@@ -59,65 +59,62 @@ export default async function CashFlowPage({ searchParams }: Props) {
         <DateFilter from={from} to={to} />
       </Suspense>
 
-      {/* Summary cards */}
+      {/* Summary cards — uniform style, color only on values */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="rounded-lg border bg-card px-4 py-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <Banknote className="h-3.5 w-3.5" />
-            Opening Balance
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <Banknote className="h-3.5 w-3.5 shrink-0" />
+            <span>Opening Balance</span>
           </div>
-          <div className="text-xl font-bold tabular-nums">{fmtRs(data.periodOpeningBalance)}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">start of period</div>
+          <div className="text-2xl font-bold tabular-nums">{fmtRs(data.periodOpeningBalance)}</div>
+          <div className="text-xs text-muted-foreground mt-1">start of period</div>
         </div>
 
-        <div className="rounded-lg border bg-card px-4 py-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <ArrowDownLeft className="h-3.5 w-3.5 text-green-600" />
-            Total Inflows
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <ArrowDownLeft className="h-3.5 w-3.5 shrink-0 text-green-600" />
+            <span>Total Inflows</span>
           </div>
-          <div className="text-xl font-bold tabular-nums text-green-700">{fmtRs(data.totalIn)}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">cash received</div>
+          <div className="text-2xl font-bold tabular-nums text-green-700">{fmtRs(data.totalIn)}</div>
+          <div className="text-xs text-muted-foreground mt-1">cash received</div>
         </div>
 
-        <div className="rounded-lg border bg-card px-4 py-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <ArrowUpRight className="h-3.5 w-3.5 text-red-600" />
-            Total Outflows
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-red-600" />
+            <span>Total Outflows</span>
           </div>
-          <div className="text-xl font-bold tabular-nums text-red-700">{fmtRs(data.totalOut)}</div>
-          <div className="text-xs text-muted-foreground mt-0.5">cash paid out</div>
+          <div className="text-2xl font-bold tabular-nums text-red-700">{fmtRs(data.totalOut)}</div>
+          <div className="text-xs text-muted-foreground mt-1">cash paid out</div>
         </div>
 
-        <div className={`rounded-lg border bg-card px-4 py-3 ${net >= 0 ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
-            <TrendingUp className="h-3.5 w-3.5" />
-            Closing Balance
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <TrendingUp className="h-3.5 w-3.5 shrink-0" />
+            <span>Closing Balance</span>
           </div>
-          <div className={`text-xl font-bold tabular-nums ${net >= 0 ? "text-green-700" : "text-red-700"}`}>
+          <div className={`text-2xl font-bold tabular-nums ${net >= 0 ? "text-green-700" : "text-red-700"}`}>
             {fmtRs(data.periodClosingBalance)}
           </div>
-          <div className="text-xs text-muted-foreground mt-0.5">
-            {net >= 0 ? `+${fmtRs(net)} net inflow` : `−${fmtRs(Math.abs(net))} net outflow`}
+          <div className="text-xs text-muted-foreground mt-1">
+            {net >= 0 ? `+${fmtRs(net)} net` : `−${fmtRs(Math.abs(net))} net`}
           </div>
         </div>
       </div>
 
-      {/* Info banner */}
-      <div className="flex items-start gap-3 rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 text-sm text-blue-800">
+      {/* Info callout — quiet, icon-led, no colored box */}
+      <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
         <Info className="h-4 w-4 mt-0.5 shrink-0" />
-        <div>
-          Inflows: sales receipts and cash received.
-          Outflows: supplier &amp; vendor payments, approved expenses, payroll disbursements, and salary advances.
-          <span className="block text-xs text-blue-600 mt-0.5">
-            Click any row with activity to expand and see individual transactions. Backdated corrections reflect automatically.
-          </span>
-        </div>
+        <p>
+          Inflows include sales receipts and cash received. Outflows include supplier and vendor payments, approved expenses, payroll disbursements, and salary advances.{" "}
+          <span className="text-xs">Click any active row to expand individual transactions.</span>
+        </p>
       </div>
 
       {/* Daily table */}
       {data.days.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/20 flex flex-col items-center justify-center py-16 gap-2 text-center px-6">
-          <Banknote className="h-8 w-8 text-muted-foreground/40" />
+        <div className="rounded-xl border-2 border-dashed border-muted-foreground/20 flex flex-col items-center justify-center py-16 gap-2 text-center px-6">
+          <Banknote className="h-8 w-8 text-muted-foreground/30" />
           <p className="text-muted-foreground text-sm">No days in selected range.</p>
         </div>
       ) : (

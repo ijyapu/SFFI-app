@@ -106,6 +106,26 @@ function TableCaption({
   )
 }
 
+/**
+ * Standard empty-state row for data tables.
+ * Renders a single centered message spanning all columns.
+ */
+function TableEmptyRow({
+  colSpan,
+  message = "No records found.",
+}: {
+  colSpan: number;
+  message?: string;
+}) {
+  return (
+    <TableRow>
+      <TableCell colSpan={colSpan} className="text-center py-12 text-muted-foreground">
+        {message}
+      </TableCell>
+    </TableRow>
+  );
+}
+
 export {
   Table,
   TableHeader,
@@ -115,4 +135,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  TableEmptyRow,
 }

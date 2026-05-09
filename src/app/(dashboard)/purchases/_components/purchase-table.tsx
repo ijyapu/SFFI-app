@@ -5,7 +5,7 @@ import { DateDisplay } from "@/components/ui/date-display";
 import { toast } from "sonner";
 import { ChevronUp, ChevronDown, ChevronsUpDown, Trash2, Building2, Pencil, Printer } from "lucide-react";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -168,7 +168,7 @@ export function PurchaseTable({
         <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
+              <TableRow className="bg-muted/40">
                 <SortableHead col="supplierName" label="Vendor" {...sp} />
                 <SortableHead col="invoiceNo"    label="Invoice No." {...sp} />
                 <SortableHead col="date"         label="Date" {...sp} />
@@ -178,11 +178,10 @@ export function PurchaseTable({
             </TableHeader>
             <TableBody>
               {filtered.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-12 text-muted-foreground">
-                    {search || activeSupplier ? "No purchases match your filters." : "No purchases recorded yet."}
-                  </TableCell>
-                </TableRow>
+                <TableEmptyRow
+                  colSpan={5}
+                  message={search || activeSupplier ? "No purchases match your filters." : "No purchases recorded yet."}
+                />
               )}
               {filtered.map((p) => (
                 <TableRow key={p.id}>

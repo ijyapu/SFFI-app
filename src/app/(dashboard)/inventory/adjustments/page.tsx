@@ -1,8 +1,7 @@
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { getCurrentRole } from "@/lib/auth";
+import { ERPPageHeader } from "@/components/ui/erp-page-header";
 import { AdjustmentForm } from "./_components/adjustment-form";
 import { MovementTable } from "./_components/movement-table";
 
@@ -55,21 +54,11 @@ export default async function AdjustmentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link
-          href="/inventory"
-          className="inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-          aria-label="Back to Inventory"
-        >
-          <ArrowLeft className="h-5 w-5" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold">Stock Adjustments</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Manually adjust stock levels. All changes are logged and require a reason.
-          </p>
-        </div>
-      </div>
+      <ERPPageHeader
+        title="Stock Adjustments"
+        subtitle="Manually adjust stock levels. All changes are logged and require a reason."
+        backHref="/inventory"
+      />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Form — left column */}
@@ -82,7 +71,7 @@ export default async function AdjustmentsPage() {
 
         {/* Movement history — right columns */}
         <div className="lg:col-span-2">
-          <h2 className="text-base font-medium mb-3">Movement History</h2>
+          <h2 className="text-sm font-semibold mb-3">Movement History</h2>
           <MovementTable movements={serialisedMovements} />
         </div>
       </div>

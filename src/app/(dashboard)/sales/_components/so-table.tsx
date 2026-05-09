@@ -6,8 +6,9 @@ import { DateDisplay } from "@/components/ui/date-display";
 import { toast } from "sonner";
 import { ExternalLink, Trash2, User } from "lucide-react";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
+import { formatNumber } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,8 +24,8 @@ import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { deleteSalesOrder } from "../actions";
 
 const STATUS_CONFIG = {
-  DRAFT:          { label: "Draft",               className: "bg-gray-100 text-gray-700" },
-  CONFIRMED:      { label: "Confirmed",           className: "bg-blue-100 text-blue-700" },
+  DRAFT:          { label: "Draft",               className: "bg-muted text-muted-foreground" },
+  CONFIRMED:      { label: "Confirmed",           className: "bg-slate-100 text-slate-700" },
   PARTIALLY_PAID: { label: "Partial",             className: "bg-amber-100 text-amber-700" },
   PAID:           { label: "Paid",                className: "bg-emerald-100 text-emerald-700" },
   CANCELLED:      { label: "Voided",              className: "bg-red-100 text-red-700" },
@@ -120,7 +121,7 @@ export function SoTable({ orders }: { orders: SO[] }) {
               <div className="flex justify-between text-xs mt-0.5 pl-4.5">
                 <span>{s.count} order{s.count !== 1 ? "s" : ""}</span>
                 <span className="tabular-nums">
-                  Rs {s.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  Rs {formatNumber(s.total, 0)}
                 </span>
               </div>
             </button>
@@ -158,11 +159,11 @@ export function SoTable({ orders }: { orders: SO[] }) {
           )}
         </div>
 
-        <div className="rounded-lg border">
+        <div className="rounded-lg border overflow-x-auto">
           <Table>
             <TableHeader>
               {(() => { const sp = { sortKey, sortDir, toggle }; return (
-              <TableRow>
+              <TableRow className="bg-muted/40">
                 <TableHead><SortButton col="orderNumber"  label="SO Number"  {...sp} /></TableHead>
                 <TableHead><SortButton col="customerName" label="Salesman"   {...sp} /></TableHead>
                 <TableHead><SortButton col="orderDate"    label="Date"       {...sp} /></TableHead>
@@ -175,13 +176,12 @@ export function SoTable({ orders }: { orders: SO[] }) {
             </TableHeader>
             <TableBody>
               {sorted.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
-                    {search || statusFilter !== "all" || activeSalesman
-                      ? "No orders match your filters."
-                      : "No sales orders yet."}
-                  </TableCell>
-                </TableRow>
+                <TableEmptyRow
+                  colSpan={7}
+                  message={search || statusFilter !== "all" || activeSalesman
+                    ? "No orders match your filters."
+                    : "No sales orders yet."}
+                />
               )}
               {sorted.map((so) => {
                 const cfg = STATUS_CONFIG[so.status];

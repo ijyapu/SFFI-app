@@ -1,10 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { cn } from "@/lib/utils";
-import { ArrowLeft } from "lucide-react";
+import { ERPPageHeader } from "@/components/ui/erp-page-header";
 import { SalesmanLedger } from "./_components/salesman-ledger";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
@@ -63,20 +60,11 @@ export default async function SalesmanLedgerPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Link
-          href="/sales/salesmen"
-          className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold">{salesman.name}</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            Salesman ledger · {Number(salesman.commissionPct)}% commission
-          </p>
-        </div>
-      </div>
+      <ERPPageHeader
+        title={salesman.name}
+        subtitle={`Salesman ledger · ${Number(salesman.commissionPct)}% commission`}
+        backHref="/sales/salesmen"
+      />
 
       <SalesmanLedger
         customerName={salesman.name}

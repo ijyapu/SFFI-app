@@ -1,9 +1,6 @@
-import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
-import { buttonVariants } from "@/components/ui/button-variants";
-import { cn } from "@/lib/utils";
-import { ArrowLeft } from "lucide-react";
+import { ERPPageHeader } from "@/components/ui/erp-page-header";
 import { PurchaseForm } from "./_components/po-form";
 
 export const metadata = { title: "New Purchase" };
@@ -35,15 +32,11 @@ export default async function NewPurchasePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
-        <Link href="/purchases" className={cn(buttonVariants({ variant: "ghost", size: "icon-sm" }))}>
-          <ArrowLeft className="h-4 w-4" />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-semibold">New Purchase</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">Log a supplier invoice and update inventory</p>
-        </div>
-      </div>
+      <ERPPageHeader
+        title="New Purchase"
+        subtitle="Log a supplier invoice and update inventory"
+        backHref="/purchases"
+      />
 
       <PurchaseForm
         suppliers={suppliers.map((s) => ({ id: s.id, name: s.name, contactName: s.contactName, phone: s.phone }))}

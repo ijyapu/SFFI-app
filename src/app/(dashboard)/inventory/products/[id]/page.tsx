@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, SlidersHorizontal } from "lucide-react";
 import { StockChart } from "./_components/stock-chart";
@@ -99,81 +98,67 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {/* Info cards */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Current Stock</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className={`text-2xl font-bold ${status !== "ok" ? (status === "out" ? "text-destructive" : "text-amber-600") : ""}`}>
-              {currentStock.toLocaleString(undefined, { maximumFractionDigits: 3 })}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">{product.unit.name}</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <div className="text-xs text-muted-foreground font-medium mb-1">Current Stock</div>
+          <div className={`text-2xl font-bold tabular-nums ${status !== "ok" ? (status === "out" ? "text-destructive" : "text-amber-600") : ""}`}>
+            {currentStock.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">{product.unit.name}</div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Reorder Level</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {reorderLevel > 0 ? reorderLevel.toLocaleString() : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {reorderLevel > 0 ? product.unit.name : "Not set"}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <div className="text-xs text-muted-foreground font-medium mb-1">Reorder Level</div>
+          <div className="text-2xl font-bold tabular-nums">
+            {reorderLevel > 0 ? reorderLevel.toLocaleString() : "—"}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {reorderLevel > 0 ? product.unit.name : "Not set"}
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Cost Price</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">Rs {costPrice.toFixed(2)}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Value: Rs {(currentStock * costPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <div className="text-xs text-muted-foreground font-medium mb-1">Cost Price</div>
+          <div className="text-2xl font-bold tabular-nums">
+            Rs {costPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">
+            Stock value: Rs {(currentStock * costPrice).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Selling Price</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold">
-              {sellingPrice > 0 ? `Rs ${sellingPrice.toFixed(2)}` : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {product.category.name}
-            </p>
-          </CardContent>
-        </Card>
+        <div className="rounded-lg border bg-card px-4 py-3">
+          <div className="text-xs text-muted-foreground font-medium mb-1">Selling Price</div>
+          <div className="text-2xl font-bold tabular-nums">
+            {sellingPrice > 0
+              ? `Rs ${sellingPrice.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+              : "—"}
+          </div>
+          <div className="text-xs text-muted-foreground mt-0.5">{product.category.name}</div>
+        </div>
       </div>
 
       {/* Stock chart */}
       {chartData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Stock Over Time</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="rounded-lg border bg-card overflow-hidden">
+          <div className="px-4 py-3 border-b bg-muted/30">
+            <p className="text-sm font-semibold">Stock Over Time</p>
+          </div>
+          <div className="px-4 py-4">
             <StockChart data={chartData} unit={product.unit.name} />
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Movement history */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Movement History</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="rounded-lg border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <p className="text-sm font-semibold">Movement History</p>
+        </div>
+        <div className="px-4 py-4">
           <ProductMovementHistory movements={serialisedMovements} unit={product.unit.name} />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

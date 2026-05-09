@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
@@ -14,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { adjustmentSchema, type AdjustmentFormValues } from "@/lib/validators/stock";
+import { ERPSection } from "@/components/ui/erp-section";
 import { createAdjustment } from "../actions";
 
 type Product = {
@@ -72,11 +72,8 @@ export function AdjustmentForm({ products, isAdmin }: Props) {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base">New Adjustment</CardTitle>
-      </CardHeader>
-      <CardContent>
+    <ERPSection header={<p className="text-sm font-semibold">New Adjustment</p>}>
+      <div className="px-4 py-4">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             {/* Product */}
@@ -104,11 +101,11 @@ export function AdjustmentForm({ products, isAdmin }: Props) {
               </FormItem>
             )} />
 
-            {/* Show current stock when product is selected */}
+            {/* Current stock preview */}
             {selectedProduct && (
               <div className="rounded-md bg-muted/50 px-3 py-2 text-sm flex items-center justify-between">
                 <span className="text-muted-foreground">Current stock</span>
-                <span className="font-medium">
+                <span className="font-medium tabular-nums">
                   {selectedProduct.currentStock.toLocaleString()} {selectedProduct.unit.name}
                 </span>
               </div>
@@ -222,7 +219,7 @@ export function AdjustmentForm({ products, isAdmin }: Props) {
             </Button>
           </form>
         </Form>
-      </CardContent>
-    </Card>
+      </div>
+    </ERPSection>
   );
 }

@@ -3,11 +3,11 @@ import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { PurchaseTable } from "./_components/purchase-table";
+import { ERPPageHeader } from "@/components/ui/erp-page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateFilter } from "@/components/ui/date-filter";
-import { Plus, ShoppingCart } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export const metadata = { title: "Purchases" };
 
@@ -49,35 +49,28 @@ export default async function PurchasesPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Purchases</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {serialised.length} invoice{serialised.length !== 1 ? "s" : ""}
-          </p>
-        </div>
-        <Link href="/purchases/new" className={cn(buttonVariants({}))}>
-          <Plus className="h-4 w-4" />
-          New Purchase
-        </Link>
-      </div>
+      <ERPPageHeader
+        title="Purchases"
+        subtitle={`${serialised.length} invoice${serialised.length !== 1 ? "s" : ""}`}
+        action={
+          <Link href="/purchases/new" className={cn(buttonVariants({}))}>
+            <Plus className="h-4 w-4" />
+            New Purchase
+          </Link>
+        }
+      />
 
       <Suspense>
         <DateFilter from={rawFrom} to={rawTo} />
       </Suspense>
 
-      <Card className="max-w-xs">
-        <CardHeader className="flex flex-row items-center justify-between pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">Total Spend</CardTitle>
-          <ShoppingCart className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          <p className="text-2xl font-bold">
-            Rs {totalSpend.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <p className="text-xs text-muted-foreground mt-1">All invoice totals · payments tracked in Vendor Ledger</p>
-        </CardContent>
-      </Card>
+      <div className="max-w-xs rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+        <p className="text-xs text-muted-foreground">Total Spend</p>
+        <p className="text-2xl font-bold tabular-nums mt-1">
+          Rs {totalSpend.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </p>
+        <p className="text-xs text-muted-foreground mt-1">All invoice totals · payments tracked in Vendor Ledger</p>
+      </div>
 
       <PurchaseTable purchases={serialised} suppliers={suppliers} />
     </div>

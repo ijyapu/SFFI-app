@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { ERPSection } from "@/components/ui/erp-section";
 import { SortButton } from "@/components/ui/sort-icon";
+import { formatAmount, formatQty } from "@/lib/format";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -28,8 +28,8 @@ import { ReturnFormInline } from "./return-form-inline";
 import { confirmSalesOrder, voidSalesOrder, markSalesOrderLost, deleteSalesmanPayment } from "../../actions";
 
 const STATUS_CONFIG = {
-  DRAFT:          { label: "Draft",              className: "bg-gray-100 text-gray-700" },
-  CONFIRMED:      { label: "Confirmed",          className: "bg-blue-100 text-blue-700" },
+  DRAFT:          { label: "Draft",              className: "bg-muted text-muted-foreground" },
+  CONFIRMED:      { label: "Confirmed",          className: "bg-slate-100 text-slate-700" },
   PARTIALLY_PAID: { label: "Partial Payment",    className: "bg-amber-100 text-amber-700" },
   PAID:           { label: "Paid",               className: "bg-emerald-100 text-emerald-700" },
   CANCELLED:      { label: "Voided",             className: "bg-red-100 text-red-700" },
@@ -175,7 +175,7 @@ export function SoDetail(props: Props) {
     try {
       await voidSalesOrder(id);
       const msg = status === "PAID"
-        ? `Sale voided — stock restored. Refund Rs ${amountPaid.toFixed(2)} to the customer.`
+        ? `Sale voided — stock restored. Refund ${formatAmount(amountPaid)} to the customer.`
         : (status === "CONFIRMED" || status === "PARTIALLY_PAID")
         ? "Sale voided — stock restored to inventory"
         : "Sale voided";
@@ -274,7 +274,7 @@ export function SoDetail(props: Props) {
             </p>
             {amountPaid > 0.001 && (
               <p className="font-semibold">
-                Rs {amountPaid.toFixed(2)} was collected — a refund must be issued to the customer.
+                {formatAmount(amountPaid)} was collected — a refund must be issued to the customer.
               </p>
             )}
           </div>
@@ -292,7 +292,7 @@ export function SoDetail(props: Props) {
             </p>
             {amountPaid > 0.001 ? (
               <p>
-                Rs {amountPaid.toFixed(2)} was already collected.
+                {formatAmount(amountPaid)} was already collected.
                 The business absorbs the physical loss — no refund is issued.
               </p>
             ) : (
@@ -305,11 +305,8 @@ export function SoDetail(props: Props) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Items + order info */}
         <div className="lg:col-span-2 space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Order Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1 text-sm">
+          <ERPSection header={<p className="text-sm font-medium text-muted-foreground">Order Details</p>}>
+            <div className="px-4 py-3 space-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Salesman</span>
                 <span className="font-medium">{customerName}</span>
@@ -324,14 +321,14 @@ export function SoDetail(props: Props) {
                   <span className="text-right">{notes}</span>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </ERPSection>
 
-          <div className="rounded-lg border">
+          <div className="rounded-lg border overflow-x-auto">
             <Table>
               <TableHeader>
                 {(() => { const sp = { sortKey, sortDir, toggle }; return (
-                <TableRow>
+                <TableRow className="bg-muted/40">
                   <TableHead><SortButton col="productName" label="Product"    {...sp} /></TableHead>
                   <TableHead numeric><SortButton col="quantity"   label="Qty"        {...sp} className="justify-end" /></TableHead>
                   <TableHead numeric><SortButton col="unitPrice"  label="Unit Price" {...sp} className="justify-end" /></TableHead>
@@ -347,13 +344,13 @@ export function SoDetail(props: Props) {
                       <div className="text-xs text-muted-foreground">{item.unitName}</div>
                     </TableCell>
                     <TableCell numeric>
-                      {item.quantity.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                      {formatQty(item.quantity)}
                     </TableCell>
                     <TableCell numeric className="text-muted-foreground">
-                      Rs {item.unitPrice.toFixed(2)}
+                      {formatAmount(item.unitPrice)}
                     </TableCell>
                     <TableCell numeric className="font-medium">
-                      Rs {item.totalPrice.toFixed(2)}
+                      {formatAmount(item.totalPrice)}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -364,29 +361,26 @@ export function SoDetail(props: Props) {
 
         {/* Summary sidebar */}
         <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
+          <ERPSection header={<p className="text-sm font-medium text-muted-foreground">Summary</p>}>
+            <div className="px-4 py-3 space-y-2 text-sm">
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Taken</span>
-                <span>Rs {totalAmount.toFixed(2)}</span>
+                <span>{formatAmount(totalAmount)}</span>
               </div>
 
               {totalReturns > 0.001 && (
                 <div className="flex justify-between text-orange-600">
                   <span>Returns Deducted</span>
-                  <span>− Rs {totalReturns.toFixed(2)}</span>
+                  <span>− {formatAmount(totalReturns)}</span>
                 </div>
               )}
 
               {totalReturns > 0.001 && (
                 <>
-                  <Separator />
+                  <div className="border-t" />
                   <div className="flex justify-between text-muted-foreground">
                     <span>Net Amount</span>
-                    <span>Rs {netAmount.toFixed(2)}</span>
+                    <span>{formatAmount(netAmount)}</span>
                   </div>
                 </>
               )}
@@ -398,29 +392,29 @@ export function SoDetail(props: Props) {
                     {netAmount.toFixed(2)} × {commissionPct}%
                   </span>
                 </span>
-                <span>− Rs {commissionAmount.toFixed(2)}</span>
+                <span>− {formatAmount(commissionAmount)}</span>
               </div>
 
-              <Separator />
+              <div className="border-t" />
 
               <div className="flex justify-between font-semibold">
                 <span>Factory Amount</span>
-                <span>Rs {factoryAmount.toFixed(2)}</span>
+                <span>{formatAmount(factoryAmount)}</span>
               </div>
               <div className="flex justify-between text-green-600">
                 <span>Collected</span>
-                <span>Rs {amountPaid.toFixed(2)}</span>
+                <span>{formatAmount(amountPaid)}</span>
               </div>
               {outstanding > 0.001 && status !== "LOST" && (
                 <div className="flex justify-between font-semibold text-destructive">
                   <span>Outstanding</span>
-                  <span>Rs {outstanding.toFixed(2)}</span>
+                  <span>{formatAmount(outstanding)}</span>
                 </div>
               )}
               {status === "LOST" && outstanding > 0.001 && (
                 <div className="flex justify-between text-muted-foreground line-through text-xs">
                   <span>Outstanding (waived)</span>
-                  <span>Rs {outstanding.toFixed(2)}</span>
+                  <span>{formatAmount(outstanding)}</span>
                 </div>
               )}
               {outstanding <= 0.001 && amountPaid > 0 && status !== "LOST" && (
@@ -429,20 +423,17 @@ export function SoDetail(props: Props) {
                   Fully collected
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </ERPSection>
 
           {payments.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Payments</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
+            <ERPSection header={<p className="text-sm font-medium text-muted-foreground">Payments</p>}>
+              <div className="px-4 py-3 space-y-2">
                 {payments.map((p) => (
                   <div key={p.id} className="flex items-start justify-between gap-2 text-sm">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">Rs {p.amount.toFixed(2)}</span>
+                        <span className="font-medium">{formatAmount(p.amount)}</span>
                         <span className="text-muted-foreground">{METHOD_LABELS[p.method] ?? p.method}</span>
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -468,16 +459,13 @@ export function SoDetail(props: Props) {
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </ERPSection>
           )}
 
           {returns.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Returns from Market</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <ERPSection header={<p className="text-sm font-medium text-muted-foreground">Returns from Market</p>}>
+              <div className="px-4 py-3 space-y-4">
                 {returns.map((r) => {
                   const isFresh = r.returnType === "FRESH";
                   return (
@@ -496,19 +484,19 @@ export function SoDetail(props: Props) {
                         {r.items.map((i) => (
                           <div key={i.id} className="flex justify-between px-2 py-1">
                             <span>{i.productName} <span className="text-muted-foreground">({i.unitName})</span></span>
-                            <span className="tabular-nums">×{i.quantity.toLocaleString(undefined, { maximumFractionDigits: 3 })} = Rs {i.totalPrice.toFixed(2)}</span>
+                            <span className="tabular-nums">×{formatQty(i.quantity)} = {formatAmount(i.totalPrice)}</span>
                           </div>
                         ))}
                       </div>
                       <div className="flex justify-between text-xs font-medium">
                         <span className="text-muted-foreground">{isFresh ? "Restocked & deducted" : "Total deducted"}</span>
-                        <span>Rs {r.totalAmount.toFixed(2)}</span>
+                        <span>{formatAmount(r.totalAmount)}</span>
                       </div>
                     </div>
                   );
                 })}
-              </CardContent>
-            </Card>
+              </div>
+            </ERPSection>
           )}
         </div>
       </div>
@@ -558,7 +546,7 @@ export function SoDetail(props: Props) {
                 </div>
                 <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
                   <span className="font-medium">Refund required:</span>{" "}
-                  Rs {amountPaid.toFixed(2)} was already collected and must be returned to the customer.
+                  {formatAmount(amountPaid)} was already collected and must be returned to the customer.
                 </div>
               </div>
             ) : status === "CONFIRMED" || status === "PARTIALLY_PAID" ? (
@@ -570,7 +558,7 @@ export function SoDetail(props: Props) {
                 {amountPaid > 0 && (
                   <div className="rounded-md bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-800">
                     <span className="font-medium">Partial refund required:</span>{" "}
-                    Rs {amountPaid.toFixed(2)} was collected and must be returned to the customer.
+                    {formatAmount(amountPaid)} was collected and must be returned to the customer.
                   </div>
                 )}
               </div>
@@ -616,7 +604,7 @@ export function SoDetail(props: Props) {
             </div>
             {status === "PAID" ? (
               <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
-                Payment of <span className="font-medium">Rs {amountPaid.toFixed(2)}</span> was
+                Payment of <span className="font-medium">{formatAmount(amountPaid)}</span> was
                 already collected. No refund is issued — the business absorbs the physical loss.
               </div>
             ) : (

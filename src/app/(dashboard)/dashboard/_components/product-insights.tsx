@@ -1,5 +1,5 @@
 import { TrendingUp, RotateCcw, ShieldCheck } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ERPSection } from "@/components/ui/erp-section";
 
 export type InsightItem = {
   name: string;
@@ -63,66 +63,60 @@ function RankList({
 export function ProductInsights({ topSellers, mostReturned, fewestReturned, monthLabel }: Props) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-      {/* Top Sellers */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Top Sellers — {monthLabel}
-            </CardTitle>
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
+      <ERPSection header={
+        <>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Top Sellers — {monthLabel}</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">By quantity sold</p>
           </div>
-          <p className="text-[11px] text-muted-foreground/60">By quantity sold</p>
-        </CardHeader>
-        <CardContent>
+          <TrendingUp className="h-4 w-4 text-emerald-500 shrink-0" />
+        </>
+      }>
+        <div className="px-4 py-4">
           <RankList
             items={topSellers}
             barColor="bg-emerald-500"
             emptyText="No confirmed sales this month"
           />
-        </CardContent>
-      </Card>
+        </div>
+      </ERPSection>
 
-      {/* Most Returned */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Most Returned — {monthLabel}
-            </CardTitle>
-            <RotateCcw className="h-4 w-4 text-rose-500" />
+      <ERPSection header={
+        <>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Most Returned — {monthLabel}</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">Fresh + waste returns combined</p>
           </div>
-          <p className="text-[11px] text-muted-foreground/60">Fresh + waste returns combined</p>
-        </CardHeader>
-        <CardContent>
+          <RotateCcw className="h-4 w-4 text-rose-500 shrink-0" />
+        </>
+      }>
+        <div className="px-4 py-4">
           <RankList
             items={mostReturned}
             barColor="bg-rose-400"
             emptyText="No returns this month"
           />
-        </CardContent>
-      </Card>
+        </div>
+      </ERPSection>
 
-      {/* Fewest Returns */}
-      <Card className="border-0 shadow-sm">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-              Fewest Returns — {monthLabel}
-            </CardTitle>
-            <ShieldCheck className="h-4 w-4 text-sky-500" />
+      <ERPSection header={
+        <>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Fewest Returns — {monthLabel}</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">Sold products with lowest returns</p>
           </div>
-          <p className="text-[11px] text-muted-foreground/60">Sold products with lowest returns</p>
-        </CardHeader>
-        <CardContent>
+          <ShieldCheck className="h-4 w-4 text-slate-500 shrink-0" />
+        </>
+      }>
+        <div className="px-4 py-4">
           <RankList
             items={fewestReturned}
-            barColor="bg-sky-400"
+            barColor="bg-slate-400"
             emptyText="No sales this month"
             zeroLabel="No returns"
           />
-        </CardContent>
-      </Card>
+        </div>
+      </ERPSection>
     </div>
   );
 }
