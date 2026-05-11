@@ -193,6 +193,12 @@ export function SoForm({ salesmen, products, openLogDate }: Props) {
                     ))}
                   </SelectContent>
                 </Select>
+                {(() => {
+                  const pct = salesmen.find(c => c.id === field.value)?.commissionPct;
+                  return pct !== undefined
+                    ? <p className="text-xs text-muted-foreground">Commission: {pct}%</p>
+                    : null;
+                })()}
                 <FormMessage />
               </FormItem>
             )}
