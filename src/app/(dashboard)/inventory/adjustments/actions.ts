@@ -48,4 +48,6 @@ export async function createAdjustment(values: AdjustmentFormValues) {
 
   revalidatePath("/inventory");
   revalidatePath("/inventory/adjustments");
+  revalidatePath("/sales", "layout");
+  revalidatePath("/purchases", "layout");
 }
