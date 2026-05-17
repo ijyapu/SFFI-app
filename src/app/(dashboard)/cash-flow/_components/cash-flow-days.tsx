@@ -24,7 +24,8 @@ function fmtDate(dateStr: string): string {
 function fmtNepaliDate(dateStr: string): string {
   try {
     const [y, m, d] = dateStr.split("-").map(Number);
-    const nd = new NepaliDate(new Date(Date.UTC(y!, m! - 1, d!)));
+    // Use local noon — the library uses local time internally, UTC midnight maps to the previous day
+    const nd = new NepaliDate(new Date(y!, m! - 1, d!, 12, 0, 0));
     return nd.format("D MMMM YYYY");
   } catch {
     return "";
