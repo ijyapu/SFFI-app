@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, BookOpen, CheckCircle2, Info, History, AlertTriangle } from "lucide-react";
 import { getDailyLog } from "./actions";
 import { DailyLogTable } from "./_components/daily-log-table";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { CloseDayDialog } from "./_components/close-day-dialog";
 import { ReopenDialog } from "./_components/reopen-dialog";
 import { StartDayButton } from "./_components/start-day-button";
@@ -184,6 +185,7 @@ export default async function DailyLogPage({ searchParams }: Props) {
                 {log.closedAt && (
                   <span className="ml-1.5 text-xs">
                     {new Date(log.closedAt).toLocaleString()}
+                    <span className="ml-1 text-[10px] text-muted-foreground/60">({toNepaliDateString(new Date(log.closedAt))})</span>
                   </span>
                 )}
               </span>
@@ -195,7 +197,10 @@ export default async function DailyLogPage({ searchParams }: Props) {
               <span>
                 Auto-adjusted after a backdated sale or return — closing quantities recalculated, stock movements unaffected.
                 {log.closedAt && (
-                  <span className="ml-1.5 text-xs">Originally closed {new Date(log.closedAt).toLocaleString()}</span>
+                  <span className="ml-1.5 text-xs">
+                    Originally closed {new Date(log.closedAt).toLocaleString()}
+                    <span className="ml-1 text-[10px] text-muted-foreground/60">({toNepaliDateString(new Date(log.closedAt))})</span>
+                  </span>
                 )}
               </span>
             </div>

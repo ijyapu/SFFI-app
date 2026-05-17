@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Plus, Trash2, RotateCcw, PackageCheck, AlertCircle, SquarePen } from "lucide-react";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -170,8 +171,9 @@ export function ReturnFormInline({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className={`font-mono text-xs font-semibold ${isFresh ? "text-green-700" : "text-orange-700"}`}>{r.returnNumber}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    <span className="text-xs text-muted-foreground flex flex-col leading-snug">
+                      <span>{new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
+                      <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(new Date(r.createdAt))}</span>
                     </span>
                     {r.notes && (
                       <span className="text-xs text-muted-foreground italic">· {r.notes}</span>

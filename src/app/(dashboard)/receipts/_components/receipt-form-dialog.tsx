@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { format } from "date-fns";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { Plus, Pencil, AlertTriangle } from "lucide-react";
 import { PhotoUpload } from "@/components/ui/photo-upload";
 import { Button } from "@/components/ui/button";
@@ -306,7 +307,7 @@ export function ReceiptFormDialog(props: Props) {
                   <div className="text-muted-foreground">
                     Order {m.orderNumber} &nbsp;·&nbsp;
                     Rs {m.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} &nbsp;·&nbsp;
-                    {format(new Date(m.paidAt), "d MMM yyyy")}
+                    {format(new Date(m.paidAt), "d MMM yyyy")} ({toNepaliDateString(new Date(m.paidAt))})
                   </div>
                 </div>
               ))}

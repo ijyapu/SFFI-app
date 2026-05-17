@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { PlusCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { PhotoUpload } from "@/components/ui/photo-upload";
 import { recordVendorPayment, type OutstandingInvoice } from "../actions";
 
@@ -257,7 +258,8 @@ export function RecordPaymentButton({
                         <div>
                           <p className="text-sm font-mono font-medium">{inv.invoiceNo}</p>
                           <p className="text-xs text-muted-foreground">
-                            {format(new Date(inv.date), "dd MMM yyyy")}
+                            <span className="block">{format(new Date(inv.date), "dd MMM yyyy")}</span>
+                            <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(new Date(inv.date))}</span>
                           </p>
                         </div>
                         <div className="text-right">

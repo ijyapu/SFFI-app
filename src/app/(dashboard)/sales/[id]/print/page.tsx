@@ -191,7 +191,10 @@ export default async function PrintSalesInvoicePage({ params }: { params: Promis
                 <tbody>
                   {so.payments.map((p) => (
                     <tr key={p.id} style={{ borderBottom: "1px solid #eee" }}>
-                      <td style={{ padding: "5px 8px" }}>{format(new Date(p.paidAt), "dd MMM yyyy")}</td>
+                      <td style={{ padding: "5px 8px" }}>
+                        <div>{format(new Date(p.paidAt), "dd MMM yyyy")}</div>
+                        <div style={{ fontSize: "9px", color: "#aaa" }}>{toNepaliDateString(new Date(p.paidAt))}</div>
+                      </td>
                       <td style={{ padding: "5px 8px", color: "#555" }}>{METHOD_LABELS[p.method] ?? p.method}</td>
                       <td style={{ padding: "5px 8px", color: "#888" }}>{p.reference ?? "—"}</td>
                       <td style={{ padding: "5px 8px", textAlign: "right", fontWeight: "600", color: "#16a34a" }}>{fmtN(Number(p.amount))}</td>
@@ -212,7 +215,9 @@ export default async function PrintSalesInvoicePage({ params }: { params: Promis
                     <span style={{ fontWeight: "600", fontSize: "10px" }}>
                       {ret.returnNumber} · {ret.returnType === "FRESH" ? "Fresh Return" : "Waste Return"}
                     </span>
-                    <span style={{ fontSize: "10px", color: "#888" }}>{format(new Date(ret.createdAt), "dd MMM yyyy")}</span>
+                    <span style={{ fontSize: "10px", color: "#888" }}>
+                      {format(new Date(ret.createdAt), "dd MMM yyyy")} · <span style={{ color: "#aaa" }}>{toNepaliDateString(new Date(ret.createdAt))}</span>
+                    </span>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
                     <tbody>
@@ -246,7 +251,7 @@ export default async function PrintSalesInvoicePage({ params }: { params: Promis
           {/* ── Footer ── */}
           <div style={{ borderTop: "1px solid #eee", paddingTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
             <div style={{ color: "#aaa", fontSize: "10px" }}>
-              Printed on {format(new Date(), "dd MMM yyyy, HH:mm")} · {COMPANY.nameShort} ERP
+              Printed on {format(new Date(), "dd MMM yyyy, HH:mm")} ({toNepaliDateString(new Date())}) · {COMPANY.nameShort} ERP
             </div>
             <div style={{ display: "flex", gap: "40px" }}>
               <div style={{ textAlign: "center" }}>

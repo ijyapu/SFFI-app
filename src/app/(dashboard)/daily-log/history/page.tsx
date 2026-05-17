@@ -13,6 +13,7 @@ import {
 import { ERPPageHeader } from "@/components/ui/erp-page-header";
 import { getDailyLogHistory } from "../actions";
 import { ReopenDialog } from "../_components/reopen-dialog";
+import { toNepaliDateString } from "@/lib/nepali-date";
 
 export const metadata = { title: "Daily Log History" };
 
@@ -25,6 +26,11 @@ function formatDate(dateStr: string): string {
     day: "numeric",
     timeZone: "UTC",
   });
+}
+
+function nepaliDate(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return toNepaliDateString(new Date(Date.UTC(y!, m! - 1, d!)));
 }
 
 function fmt(n: number) {
@@ -108,8 +114,11 @@ export default async function DailyLogHistoryPage() {
                       href={`/daily-log?date=${log.logDate}`}
                       className="font-medium text-sm hover:underline flex items-center gap-1"
                     >
-                      {formatDate(log.logDate)}
-                      <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                      <span className="flex flex-col leading-snug">
+                        <span>{formatDate(log.logDate)}</span>
+                        <span className="text-[11px] font-normal text-muted-foreground/60">{nepaliDate(log.logDate)}</span>
+                      </span>
+                      <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
                     </Link>
                   </TableCell>
 

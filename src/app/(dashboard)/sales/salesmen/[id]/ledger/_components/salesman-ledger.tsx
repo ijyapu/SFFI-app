@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { Badge } from "@/components/ui/badge";
 import { ERPSection } from "@/components/ui/erp-section";
 import { formatAmount } from "@/lib/format";
@@ -223,6 +224,7 @@ export function SalesmanLedger({ commissionPct, openingBalance, rows }: Props) {
                           {/* Date */}
                           <div>
                             <p className="text-sm font-semibold">{displayDate}</p>
+                            <p className="text-[11px] text-muted-foreground/60">{toNepaliDateString(new Date(day.date + "T12:00:00"))}</p>
                             <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
                               {day.orders.length} dispatch{day.orders.length !== 1 ? "es" : ""}
                             </p>

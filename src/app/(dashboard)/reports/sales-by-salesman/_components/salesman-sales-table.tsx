@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear } from "date-fns";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 
@@ -131,6 +132,9 @@ export function SalesmanSalesTable({ rows, from, to, totalRevenue }: Props) {
           <p className="text-xs text-muted-foreground">Period</p>
           <p className="text-sm font-medium">
             {format(new Date(from), "d MMM yyyy")} — {format(new Date(to), "d MMM yyyy")}
+          </p>
+          <p className="text-[11px] text-muted-foreground/60">
+            {toNepaliDateString(new Date(from))} — {toNepaliDateString(new Date(to))}
           </p>
         </div>
       </div>

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { ExternalLink, Printer } from "lucide-react";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
@@ -138,7 +139,7 @@ export function ReorderTable({ items }: { items: ReorderItem[] }) {
 
       {/* Print-only footer */}
       <div className="hidden print:block text-xs text-muted-foreground mt-4 border-t pt-2">
-        SSFI ERP · Reorder List · Generated {new Date().toLocaleDateString()}
+        SSFI ERP · Reorder List · Generated {new Date().toLocaleDateString()} · {toNepaliDateString(new Date())}
       </div>
     </div>
   );

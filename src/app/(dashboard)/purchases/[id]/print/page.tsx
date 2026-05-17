@@ -160,7 +160,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
           {/* ── Footer ── */}
           <div style={{ borderTop: "1px solid #eee", paddingTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
             <div style={{ color: "#aaa", fontSize: "10px" }}>
-              Printed on {format(new Date(), "dd MMM yyyy, HH:mm")} · {COMPANY.nameShort} ERP
+              Printed on {format(new Date(), "dd MMM yyyy, HH:mm")} ({toNepaliDateString(new Date())}) · {COMPANY.nameShort} ERP
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ borderTop: "1px solid #333", paddingTop: "4px", fontSize: "10px", color: "#555", width: "140px" }}>Authorized Signature</div>

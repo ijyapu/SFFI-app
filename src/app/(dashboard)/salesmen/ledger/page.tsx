@@ -149,7 +149,10 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
               <p className={`text-xl font-bold tabular-nums ${ledgerData.openingBalance > 0.005 ? "text-amber-600" : "text-emerald-600"}`}>
                 {formatAmount(ledgerData.openingBalance)}
               </p>
-              <p className="text-xs text-muted-foreground">{format(new Date(from), "d MMM yyyy")}</p>
+              <p className="text-xs text-muted-foreground">
+                <span className="block">{format(new Date(from), "d MMM yyyy")}</span>
+                <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(new Date(from))}</span>
+              </p>
             </div>
             <div className="rounded-lg border bg-card px-4 py-3 space-y-1 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
               <p className="text-xs text-muted-foreground uppercase tracking-wide">Total Invoiced</p>
@@ -213,6 +216,9 @@ export default async function CustomerLedgerPage({ searchParams }: PageProps) {
                   <p className="text-xs text-gray-500">Commission: {ledgerData.salesman.commissionPct}%</p>
                   <p className="text-xs text-gray-500">
                     {format(new Date(from), "d MMM yyyy")} – {format(new Date(to), "d MMM yyyy")}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {toNepaliDateString(new Date(from))} – {toNepaliDateString(new Date(to))}
                   </p>
                   <p className="text-xs text-gray-400">Printed: {format(today, "d MMM yyyy, HH:mm")}</p>
                 </div>

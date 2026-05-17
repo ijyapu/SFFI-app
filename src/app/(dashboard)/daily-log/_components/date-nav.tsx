@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button-variants";
+import { toNepaliDateString } from "@/lib/nepali-date";
 
 type Props = {
   validDate: string;
@@ -24,6 +25,9 @@ export function DateNav({ validDate, prevDay, nextDay, dateLabel, isToday, today
     startTransition(() => router.push(`/daily-log?date=${date}`));
   }
 
+  const [y, m, d] = validDate.split("-").map(Number);
+  const nepaliDateLabel = toNepaliDateString(new Date(Date.UTC(y!, m! - 1, d!)));
+
   return (
     <div className={cn("flex items-center gap-1 ml-9 transition-opacity", isPending && "opacity-50")}>
       {/* Previous day */}
@@ -38,9 +42,14 @@ export function DateNav({ validDate, prevDay, nextDay, dateLabel, isToday, today
 
       {/* Date label + calendar picker */}
       <div className="flex items-center gap-1 px-0.5">
-        <span className="text-muted-foreground text-sm">
-          {dateLabel}{isToday ? " (today)" : ""}
-        </span>
+        <div className="flex flex-col leading-tight">
+          <span className="text-muted-foreground text-sm">
+            {dateLabel}{isToday ? " (today)" : ""}
+          </span>
+          <span className="text-muted-foreground/60 text-xs">
+            {nepaliDateLabel}
+          </span>
+        </div>
 
         {isPending ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />

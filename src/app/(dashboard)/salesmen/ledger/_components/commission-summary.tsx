@@ -17,8 +17,9 @@ export function CommissionSummary({ data }: { data: CustomerLedgerData }) {
       <div className="flex items-center gap-2">
         <Percent className="h-4 w-4 text-muted-foreground" />
         <h2 className="text-base font-semibold">Commission Summary</h2>
-        <span className="text-xs text-muted-foreground ml-auto">
-          {format(new Date(from), "d MMM yyyy")} – {format(new Date(to), "d MMM yyyy")}
+        <span className="text-xs text-muted-foreground ml-auto flex flex-col items-end leading-snug">
+          <span>{format(new Date(from), "d MMM yyyy")} – {format(new Date(to), "d MMM yyyy")}</span>
+          <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(new Date(from))} – {toNepaliDateString(new Date(to))}</span>
         </span>
       </div>
 

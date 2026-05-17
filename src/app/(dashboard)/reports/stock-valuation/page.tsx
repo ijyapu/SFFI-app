@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { format } from "date-fns";
 import { requirePermission } from "@/lib/auth";
 import { StockValuationTable, type StockCategory } from "./_components/stock-valuation-table";
+import { toNepaliDateString } from "@/lib/nepali-date";
 
 export const metadata = {
   title: "Stock Valuation — Reports",
@@ -55,7 +56,7 @@ export default async function StockValuationPage() {
     <StockValuationTable
       categories={categories}
       grandTotal={grandTotal}
-      asOf={format(new Date(), "d MMM yyyy, HH:mm")}
+      asOf={`${format(new Date(), "d MMM yyyy, HH:mm")} · ${toNepaliDateString(new Date())}`}
     />
   );
 }

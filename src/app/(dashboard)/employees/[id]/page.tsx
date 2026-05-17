@@ -323,9 +323,10 @@ export default async function EmployeeDetailPage({
                         }
                       >
                         <TableCell className="text-xs text-muted-foreground tabular-nums">
-                          {entry.date.toLocaleDateString("en-IN", {
-                            day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
-                          })}
+                          <span className="flex flex-col leading-snug">
+                            <span>{entry.date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}</span>
+                            <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(entry.date)}</span>
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">

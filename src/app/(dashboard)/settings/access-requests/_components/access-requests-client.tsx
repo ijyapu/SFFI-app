@@ -7,6 +7,7 @@ import {
   ChevronDown, Loader2,
 } from "lucide-react";
 import { approveRequest, rejectRequest } from "../actions";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { toast } from "sonner";
 
 type Status = "PENDING" | "APPROVED" | "REJECTED";
@@ -157,6 +158,7 @@ function RequestCard({ req }: { req: AccessRequest }) {
                 year: "numeric", month: "short", day: "numeric",
                 hour: "2-digit", minute: "2-digit",
               })}
+              <span className="ml-1 text-[10px] text-muted-foreground/60">({toNepaliDateString(new Date(req.createdAt))})</span>
             </p>
           </div>
 
