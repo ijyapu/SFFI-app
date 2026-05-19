@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ChevronRight, Minus } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { formatAmount } from "@/lib/format";
@@ -225,6 +225,8 @@ export function DayLedgerTable({ entries, openingBalance, closingBalance }: Prop
       map.set(key, bucket);
     }
 
+    const TYPE_ORDER: Record<string, number> = { INVOICE: 0, RETURN: 1, COMMISSION: 2, PAYMENT: 3 };
+
     // Sort groups chronologically by sale date, then recompute running balances
     // in that order so the balance column stays meaningful.
     const sortedKeys = [...map.keys()].sort();
@@ -232,7 +234,9 @@ export function DayLedgerTable({ entries, openingBalance, closingBalance }: Prop
     const groups: DayGroup[] = [];
 
     for (const dateStr of sortedKeys) {
-      const dayEntries = map.get(dateStr)!;
+      const dayEntries = [...map.get(dateStr)!].sort(
+        (a, b) => (TYPE_ORDER[a.type] ?? 9) - (TYPE_ORDER[b.type] ?? 9)
+      );;
       const invoiced   = dayEntries.filter(e => e.type === "INVOICE").reduce((s, e) => s + e.invoiceAmount, 0);
       const returned   = dayEntries.filter(e => e.type === "RETURN").reduce((s, e) => s + e.paymentAmount, 0);
       const commission = dayEntries.filter(e => e.type === "COMMISSION").reduce((s, e) => s + e.paymentAmount, 0);
