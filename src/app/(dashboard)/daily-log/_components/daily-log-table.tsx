@@ -146,6 +146,7 @@ export function DailyLogTable({ items, isOpen }: Props) {
         defaultValue={val === 0 ? "" : val}
         onChange={(e) => updateField(row.id, field, parseFloat(e.target.value) || 0)}
         onBlur={(e) => updateField(row.id, field, parseFloat(e.target.value) || 0)}
+        onWheel={(e) => e.currentTarget.blur()}
         className={cn(numInputCls, colorCls)}
       />
     );
