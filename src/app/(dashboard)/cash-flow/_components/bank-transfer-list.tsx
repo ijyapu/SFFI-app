@@ -68,6 +68,7 @@ export function BankTransferList({ transfers }: { transfers: BankTransferEntry[]
         <TableHeader>
           <TableRow>
             <TableHead><SortButton col="direction" label="Direction" {...sp} /></TableHead>
+            <TableHead><SortButton col="bankName" label="Bank" {...sp} /></TableHead>
             <TableHead numeric><SortButton col="amount" label="Amount (Rs)" {...sp} className="justify-end" /></TableHead>
             <TableHead>Reference</TableHead>
             <TableHead><SortButton col="transactedAt" label="Date" {...sp} /></TableHead>
@@ -87,6 +88,7 @@ export function BankTransferList({ transfers }: { transfers: BankTransferEntry[]
                   {DIRECTION_LABELS[t.direction]}
                 </Badge>
               </TableCell>
+              <TableCell className="text-sm">{t.bankName ?? "—"}</TableCell>
               <TableCell numeric className="font-semibold">
                 {formatAmount(t.amount)}
               </TableCell>

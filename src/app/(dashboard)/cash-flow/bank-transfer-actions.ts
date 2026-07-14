@@ -24,6 +24,7 @@ export async function createBankTransfer(values: BankTransferFormValues) {
   await prisma.bankTransfer.create({
     data: {
       direction:    data.direction,
+      bankName:     data.bankName || null,
       amount:       data.amount,
       reference:    data.reference || null,
       notes:        data.notes || null,
@@ -44,6 +45,7 @@ export async function updateBankTransfer(id: string, values: BankTransferFormVal
     where: { id },
     data: {
       direction:    data.direction,
+      bankName:     data.bankName || null,
       amount:       data.amount,
       reference:    data.reference || null,
       notes:        data.notes || null,

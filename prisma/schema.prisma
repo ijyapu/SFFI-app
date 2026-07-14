@@ -831,6 +831,7 @@ model ReceiptPayment {
 model BankTransfer {
   id            String                @id @default(cuid())
   direction     BankTransferDirection
+  bankName      String?               // which bank account the money moved to/from
   amount        Decimal               @db.Decimal(10, 2)
   reference     String?               // deposit slip / bank ref no
   notes         String?

@@ -33,6 +33,7 @@ type Props = {
   transfer: {
     id: string;
     direction: string;
+    bankName: string | null;
     amount: number;
     reference: string | null;
     notes: string | null;
@@ -51,6 +52,7 @@ export function BankTransferFormDialog(props: Props) {
     defaultValues: isEdit
       ? {
           direction:    props.transfer.direction as BankTransferFormValues["direction"],
+          bankName:     props.transfer.bankName ?? "",
           amount:       props.transfer.amount,
           reference:    props.transfer.reference ?? "",
           notes:        props.transfer.notes ?? "",
@@ -59,6 +61,7 @@ export function BankTransferFormDialog(props: Props) {
         }
       : {
           direction:    "DEPOSIT",
+          bankName:     "",
           amount:       0,
           reference:    "",
           notes:        "",
@@ -75,7 +78,7 @@ export function BankTransferFormDialog(props: Props) {
       } else {
         await createBankTransfer(values);
         toast.success("Transfer recorded");
-        form.reset({ direction: "DEPOSIT", amount: 0, reference: "", notes: "", photoUrl: null, transactedAt: today });
+        form.reset({ direction: "DEPOSIT", bankName: "", amount: 0, reference: "", notes: "", photoUrl: null, transactedAt: today });
       }
       setOpen(false);
     } catch (e) {
@@ -121,6 +124,20 @@ export function BankTransferFormDialog(props: Props) {
                       ))}
                     </SelectContent>
                   </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="bankName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Bank Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g. Nabil Bank, NIC Asia…" {...field} />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}

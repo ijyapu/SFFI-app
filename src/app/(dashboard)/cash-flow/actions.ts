@@ -42,6 +42,7 @@ export type DeferredItem = {
 export type BankTransferEntry = {
   id: string;
   direction: "DEPOSIT" | "WITHDRAWAL";
+  bankName: string | null;
   amount: number;
   reference: string | null;
   notes: string | null;
@@ -425,6 +426,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     serialisedBankTransfers.push({
       id: t.id,
       direction: t.direction,
+      bankName: t.bankName,
       amount: amt,
       reference: t.reference,
       notes: t.notes,
