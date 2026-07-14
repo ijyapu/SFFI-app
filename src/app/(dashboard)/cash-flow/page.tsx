@@ -1,12 +1,15 @@
 import { Suspense } from "react";
 import { requirePermission } from "@/lib/auth";
-import { getCashFlow } from "./actions";
+import { getCashFlow, setCashOpeningBalance } from "./actions";
+import { setBankOpeningBalance } from "./bank-transfer-actions";
 import { CashFlowDays } from "./_components/cash-flow-days";
 import { DeferredPanel } from "./_components/deferred-panel";
 import { OpeningBalanceForm } from "./_components/opening-balance-form";
+import { BankTransferFormDialog } from "./_components/bank-transfer-form-dialog";
+import { BankTransferList } from "./_components/bank-transfer-list";
 import { DateFilter } from "@/components/ui/date-filter";
 import {
-  ArrowDownLeft, ArrowUpRight, TrendingUp, Banknote, Info,
+  ArrowDownLeft, ArrowUpRight, TrendingUp, Banknote, Info, Wallet, Landmark,
 } from "lucide-react";
 
 export const metadata = { title: "Cash Flow" };
@@ -51,7 +54,20 @@ export default async function CashFlowPage({ searchParams }: Props) {
             Tracks actual cash movements — when money physically enters or leaves.
           </p>
         </div>
-        <OpeningBalanceForm current={data.cashOpeningBalance} canEdit={canEdit} />
+        <div className="flex flex-col items-end gap-1.5">
+          <OpeningBalanceForm
+            label="Cash opening balance"
+            current={data.cashOpeningBalance}
+            canEdit={canEdit}
+            onSave={setCashOpeningBalance}
+          />
+          <OpeningBalanceForm
+            label="Bank opening balance"
+            current={data.bankOpeningBalance}
+            canEdit={canEdit}
+            onSave={setBankOpeningBalance}
+          />
+        </div>
       </div>
 
       {/* Date filter */}
@@ -102,6 +118,27 @@ export default async function CashFlowPage({ searchParams }: Props) {
         </div>
       </div>
 
+      {/* Cash-in-Hand vs Bank Balance — where the money physically sits, as of the end date */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <Wallet className="h-3.5 w-3.5 shrink-0" />
+            <span>Cash in Hand</span>
+          </div>
+          <div className="text-2xl font-bold tabular-nums">{fmtRs(data.cashBalance)}</div>
+          <div className="text-xs text-muted-foreground mt-1">physical cash on hand, as of {to}</div>
+        </div>
+
+        <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+            <Landmark className="h-3.5 w-3.5 shrink-0" />
+            <span>Bank Balance</span>
+          </div>
+          <div className="text-2xl font-bold tabular-nums">{fmtRs(data.bankBalance)}</div>
+          <div className="text-xs text-muted-foreground mt-1">in bank + digital rails, as of {to}</div>
+        </div>
+      </div>
+
       {/* Info callout — quiet, icon-led, no colored box */}
       <div className="flex items-start gap-2.5 text-sm text-muted-foreground">
         <Info className="h-4 w-4 mt-0.5 shrink-0" />
@@ -125,6 +162,20 @@ export default async function CashFlowPage({ searchParams }: Props) {
 
       {/* Deferred obligations */}
       <DeferredPanel items={data.deferred} />
+
+      {/* Bank Transfers — moving cash between the two pools above */}
+      <section className="flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold">Bank Transfers</h2>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              Record when cash is deposited into or withdrawn from the bank.
+            </p>
+          </div>
+          <BankTransferFormDialog mode="create" />
+        </div>
+        <BankTransferList transfers={data.bankTransfers} />
+      </section>
     </div>
   );
 }

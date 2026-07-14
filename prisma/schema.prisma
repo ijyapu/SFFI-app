@@ -82,6 +82,11 @@ enum RecipeOverheadCategory {
   OTHER_OVERHEAD
 }
 
+enum BankTransferDirection {
+  DEPOSIT     // cash-in-hand -> bank
+  WITHDRAWAL  // bank -> cash-in-hand
+}
+
 // ─────────────────────────────────────────────
 // INVENTORY
 // ─────────────────────────────────────────────
@@ -820,6 +825,27 @@ model ReceiptPayment {
 }
 
 // ─────────────────────────────────────────────
+// BANK TRANSFERS (cash-in-hand <-> bank account)
+// ─────────────────────────────────────────────
+
+model BankTransfer {
+  id            String                @id @default(cuid())
+  direction     BankTransferDirection
+  amount        Decimal               @db.Decimal(10, 2)
+  reference     String?               // deposit slip / bank ref no
+  notes         String?
+  photoUrl      String?               // proof of deposit/withdrawal slip
+  transactedAt  DateTime              @default(now())
+
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([transactedAt])
+}
+
+// ─────────────────────────────────────────────
 // AUDIT LOG
 // ─────────────────────────────────────────────
 
@@ -856,6 +882,7 @@ model CompanySettings {
   updatedAt          DateTime @updatedAt
   updatedBy          String?
   cashOpeningBalance Decimal  @default(0) @db.Decimal(12, 2)
+  bankOpeningBalance Decimal  @default(0) @db.Decimal(12, 2)
 }
 
 // ─────────────────────────────────────────────

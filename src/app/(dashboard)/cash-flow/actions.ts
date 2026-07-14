@@ -39,6 +39,16 @@ export type DeferredItem = {
   remaining: number;
 };
 
+export type BankTransferEntry = {
+  id: string;
+  direction: "DEPOSIT" | "WITHDRAWAL";
+  amount: number;
+  reference: string | null;
+  notes: string | null;
+  photoUrl: string | null;
+  transactedAt: string; // ISO string
+};
+
 export type CashFlowData = {
   days: DayCashFlow[];
   periodOpeningBalance: number;
@@ -47,6 +57,10 @@ export type CashFlowData = {
   totalOut: number;
   deferred: DeferredItem[];
   cashOpeningBalance: number;
+  bankOpeningBalance: number;
+  cashBalance: number;
+  bankBalance: number;
+  bankTransfers: BankTransferEntry[];
 };
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -83,6 +97,20 @@ function fmtMethod(method: string | null | undefined): string | null {
 
 const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"] as const;
 
+// Which physical pool a transaction's money sits in — used to split Cash-in-Hand
+// from Bank Balance. BANK_TRANSFER/CHECK/eSewa/Khalti/IME Pay/FonePay are all
+// non-physical-cash rails; CASH/OTHER/unset default to physical cash-in-hand.
+type Bucket = "CASH" | "BANK";
+const BANK_METHODS = new Set(["BANK_TRANSFER", "CHECK", "ESEWA", "KHALTI", "IME_PAY", "FONEPAY"]);
+
+function bucketOfMethod(method: string | null | undefined): Bucket {
+  return method && BANK_METHODS.has(method) ? "BANK" : "CASH";
+}
+
+function bucketOfPaymentMode(mode: string | null | undefined): Bucket {
+  return mode === "ONLINE" ? "BANK" : "CASH";
+}
+
 // ─── Main cash flow query ──────────────────────────────────────────────────────
 
 export async function getCashFlow(from: string, to: string): Promise<CashFlowData> {
@@ -104,6 +132,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     purchaseOrders,
     payrollItems,
     purchaseAllocations,
+    bankTransfers,
   ] = await Promise.all([
     prisma.salesmanPayment.findMany({
       where: { salesOrder: { orderDate: { lte: cutoff } } },
@@ -203,13 +232,19 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       by:   ["purchaseId"],
       _sum: { amount: true },
     }),
+
+    prisma.bankTransfer.findMany({
+      where: { transactedAt: { lte: cutoff }, deletedAt: null },
+      orderBy: { transactedAt: "asc" },
+    }),
   ]);
 
   const cashOpeningBalance = settings ? Number(settings.cashOpeningBalance) : 0;
+  const bankOpeningBalance = settings ? Number(settings.bankOpeningBalance) : 0;
 
   // ─── Build flat entry list ────────────────────────────────────────────────
 
-  type TimedEntry = CashEntry & { timestamp: Date };
+  type TimedEntry = CashEntry & { timestamp: Date; bucket: Bucket };
   const allEntries: TimedEntry[] = [];
 
   for (const p of salesmanPayments) {
@@ -233,6 +268,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       direction: "in",
       method:    fmtMethod(p.method),
       reference: p.reference ?? null,
+      bucket:    bucketOfMethod(p.method),
     });
 
     // Commission retained by salesman — outflow/deduction
@@ -247,6 +283,9 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
         direction: "out",
         method:    null,
         reference: null,
+        // Commission is retained before the payment ever reaches either pool —
+        // net it against the same bucket the gross payment landed in.
+        bucket:    bucketOfMethod(p.method),
       });
     }
   }
@@ -262,6 +301,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       direction: "in",
       method: fmtMethod(r.method),
       reference: r.reference ?? null,
+      bucket: bucketOfMethod(r.method),
     });
   }
 
@@ -276,6 +316,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       direction: "out",
       method: fmtMethod(p.method),
       reference: p.reference ?? null,
+      bucket: bucketOfMethod(p.method),
     });
   }
 
@@ -290,6 +331,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       direction: "out",
       method: fmtMethod(p.method),
       reference: p.reference ?? null,
+      bucket: bucketOfMethod(p.method),
     });
   }
 
@@ -304,6 +346,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       direction: "out",
       method: fmtMethod(p.method),
       reference: p.reference ?? null,
+      bucket: bucketOfMethod(p.method),
     });
   }
 
@@ -318,6 +361,8 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       direction: "out",
       method: null,
       reference: null,
+      // Expenses have no payment-method field today — assumed paid from cash-in-hand.
+      bucket: "CASH",
     });
   }
 
@@ -333,6 +378,7 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       direction: "out",
       method: fmtMethod(d.paymentMode),
       reference: null,
+      bucket: bucketOfPaymentMode(d.paymentMode),
     });
   }
 
@@ -348,6 +394,42 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
       direction: "out",
       method: fmtMethod(w.paymentMode),
       reference: null,
+      bucket: bucketOfPaymentMode(w.paymentMode),
+    });
+  }
+
+  // ─── Cash-in-Hand vs Bank Balance (point-in-time snapshot as of `to`) ─────
+  // Unlike periodOpeningBalance below, these are not scoped to `from` — they're
+  // a running balance since inception, split by which physical pool the money
+  // sits in. Bank Transfers move money between the two pools without changing
+  // the combined total, so they're intentionally excluded from totalIn/totalOut.
+
+  let cashBalance = cashOpeningBalance;
+  let bankBalance = bankOpeningBalance;
+  for (const entry of allEntries) {
+    const signed = entry.direction === "in" ? entry.amount : -entry.amount;
+    if (entry.bucket === "CASH") cashBalance += signed;
+    else bankBalance += signed;
+  }
+
+  const serialisedBankTransfers: BankTransferEntry[] = [];
+  for (const t of bankTransfers) {
+    const amt = Number(t.amount);
+    if (t.direction === "DEPOSIT") {
+      cashBalance -= amt;
+      bankBalance += amt;
+    } else {
+      cashBalance += amt;
+      bankBalance -= amt;
+    }
+    serialisedBankTransfers.push({
+      id: t.id,
+      direction: t.direction,
+      amount: amt,
+      reference: t.reference,
+      notes: t.notes,
+      photoUrl: t.photoUrl,
+      transactedAt: t.transactedAt.toISOString(),
     });
   }
 
@@ -466,6 +548,10 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     totalOut,
     deferred,
     cashOpeningBalance,
+    bankOpeningBalance,
+    cashBalance,
+    bankBalance,
+    bankTransfers: serialisedBankTransfers,
   };
 }
 

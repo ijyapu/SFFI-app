@@ -5,14 +5,15 @@ import { Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { setCashOpeningBalance } from "../actions";
 
 type Props = {
+  label?: string;
   current: number;
   canEdit: boolean;
+  onSave: (amount: number) => Promise<void>;
 };
 
-export function OpeningBalanceForm({ current, canEdit }: Props) {
+export function OpeningBalanceForm({ label = "Seed opening balance", current, canEdit, onSave }: Props) {
   const [editing, setEditing]   = useState(false);
   const [value, setValue]       = useState(current.toFixed(2));
   const [pending, startTransition] = useTransition();
@@ -25,7 +26,7 @@ export function OpeningBalanceForm({ current, canEdit }: Props) {
     }
     startTransition(async () => {
       try {
-        await setCashOpeningBalance(amount);
+        await onSave(amount);
         toast.success("Opening balance updated.");
         setEditing(false);
       } catch (err) {
@@ -41,7 +42,7 @@ export function OpeningBalanceForm({ current, canEdit }: Props) {
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      <span className="text-sm text-muted-foreground">Seed opening balance:</span>
+      <span className="text-sm text-muted-foreground">{label}:</span>
       {editing ? (
         <>
           <div className="flex items-center gap-1">
