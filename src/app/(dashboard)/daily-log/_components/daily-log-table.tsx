@@ -45,6 +45,21 @@ function fmt(n: number): string {
 const CH_COMPUTED = "bg-muted/40 text-muted-foreground font-medium text-[11px] px-2 py-2 whitespace-nowrap";
 const CH_EDITABLE = "font-semibold text-[11px] px-2 py-2 whitespace-nowrap";
 
+// Server actions throw plain Error("Unauthenticated") / Error("Unauthorized") —
+// translate those (and unrecognized/network failures) into messages a non-technical
+// user can act on, instead of surfacing the raw internal error string.
+function describeSaveError(err: unknown): { message: string; isSessionError: boolean } {
+  const raw = err instanceof Error ? err.message : "";
+  if (raw === "Unauthenticated") {
+    return { message: "Your session has expired. Please sign in again to keep saving.", isSessionError: true };
+  }
+  if (raw === "Unauthorized") {
+    return { message: "You no longer have permission to edit this log.", isSessionError: true };
+  }
+  if (raw) return { message: raw, isSessionError: false };
+  return { message: "Couldn't save — check your internet connection and try again.", isSessionError: false };
+}
+
 export function DailyLogTable({ items, isOpen }: Props) {
   const [rows, setRows] = useState<RowState[]>(() =>
     items.map((item) => ({ ...item, _saving: false, _saved: false, _dirty: false }))
@@ -55,6 +70,8 @@ export function DailyLogTable({ items, isOpen }: Props) {
   useEffect(() => { rowsRef.current = rows; });
 
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  // Guards against every in-flight row popping its own "session expired" toast at once
+  const sessionErrorShown = useRef(false);
 
   const scheduleSave = useCallback((itemId: string) => {
     const existing = saveTimers.current.get(itemId);
@@ -83,7 +100,20 @@ export function DailyLogTable({ items, isOpen }: Props) {
         }, 2000);
       } catch (err) {
         setRows((p) => p.map((r) => r.id === itemId ? { ...r, _saving: false, _dirty: true } : r));
-        toast.error(err instanceof Error ? err.message : "Save failed — please try again");
+        const { message, isSessionError } = describeSaveError(err);
+
+        if (isSessionError) {
+          // One toast for the whole table, not one per unsaved row.
+          if (!sessionErrorShown.current) {
+            sessionErrorShown.current = true;
+            toast.error(message, {
+              duration: Infinity,
+              action: { label: "Sign in", onClick: () => { window.location.href = "/sign-in"; } },
+            });
+          }
+        } else {
+          toast.error(message);
+        }
       }
     }, 700);
 
