@@ -85,7 +85,7 @@ export function ProductForm({ open, onClose, product, categories, units, onOpenC
   const watchedCategoryId = form.watch("categoryId");
   const selectedCategory = categories.find((c) => c.id === watchedCategoryId);
   const isConsumable = selectedCategory
-    ? selectedCategory.name.toLowerCase().includes("consumable")
+    ? selectedCategory.name.toLowerCase().includes("finished")
     : false;
 
   useEffect(() => {

@@ -34,7 +34,7 @@ export default async function RecipeDetailPage({
       },
     }),
     prisma.product.findMany({
-      where: { deletedAt: null, NOT: { category: { name: { contains: "consumable", mode: "insensitive" } } } },
+      where: { deletedAt: null, NOT: { category: { name: { contains: "finished", mode: "insensitive" } } } },
       include: { unit: true, category: true },
       orderBy: [{ category: { name: "asc" } }, { name: "asc" }],
     }),
