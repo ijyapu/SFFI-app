@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import type { LedgerEntry } from "../actions";
 import { ExternalLink, Receipt } from "lucide-react";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 
 const METHOD_LABEL: Record<string, string> = {
   CASH: "Cash", BANK_TRANSFER: "Bank Transfer", CHECK: "Cheque",
@@ -92,9 +93,9 @@ export function LedgerTable({
                   <div className="flex items-center gap-1">
                     {e.reference}
                     {e.invoiceUrl && (
-                      <a href={e.invoiceUrl} target="_blank" rel="noreferrer" title="View invoice">
+                      <ImageLightbox src={e.invoiceUrl} alt="Invoice photo" title="View invoice">
                         <ExternalLink className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                      </a>
+                      </ImageLightbox>
                     )}
                     {e.purchaseId && isInvoice && (
                       <Link href={`/purchases/${e.purchaseId}/print`} target="_blank" title="Print invoice">
@@ -102,9 +103,9 @@ export function LedgerTable({
                       </Link>
                     )}
                     {e.receiptUrl && (
-                      <a href={e.receiptUrl} target="_blank" rel="noreferrer" title="View payment receipt">
+                      <ImageLightbox src={e.receiptUrl} alt="Payment receipt photo" title="View payment receipt">
                         <Receipt className="h-3 w-3 text-emerald-600 hover:text-emerald-700" />
-                      </a>
+                      </ImageLightbox>
                     )}
                   </div>
                 </td>

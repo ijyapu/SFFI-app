@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Image from "next/image";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { WithdrawalForm } from "./withdrawal-form";
 import { deleteWithdrawal } from "../../actions";
 import { formatAmount } from "@/lib/format";
@@ -44,7 +44,6 @@ export function EmployeeDetail({
   totalWithdrawn,
 }: Props) {
   const [formOpen, setFormOpen]     = useState(false);
-  const [lightbox, setLightbox]     = useState<string | null>(null);
   const [pending, startTransition]  = useTransition();
 
   const remaining = monthlySalary - totalWithdrawn;
@@ -161,13 +160,12 @@ export function EmployeeDetail({
                       </td>
                       <td className="px-4 py-3 text-center">
                         {w.photoUrl ? (
-                          <button
-                            onClick={() => setLightbox(w.photoUrl)}
-                            className="inline-flex items-center gap-1 text-primary hover:underline text-xs"
-                          >
-                            <ImageIcon className="h-3.5 w-3.5" />
-                            View
-                          </button>
+                          <ImageLightbox src={w.photoUrl} alt="Deduction proof photo">
+                            <span className="inline-flex items-center gap-1 text-primary hover:underline text-xs">
+                              <ImageIcon className="h-3.5 w-3.5" />
+                              View
+                            </span>
+                          </ImageLightbox>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
@@ -208,29 +206,6 @@ export function EmployeeDetail({
         open={formOpen}
         onClose={() => setFormOpen(false)}
       />
-
-      {/* Lightbox */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-          onClick={() => setLightbox(null)}
-        >
-          <Image
-            src={lightbox}
-            alt="Proof"
-            width={1600}
-            height={900}
-            className="max-h-[90vh] max-w-[90vw] rounded-lg object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-          <button
-            onClick={() => setLightbox(null)}
-            className="absolute top-4 right-4 text-white text-2xl font-bold hover:opacity-70"
-          >
-            ✕
-          </button>
-        </div>
-      )}
     </div>
   );
 }

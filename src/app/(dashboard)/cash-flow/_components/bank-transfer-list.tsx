@@ -17,6 +17,7 @@ import {
 import { SortButton } from "@/components/ui/sort-icon";
 import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { DateDisplay } from "@/components/ui/date-display";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { formatAmount } from "@/lib/format";
 import { BankTransferFormDialog } from "./bank-transfer-form-dialog";
 import { deleteBankTransfer } from "../bank-transfer-actions";
@@ -101,15 +102,15 @@ export function BankTransferList({ transfers }: { transfers: BankTransferEntry[]
               </TableCell>
               <TableCell>
                 {t.photoUrl ? (
-                  <a href={t.photoUrl} target="_blank" rel="noopener noreferrer" title="View photo">
+                  <ImageLightbox src={t.photoUrl} alt="Bank transfer proof photo">
                     <Image
                       src={t.photoUrl}
                       alt="Proof"
                       width={32}
                       height={32}
-                      className="h-8 w-8 rounded object-cover border border-border hover:opacity-80 transition-opacity"
+                      className="h-8 w-8 rounded object-cover border border-border hover:opacity-80 transition-opacity cursor-zoom-in"
                     />
-                  </a>
+                  </ImageLightbox>
                 ) : (
                   <ImageIcon className="h-4 w-4 text-muted-foreground/30" />
                 )}

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { z } from "zod/v4";
 import { format } from "date-fns";
 import { DateDisplay } from "@/components/ui/date-display";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { Trash2, Plus, Banknote, Wifi, ImageIcon, Loader2, CheckCircle2, Clock } from "lucide-react";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
@@ -298,15 +299,12 @@ export function DeductionDialog({
                       <p className="text-xs text-muted-foreground">{entry.notes}</p>
                     )}
                     {entry.photoUrl && (
-                      <a
-                        href={entry.photoUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                      >
-                        <ImageIcon className="h-3 w-3" />
-                        View proof photo
-                      </a>
+                      <ImageLightbox src={entry.photoUrl} alt="Deduction proof photo">
+                        <span className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline">
+                          <ImageIcon className="h-3 w-3" />
+                          View proof photo
+                        </span>
+                      </ImageLightbox>
                     )}
                   </div>
 

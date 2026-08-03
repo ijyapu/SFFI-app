@@ -17,6 +17,7 @@ import {
 import { SortButton } from "@/components/ui/sort-icon";
 import { useSortable, compareValues } from "@/hooks/use-sortable";
 import { DateDisplay } from "@/components/ui/date-display";
+import { ImageLightbox } from "@/components/ui/image-lightbox";
 import { ReceiptPaymentFormDialog } from "./receipt-payment-form-dialog";
 import { deleteReceiptPayment } from "../actions";
 
@@ -106,15 +107,15 @@ export function ReceiptPaymentTable({ payments }: { payments: Payment[] }) {
               </TableCell>
               <TableCell>
                 {p.photoUrl ? (
-                  <a href={p.photoUrl} target="_blank" rel="noopener noreferrer" title="View photo">
+                  <ImageLightbox src={p.photoUrl} alt="Receipt payment proof photo">
                     <Image
                       src={p.photoUrl}
                       alt="Proof"
                       width={32}
                       height={32}
-                      className="h-8 w-8 rounded object-cover border border-border hover:opacity-80 transition-opacity"
+                      className="h-8 w-8 rounded object-cover border border-border hover:opacity-80 transition-opacity cursor-zoom-in"
                     />
-                  </a>
+                  </ImageLightbox>
                 ) : (
                   <ImageIcon className="h-4 w-4 text-muted-foreground/30" />
                 )}
