@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// VAT rate applied to a recipe ingredient line when the user marks it as VAT-inclusive.
+export const RECIPE_VAT_RATE = 0.13;
+
 // ─── Cost-category enums (string literals — safe for client + server) ─────────
 
 export const recipeIngredientCategorySchema = z.enum([
@@ -24,6 +27,8 @@ export const recipeIngredientSchema = z.object({
   quantity:     z.number().min(0.001, "Must be > 0").max(999_999),
   // Optional so existing editor (Step 2) compiles; Step 3 UI will always send it.
   costCategory: recipeIngredientCategorySchema.optional(),
+  // Adds 13% VAT to this line's cost when true. Defaults to false when omitted.
+  vatApplicable: z.boolean().optional(),
 });
 
 // ─── Overhead line ────────────────────────────────────────────────────────────

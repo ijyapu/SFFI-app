@@ -26,6 +26,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { upsertRecipe, deleteRecipe } from "../actions";
+import { RECIPE_VAT_RATE } from "@/lib/validators/recipe";
 import type { RecipeIngredientCategory, RecipeOverheadCategory } from "@/lib/validators/recipe";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -33,10 +34,12 @@ import type { RecipeIngredientCategory, RecipeOverheadCategory } from "@/lib/val
 type AvailableProduct = { id: string; name: string; sku: string; unitName: string; costPrice: number; categoryName: string };
 
 type IngredientLine = {
-  key:          number;
-  productId:    string;
-  quantity:     number | "";
-  costCategory: RecipeIngredientCategory;
+  key:           number;
+  productId:     string;
+  quantity:      number | "";
+  costCategory:  RecipeIngredientCategory;
+  /** Adds 13% VAT to this line's cost when true. */
+  vatApplicable: boolean;
 };
 
 type OverheadLine = {
@@ -85,7 +88,12 @@ const CATEGORY_LABEL: Record<RecipeIngredientCategory, string> = {
 let nextKey = 1;
 
 function emptyIngredient(): IngredientLine {
-  return { key: nextKey++, productId: "", quantity: "", costCategory: "RAW_MATERIAL" };
+  return { key: nextKey++, productId: "", quantity: "", costCategory: "RAW_MATERIAL", vatApplicable: false };
+}
+
+/** quantity × unit cost, plus 13% VAT when the line is marked VAT-inclusive. */
+function calcLineCost(quantity: number, unitCost: number, vatApplicable: boolean): number {
+  return quantity * unitCost * (vatApplicable ? 1 + RECIPE_VAT_RATE : 1);
 }
 
 function emptyOverhead(): OverheadLine {
@@ -125,12 +133,13 @@ export function RecipeEditor({
     deductionPct: number;
     notes:        string | null;
     ingredients: {
-      productId:    string;
-      productName:  string;
-      unitName:     string;
-      quantity:     number;
-      costPrice:    number;
-      costCategory: RecipeIngredientCategory;
+      productId:     string;
+      productName:   string;
+      unitName:      string;
+      quantity:      number;
+      costPrice:     number;
+      vatApplicable: boolean;
+      costCategory:  RecipeIngredientCategory;
     }[];
     overheadLines: {
       description: string;
@@ -154,10 +163,11 @@ export function RecipeEditor({
   const [lines, setLines] = useState<IngredientLine[]>(() =>
     existingRecipe && existingRecipe.ingredients.length > 0
       ? existingRecipe.ingredients.map((i) => ({
-          key:          nextKey++,
-          productId:    i.productId,
-          quantity:     i.quantity,
-          costCategory: i.costCategory,
+          key:           nextKey++,
+          productId:     i.productId,
+          quantity:      i.quantity,
+          costCategory:  i.costCategory,
+          vatApplicable: i.vatApplicable,
         }))
       : [emptyIngredient()]
   );
@@ -188,17 +198,20 @@ export function RecipeEditor({
   // ── Real-time cost calculations ────────────────────────────────────────────
 
   const costs = useMemo(() => {
+    const lineCostOf = (l: IngredientLine) =>
+      calcLineCost(Number(l.quantity) || 0, productMap.get(l.productId)?.costPrice ?? 0, l.vatApplicable);
+
     const rawMaterialCost = lines
       .filter((l) => l.costCategory === "RAW_MATERIAL")
-      .reduce((s, l) => s + (Number(l.quantity) || 0) * (productMap.get(l.productId)?.costPrice ?? 0), 0);
+      .reduce((s, l) => s + lineCostOf(l), 0);
 
     const packagingCost = lines
       .filter((l) => l.costCategory === "PACKAGING")
-      .reduce((s, l) => s + (Number(l.quantity) || 0) * (productMap.get(l.productId)?.costPrice ?? 0), 0);
+      .reduce((s, l) => s + lineCostOf(l), 0);
 
     const otherDirectCost = lines
       .filter((l) => l.costCategory === "OTHER_DIRECT")
-      .reduce((s, l) => s + (Number(l.quantity) || 0) * (productMap.get(l.productId)?.costPrice ?? 0), 0);
+      .reduce((s, l) => s + lineCostOf(l), 0);
 
     const ingredientCost = rawMaterialCost + packagingCost + otherDirectCost;
 
@@ -319,9 +332,10 @@ export function RecipeEditor({
         deductionPct: Number(deductionPct) || 35,
         notes:        notes.trim() || undefined,
         ingredients: validIngredients.map((l) => ({
-          productId:    l.productId,
-          quantity:     Number(l.quantity),
-          costCategory: l.costCategory,
+          productId:     l.productId,
+          quantity:      Number(l.quantity),
+          costCategory:  l.costCategory,
+          vatApplicable: l.vatApplicable,
         })),
         overheadLines: overheadLines
           .filter((l) => l.description.trim() && Number(l.quantity) > 0 && l.unit.trim())
@@ -479,16 +493,17 @@ export function RecipeEditor({
 
         {/* Ingredient table */}
         <div className="rounded-lg border overflow-x-auto">
-          <div style={{ minWidth: "44rem" }}>
+          <div style={{ minWidth: "50rem" }}>
             {/* Header */}
             <div
               className="grid bg-muted/10 border-b"
-              style={{ gridTemplateColumns: "2.5rem minmax(14rem,1fr) 10rem 8rem 8rem 2.5rem" }}
+              style={{ gridTemplateColumns: "2.5rem minmax(14rem,1fr) 10rem 8rem 5.5rem 8rem 2.5rem" }}
             >
               <div className="px-3 py-2.5 text-xs font-medium text-muted-foreground">#</div>
               <div className="px-3 py-2.5 text-xs font-medium text-muted-foreground">Ingredient / Item</div>
               <div className="px-3 py-2.5 text-xs font-medium text-muted-foreground">Category</div>
               <div className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Qty / Batch</div>
+              <div className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-center">VAT 13%</div>
               <div className="px-3 py-2.5 text-xs font-medium text-muted-foreground text-right">Line Cost (Rs)</div>
               <div />
             </div>
@@ -498,7 +513,7 @@ export function RecipeEditor({
               {lines.map((line, idx) => {
                 const ing      = productMap.get(line.productId);
                 const qty      = Number(line.quantity) || 0;
-                const lineCost = qty * (ing?.costPrice ?? 0);
+                const lineCost = calcLineCost(qty, ing?.costPrice ?? 0, line.vatApplicable);
                 const errProd  = errors[`ing_${line.key}_productId`];
                 const errQty   = errors[`ing_${line.key}_quantity`];
 
@@ -506,7 +521,7 @@ export function RecipeEditor({
                   <div
                     key={line.key}
                     className={`grid items-start ${errProd || errQty ? "bg-destructive/5" : "hover:bg-muted/10"}`}
-                    style={{ gridTemplateColumns: "2.5rem minmax(14rem,1fr) 10rem 8rem 8rem 2.5rem" }}
+                    style={{ gridTemplateColumns: "2.5rem minmax(14rem,1fr) 10rem 8rem 5.5rem 8rem 2.5rem" }}
                   >
                     <div className="px-3 py-3 text-sm text-muted-foreground/50 tabular-nums self-center">{idx + 1}</div>
 
@@ -600,9 +615,25 @@ export function RecipeEditor({
                       {errQty && <p className="text-[11px] text-destructive text-right">{errQty}</p>}
                     </div>
 
+                    <div className="px-2 py-2 flex items-center justify-center min-h-10">
+                      <input
+                        type="checkbox"
+                        checked={line.vatApplicable}
+                        onChange={(e) => updateIngredient(line.key, { vatApplicable: e.target.checked })}
+                        disabled={!line.productId}
+                        title="Add 13% VAT to this ingredient's cost"
+                        className="h-4 w-4 rounded border-input accent-blue-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                      />
+                    </div>
+
                     <div className="px-2 py-2 flex items-center justify-end min-h-10">
                       {lineCost > 0 ? (
-                        <span className="text-sm tabular-nums font-semibold text-blue-600">{fmt(lineCost)}</span>
+                        <div className="text-right">
+                          <span className="text-sm tabular-nums font-semibold text-blue-600">{fmt(lineCost)}</span>
+                          {line.vatApplicable && (
+                            <p className="text-[10px] text-blue-500/70 leading-tight">incl. 13% VAT</p>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-muted-foreground/30 text-sm">—</span>
                       )}

@@ -163,11 +163,13 @@ model Recipe {
 }
 
 model RecipeIngredient {
-  id           String                   @id @default(cuid())
-  recipeId     String
-  productId    String
-  quantity     Decimal                  @db.Decimal(10, 3)
-  costCategory RecipeIngredientCategory @default(RAW_MATERIAL)
+  id            String                   @id @default(cuid())
+  recipeId      String
+  productId     String
+  quantity      Decimal                  @db.Decimal(10, 3)
+  costCategory  RecipeIngredientCategory @default(RAW_MATERIAL)
+  // When true, this ingredient's line cost (and the recipe's cost rollup) includes 13% VAT.
+  vatApplicable Boolean                  @default(false)
 
   recipe  Recipe  @relation(fields: [recipeId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])

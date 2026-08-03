@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { upsertRecipeSchema, type UpsertRecipeValues } from "@/lib/validators/recipe";
+import { upsertRecipeSchema, RECIPE_VAT_RATE, type UpsertRecipeValues } from "@/lib/validators/recipe";
 import type { RecipeIngredientCategory, RecipeOverheadCategory } from "@/lib/validators/recipe";
 import { recalcProductCostFromRecipe } from "@/lib/recipe-cost";
 
@@ -36,9 +36,10 @@ export async function upsertRecipe(productId: string, values: UpsertRecipeValues
   }));
 
   const ingredientCreate = data.ingredients.map((i) => ({
-    productId:    i.productId,
-    quantity:     i.quantity,
-    costCategory: i.costCategory ?? "RAW_MATERIAL" as const,
+    productId:     i.productId,
+    quantity:      i.quantity,
+    costCategory:  i.costCategory ?? "RAW_MATERIAL" as const,
+    vatApplicable: i.vatApplicable ?? false,
   }));
 
   const existing = await prisma.recipe.findUnique({ where: { productId } });
@@ -108,14 +109,17 @@ export type OverheadLineRow = {
 };
 
 export type RecipeIngredientRow = {
-  id:           string;
-  productId:    string;
-  productName:  string;
-  unitName:     string;
-  quantity:     number;
-  costPrice:    number;
-  lineCost:     number;
-  costCategory: RecipeIngredientCategory;
+  id:            string;
+  productId:     string;
+  productName:   string;
+  unitName:      string;
+  quantity:      number;
+  costPrice:     number;
+  /** True if 13% VAT is included in `lineCost` below. */
+  vatApplicable: boolean;
+  /** quantity × costPrice, ×1.13 when vatApplicable. */
+  lineCost:      number;
+  costCategory:  RecipeIngredientCategory;
 };
 
 export type RecipeRow = {
@@ -156,7 +160,8 @@ export async function getRecipes(): Promise<RecipeRow[]> {
 
   return recipes.map((r) => {
     const ingredientCost = r.ingredients.reduce(
-      (sum, i) => sum + Number(i.quantity) * Number(i.product.costPrice),
+      (sum, i) =>
+        sum + Number(i.quantity) * Number(i.product.costPrice) * (i.vatApplicable ? 1 + RECIPE_VAT_RATE : 1),
       0
     );
     const overheadCost = r.overheadLines.reduce(
@@ -180,14 +185,15 @@ export async function getRecipes(): Promise<RecipeRow[]> {
       costPerUnit:    yieldQty > 0 ? batchCost / yieldQty : 0,
       notes:          r.notes,
       ingredients: r.ingredients.map((i) => ({
-        id:           i.id,
-        productId:    i.productId,
-        productName:  i.product.name,
-        unitName:     i.product.unit.name,
-        quantity:     Number(i.quantity),
-        costPrice:    Number(i.product.costPrice),
-        lineCost:     Number(i.quantity) * Number(i.product.costPrice),
-        costCategory: i.costCategory as RecipeIngredientCategory,
+        id:            i.id,
+        productId:     i.productId,
+        productName:   i.product.name,
+        unitName:      i.product.unit.name,
+        quantity:      Number(i.quantity),
+        costPrice:     Number(i.product.costPrice),
+        vatApplicable: i.vatApplicable,
+        lineCost:      Number(i.quantity) * Number(i.product.costPrice) * (i.vatApplicable ? 1 + RECIPE_VAT_RATE : 1),
+        costCategory:  i.costCategory as RecipeIngredientCategory,
       })),
       overheadLines: r.overheadLines.map((l) => ({
         id:          l.id,

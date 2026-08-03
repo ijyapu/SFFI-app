@@ -1,4 +1,5 @@
 import { type PrismaClient } from "@prisma/client";
+import { RECIPE_VAT_RATE } from "@/lib/validators/recipe";
 
 type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 
@@ -6,7 +7,7 @@ type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
  * Recomputes a product's costPrice from its recipe (if one exists).
  *
  * Formula:
- *   ingredientCost = Σ(ingredient.quantity × ingredient.product.costPrice)
+ *   ingredientCost = Σ(ingredient.quantity × ingredient.product.costPrice × (1.13 if vatApplicable))
  *   overheadCost   = Σ(overheadLine.lineCost)          ← stored, not recomputed
  *   batchCost      = ingredientCost + overheadCost
  *   costPerUnit    = batchCost ÷ yieldQty
@@ -34,7 +35,8 @@ export async function recalcProductCostFromRecipe(
   if (yieldQty <= 0) return;
 
   const ingredientCost = recipe.ingredients.reduce(
-    (sum, i) => sum + Number(i.quantity) * Number(i.product.costPrice),
+    (sum, i) =>
+      sum + Number(i.quantity) * Number(i.product.costPrice) * (i.vatApplicable ? 1 + RECIPE_VAT_RATE : 1),
     0
   );
 
