@@ -341,8 +341,14 @@ export function DailyLogTable({ items, isOpen }: Props) {
                         <div className={cn("font-medium text-xs leading-tight", hasRowActivity ? "text-foreground" : "")}>
                           {row.productName}
                         </div>
-                        <div className="text-[10px] text-muted-foreground font-mono leading-tight mt-0.5">
-                          {row.productSku} · {row.unitName}
+                        <div className="flex items-center gap-1 leading-tight mt-0.5">
+                          <span className="text-[10px] text-muted-foreground font-mono">{row.productSku}</span>
+                          <span
+                            className="inline-flex items-center rounded bg-muted px-1 py-0.5 text-[9px] font-semibold text-foreground/70"
+                            title="Unit for every quantity column in this row"
+                          >
+                            {row.unitName}
+                          </span>
                         </div>
                       </TableCell>
 

@@ -104,7 +104,7 @@ export function ReceiveForm({ poId, items, open, onClose }: Props) {
           </p>
 
           <div className="rounded-lg border divide-y">
-            <div className="grid grid-cols-[1fr_100px_80px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
+            <div className="grid grid-cols-[1fr_100px_100px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40">
               <span>Product</span>
               <span className="text-right">Remaining</span>
               <span className="text-right">Receiving</span>
@@ -114,36 +114,42 @@ export function ReceiveForm({ poId, items, open, onClose }: Props) {
               const qtyError  = errors.quantities?.[item.id];
               return (
                 <div key={item.id}>
-                  <div className="grid grid-cols-[1fr_100px_80px] gap-2 px-3 py-2 items-center">
+                  <div className="grid grid-cols-[1fr_100px_100px] gap-2 px-3 py-2 items-center">
                     <div>
                       <div className="text-sm font-medium">{item.productName}</div>
                       <div className="text-xs text-muted-foreground">{item.unitName}</div>
                     </div>
                     <div className="text-right text-sm text-muted-foreground">
-                      {remaining.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                      {remaining.toLocaleString(undefined, { maximumFractionDigits: 3 })}{" "}
+                      <span className="text-xs">{item.unitName}</span>
                     </div>
-                    <Input
-                      className={`h-8 text-sm text-right ${qtyError ? "border-destructive focus-visible:ring-destructive" : ""}`}
-                      type="number"
-                      min="0"
-                      max={remaining}
-                      step="0.001"
-                      value={quantities[item.id] ?? 0}
-                      onChange={(e) => {
-                        setQuantities((prev) => ({ ...prev, [item.id]: parseFloat(e.target.value) || 0 }));
-                        if (errors.quantities?.[item.id]) {
-                          setErrors((prev) => {
-                            const next = { ...prev };
-                            if (next.quantities) {
-                              const q = { ...next.quantities };
-                              delete q[item.id];
-                              next.quantities = Object.keys(q).length ? q : undefined;
-                            }
-                            return next;
-                          });
-                        }
-                      }}
-                    />
+                    <div className="relative">
+                      <Input
+                        className={`h-8 text-sm text-right pr-9 ${qtyError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                        type="number"
+                        min="0"
+                        max={remaining}
+                        step="0.001"
+                        value={quantities[item.id] ?? 0}
+                        onChange={(e) => {
+                          setQuantities((prev) => ({ ...prev, [item.id]: parseFloat(e.target.value) || 0 }));
+                          if (errors.quantities?.[item.id]) {
+                            setErrors((prev) => {
+                              const next = { ...prev };
+                              if (next.quantities) {
+                                const q = { ...next.quantities };
+                                delete q[item.id];
+                                next.quantities = Object.keys(q).length ? q : undefined;
+                              }
+                              return next;
+                            });
+                          }
+                        }}
+                      />
+                      <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                        {item.unitName}
+                      </span>
+                    </div>
                   </div>
                   {qtyError && (
                     <p className="px-3 pb-1.5 text-xs text-destructive">{qtyError}</p>

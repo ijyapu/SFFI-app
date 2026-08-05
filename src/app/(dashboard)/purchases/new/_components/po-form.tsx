@@ -285,6 +285,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                 const item = watchItems[index];
 
                 const isNewProduct = !item?.productId && !!item?.productName;
+                const selectedProduct = item?.productId ? products.find((p) => p.id === item.productId) : undefined;
 
                 return (
                   <div key={field.id} className="p-3 space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[2fr_1.5fr_70px_110px_90px_90px_90px_90px_32px] lg:gap-2 lg:items-start">
@@ -448,11 +449,18 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                         <FormItem className="space-y-0">
                           <FormLabel className="lg:hidden text-xs">Qty *</FormLabel>
                           <FormControl>
-                            <Input
-                              className="h-8 text-sm" type="number" min="0.001" step="0.001"
-                              value={f.value === 0 ? "" : f.value}
-                              onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
-                            />
+                            <div className="relative">
+                              <Input
+                                className={cn("h-8 text-sm", selectedProduct && "pr-9")} type="number" min="0.001" step="0.001"
+                                value={f.value === 0 ? "" : f.value}
+                                onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                              />
+                              {selectedProduct && (
+                                <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                                  {selectedProduct.unit}
+                                </span>
+                              )}
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>

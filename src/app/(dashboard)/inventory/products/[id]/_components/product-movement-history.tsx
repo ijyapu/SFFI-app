@@ -102,10 +102,12 @@ export function ProductMovementHistory({
                     <span className="text-xs text-muted-foreground ml-1">{unit}</span>
                   </TableCell>
                   <TableCell numeric className="text-muted-foreground text-sm">
-                    {m.stockBefore.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                    {m.stockBefore.toLocaleString(undefined, { maximumFractionDigits: 3 })}{" "}
+                    <span className="text-xs">{unit}</span>
                   </TableCell>
                   <TableCell numeric className="text-sm font-medium">
-                    {m.stockAfter.toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                    {m.stockAfter.toLocaleString(undefined, { maximumFractionDigits: 3 })}{" "}
+                    <span className="text-xs font-normal text-muted-foreground">{unit}</span>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
                     {m.notes ?? "—"}

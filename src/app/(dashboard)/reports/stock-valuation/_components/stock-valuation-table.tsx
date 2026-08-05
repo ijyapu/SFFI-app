@@ -123,7 +123,7 @@ export function StockValuationTable({ categories, grandTotal, asOf }: Props) {
                         </td>
                         <td className="px-4 py-2 text-right tabular-nums text-muted-foreground text-xs">
                           {p.reorderLevel > 0
-                            ? p.reorderLevel.toLocaleString(undefined, { maximumFractionDigits: 3 })
+                            ? <>{p.reorderLevel.toLocaleString(undefined, { maximumFractionDigits: 3 })} {p.unit}</>
                             : "—"}
                         </td>
                         <td className="px-4 py-2 text-right tabular-nums">{Rs(p.costPrice)}</td>

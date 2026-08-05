@@ -230,12 +230,14 @@ export function PoDetail(props: Props) {
                         <div className="text-xs text-muted-foreground">{item.unitName}</div>
                       </TableCell>
                       <TableCell numeric>
-                        {Number(item.quantity).toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                        {Number(item.quantity).toLocaleString(undefined, { maximumFractionDigits: 3 })}{" "}
+                        <span className="text-xs text-muted-foreground">{item.unitName}</span>
                       </TableCell>
                       <TableCell numeric>
                         <span className={fullyReceived ? "text-green-600 font-medium" : "text-amber-600"}>
                           {Number(item.receivedQty).toLocaleString(undefined, { maximumFractionDigits: 3 })}
-                        </span>
+                        </span>{" "}
+                        <span className="text-xs text-muted-foreground">{item.unitName}</span>
                       </TableCell>
                       <TableCell numeric className="text-muted-foreground">
                         Rs {Number(item.unitCost).toFixed(2)}

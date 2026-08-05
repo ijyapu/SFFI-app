@@ -139,10 +139,12 @@ export function MovementTable({ movements }: Props) {
                     </span>
                   </TableCell>
                   <TableCell numeric className="text-muted-foreground text-sm">
-                    {Number(m.quantityBefore).toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                    {Number(m.quantityBefore).toLocaleString(undefined, { maximumFractionDigits: 3 })}{" "}
+                    <span className="text-xs">{m.product.unit.name}</span>
                   </TableCell>
                   <TableCell numeric className="text-sm">
-                    {Number(m.quantityAfter).toLocaleString(undefined, { maximumFractionDigits: 3 })}
+                    {Number(m.quantityAfter).toLocaleString(undefined, { maximumFractionDigits: 3 })}{" "}
+                    <span className="text-xs text-muted-foreground">{m.product.unit.name}</span>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-48 truncate">
                     {m.referenceType && (

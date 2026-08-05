@@ -367,14 +367,21 @@ export function SoForm({ salesmen, products, openLogDate }: Props) {
                     render={({ field: f }) => (
                       <FormItem className="space-y-0">
                         <FormControl>
-                          <Input
-                            className="h-8 text-sm"
-                            type="number"
-                            min="0.001"
-                            step="0.001"
-                            value={f.value === 0 ? "" : f.value}
-                            onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
-                          />
+                          <div className="relative">
+                            <Input
+                              className={cn("h-8 text-sm", selectedProduct && "pr-10")}
+                              type="number"
+                              min="0.001"
+                              step="0.001"
+                              value={f.value === 0 ? "" : f.value}
+                              onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                            {selectedProduct && (
+                              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                                {selectedProduct.unit.name}
+                              </span>
+                            )}
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -502,6 +509,7 @@ export function SoForm({ salesmen, products, openLogDate }: Props) {
             ) : (
               wasteLines.map((line) => {
                 const lineTotal = (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0);
+                const lineProduct = products.find((p) => p.id === line.productId);
                 return (
                   <div
                     key={line.key}
@@ -517,17 +525,24 @@ export function SoForm({ salesmen, products, openLogDate }: Props) {
                       placeholder="Select product…"
                       triggerHeight="h-8"
                     />
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.001"
-                      placeholder="0"
-                      value={line.quantity}
-                      onChange={(e) => updateWasteLine(line.key, {
-                        quantity: e.target.value === "" ? "" : parseFloat(e.target.value),
-                      })}
-                      className="h-8 text-sm"
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        placeholder="0"
+                        value={line.quantity}
+                        onChange={(e) => updateWasteLine(line.key, {
+                          quantity: e.target.value === "" ? "" : parseFloat(e.target.value),
+                        })}
+                        className={cn("h-8 text-sm", lineProduct && "pr-10")}
+                      />
+                      {lineProduct && (
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                          {lineProduct.unit.name}
+                        </span>
+                      )}
+                    </div>
                     <Input
                       type="number"
                       min="0"
@@ -617,6 +632,7 @@ export function SoForm({ salesmen, products, openLogDate }: Props) {
             ) : (
               freshLines.map((line) => {
                 const lineTotal = (Number(line.quantity) || 0) * (Number(line.unitPrice) || 0);
+                const lineProduct = products.find((p) => p.id === line.productId);
                 return (
                   <div key={line.key} className="grid grid-cols-[2fr_90px_100px_70px_32px] gap-2 px-3 py-2 items-start">
                     <ProductComboboxField
@@ -629,12 +645,19 @@ export function SoForm({ salesmen, products, openLogDate }: Props) {
                       placeholder="Select product…"
                       triggerHeight="h-8"
                     />
-                    <Input
-                      type="number" min="0" step="0.001" placeholder="0"
-                      value={line.quantity}
-                      onChange={(e) => updateFreshLine(line.key, { quantity: e.target.value === "" ? "" : parseFloat(e.target.value) })}
-                      className="h-8 text-sm"
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number" min="0" step="0.001" placeholder="0"
+                        value={line.quantity}
+                        onChange={(e) => updateFreshLine(line.key, { quantity: e.target.value === "" ? "" : parseFloat(e.target.value) })}
+                        className={cn("h-8 text-sm", lineProduct && "pr-10")}
+                      />
+                      {lineProduct && (
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                          {lineProduct.unit.name}
+                        </span>
+                      )}
+                    </div>
                     <Input
                       type="number" min="0" step="0.01" placeholder="0.00"
                       value={line.unitPrice}

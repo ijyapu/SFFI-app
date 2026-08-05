@@ -296,11 +296,18 @@ export function SoEditForm({ so, products, detailHref }: { so: SoData; products:
                     render={({ field: f }) => (
                       <FormItem className="space-y-0">
                         <FormControl>
-                          <Input
-                            className="h-8 text-sm" type="number" min="0.001" step="0.001"
-                            value={f.value === 0 ? "" : f.value}
-                            onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
-                          />
+                          <div className="relative">
+                            <Input
+                              className={cn("h-8 text-sm", product && "pr-10")} type="number" min="0.001" step="0.001"
+                              value={f.value === 0 ? "" : f.value}
+                              onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
+                            />
+                            {product && (
+                              <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                                {product.unit.name}
+                              </span>
+                            )}
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>

@@ -111,7 +111,10 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
                         {item.product?.unit?.name ?? ""}{item.product?.category?.name ? ` · ${item.product.category.name}` : ""}
                       </div>
                     </td>
-                    <td style={{ padding: "8px 10px", textAlign: "right" }}>{Number(item.quantity).toLocaleString("en-IN", { maximumFractionDigits: 3 })}</td>
+                    <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                      {Number(item.quantity).toLocaleString("en-IN", { maximumFractionDigits: 3 })}
+                      {item.product?.unit?.name && <span style={{ color: "#aaa", fontSize: "10px" }}> {item.product.unit.name}</span>}
+                    </td>
                     <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmt(Number(item.unitPrice))}</td>
                     <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmt(gross)}</td>
                     <td style={{ padding: "8px 10px", textAlign: "right", color: vatAmt > 0 ? "#1d4ed8" : "#ccc" }}>

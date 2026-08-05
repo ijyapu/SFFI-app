@@ -176,6 +176,7 @@ export function ReturnEditDialog({ open, onClose, ret, products }: Props) {
               const errQty    = errors[`${line.key}_quantity`];
               const errPrice  = errors[`${line.key}_unitPrice`];
               const hasRowErr = !!(errProd || errQty || errPrice);
+              const lineProduct = products.find((p) => p.id === line.productId);
 
               return (
                 <div
@@ -211,14 +212,21 @@ export function ReturnEditDialog({ open, onClose, ret, products }: Props) {
 
                   {/* Quantity */}
                   <div className="px-3 py-2.5 space-y-1">
-                    <Input
-                      type="number" min="0" step="0.001" placeholder="0"
-                      value={line.quantity}
-                      onChange={(e) => updateLine(line.key, {
-                        quantity: e.target.value === "" ? "" : parseFloat(e.target.value),
-                      })}
-                      className={`h-9 text-sm text-right tabular-nums ${errQty ? "border-destructive" : ""}`}
-                    />
+                    <div className="relative">
+                      <Input
+                        type="number" min="0" step="0.001" placeholder="0"
+                        value={line.quantity}
+                        onChange={(e) => updateLine(line.key, {
+                          quantity: e.target.value === "" ? "" : parseFloat(e.target.value),
+                        })}
+                        className={`h-9 text-sm text-right tabular-nums ${lineProduct ? "pr-10" : ""} ${errQty ? "border-destructive" : ""}`}
+                      />
+                      {lineProduct && (
+                        <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground">
+                          {lineProduct.unitName}
+                        </span>
+                      )}
+                    </div>
                     {errQty && <p className="text-[11px] text-destructive text-right">{errQty}</p>}
                   </div>
 
