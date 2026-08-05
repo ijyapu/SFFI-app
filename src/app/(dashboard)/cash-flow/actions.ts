@@ -262,7 +262,10 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     allEntries.push({
       id: `${p.id}-gross`,
       timestamp: p.salesOrder.orderDate,
-      category:    "Sales (gross)",
+      // "Collected" (not "gross") — this is the actual cash received from the
+      // salesman, already net of any returns applied before payment. It's
+      // grossed up only by their commission, shown separately below.
+      category:    "Sales Collected",
       subcategory: p.salesman.name,
       description: `${p.salesOrder.orderNumber}`,
       amount:    gross,
