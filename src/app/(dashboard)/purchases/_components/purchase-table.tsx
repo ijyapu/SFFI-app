@@ -218,7 +218,8 @@ export function PurchaseTable({
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete {p.invoiceNo}?</AlertDialogTitle>
                           <AlertDialogDescription>
-                            This will permanently remove this purchase record. Inventory will NOT be reversed automatically.
+                            This will remove this purchase record and reverse its quantities out of inventory —
+                            stock may go negative if it was already running short.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

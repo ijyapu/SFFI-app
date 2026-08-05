@@ -649,6 +649,11 @@ export async function deletePurchase(id: string) {
           referenceId:   id,
           referenceType: "Purchase",
           createdBy:     userId,
+          // Deleting a purchase must always be able to remove that exact
+          // quantity, even if the product's stock was already short (e.g.
+          // from unlogged usage) and this would push it negative. Otherwise
+          // a mistaken/duplicate purchase can become permanently undeletable.
+          isAdminOverride: true,
         },
         tx as Parameters<typeof applyStockMovement>[1]
       );
