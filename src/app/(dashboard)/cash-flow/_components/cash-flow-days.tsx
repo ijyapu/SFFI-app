@@ -34,7 +34,6 @@ function fmtNepaliDate(dateStr: string): string {
 
 const CATEGORY_COLORS: Record<string, string> = {
   "Sales Collected":  "bg-emerald-100 text-emerald-700",
-  "Commission":       "bg-amber-100 text-amber-700",
   "Receipt":          "bg-emerald-100 text-emerald-700",
   "Receipt Payment":  "bg-rose-100 text-rose-700",
   "Supplier Payment": "bg-slate-100 text-slate-700",

@@ -136,21 +136,12 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     bankTransfers,
   ] = await Promise.all([
     prisma.salesmanPayment.findMany({
-      where: { salesOrder: { orderDate: { lte: cutoff } } },
+      where: { paidAt: { lte: cutoff } },
       include: {
-        salesOrder: {
-          select: {
-            orderNumber:      true,
-            orderDate:        true,
-            totalAmount:      true,
-            factoryAmount:    true,
-            commissionAmount: true,
-            commissionPct:    true,
-          },
-        },
-        salesman: { select: { name: true } },
+        salesOrder: { select: { orderNumber: true } },
+        salesman:   { select: { name: true } },
       },
-      orderBy: { salesOrder: { orderDate: "asc" } },
+      orderBy: { paidAt: "asc" },
     }),
 
     prisma.receipt.findMany({
@@ -249,49 +240,26 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
   const allEntries: TimedEntry[] = [];
 
   for (const p of salesmanPayments) {
-    const paidAmt    = Number(p.amount);
-    const factoryAmt = Number(p.salesOrder.factoryAmount);
-    const commAmt    = Number(p.salesOrder.commissionAmount);
-    const commPct    = Number(p.salesOrder.commissionPct);
-
-    // Prorate commission proportionally to what fraction of factory amount this payment covers
-    const proratedComm = factoryAmt > 0.005 ? (paidAmt / factoryAmt) * commAmt : 0;
-    const gross        = paidAmt + proratedComm;
-
-    // Gross inflow — full value collected from the customer for this portion
+    // The salesman's commission is retained before this money ever reaches the
+    // company — it was never company cash, so it must not be grossed into (or
+    // netted back out of) this entry. `p.amount` is the real cash received,
+    // already net of any returns applied before payment, and it already
+    // matches the Salesman Ledger's Payment line and the SO detail's
+    // "Collected" figure — show that number directly.
     allEntries.push({
-      id: `${p.id}-gross`,
-      timestamp: p.salesOrder.orderDate,
-      // "Collected" (not "gross") — this is the actual cash received from the
-      // salesman, already net of any returns applied before payment. It's
-      // grossed up only by their commission, shown separately below.
+      id: p.id,
+      // Dated by when the payment actually happened, not by the order's date —
+      // a payment can land days after the order was placed.
+      timestamp: p.paidAt,
       category:    "Sales Collected",
       subcategory: p.salesman.name,
       description: `${p.salesOrder.orderNumber}`,
-      amount:    gross,
+      amount:    Number(p.amount),
       direction: "in",
       method:    fmtMethod(p.method),
       reference: p.reference ?? null,
       bucket:    bucketOfMethod(p.method),
     });
-
-    // Commission retained by salesman — outflow/deduction
-    if (proratedComm > 0.005) {
-      allEntries.push({
-        id: `${p.id}-comm`,
-        timestamp: p.salesOrder.orderDate,
-        category:    "Commission",
-        subcategory: p.salesman.name,
-        description: `${commPct.toFixed(0)}% on ${p.salesOrder.orderNumber}`,
-        amount:    proratedComm,
-        direction: "out",
-        method:    null,
-        reference: null,
-        // Commission is retained before the payment ever reaches either pool —
-        // net it against the same bucket the gross payment landed in.
-        bucket:    bucketOfMethod(p.method),
-      });
-    }
   }
 
   for (const r of receipts) {
