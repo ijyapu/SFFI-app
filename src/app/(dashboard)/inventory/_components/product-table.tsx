@@ -49,6 +49,10 @@ function isLowStock(p: Product) {
   return p.reorderLevel > 0 && p.currentStock > 0 && p.currentStock <= p.reorderLevel;
 }
 
+function isNegativeStock(p: Product) {
+  return p.currentStock < 0;
+}
+
 export function ProductTable({ products, categories, units }: Props) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -200,8 +204,9 @@ export function ProductTable({ products, categories, units }: Props) {
             )}
 
             {grouped.map(({ catId, catName, rows }) => {
-              const lowCount   = rows.filter(isLowStock).length;
-              const totalStock = rows.reduce((s, p) => s + p.currentStock * p.costPrice, 0);
+              const lowCount      = rows.filter(isLowStock).length;
+              const negativeCount = rows.filter(isNegativeStock).length;
+              const totalStock    = rows.reduce((s, p) => s + p.currentStock * p.costPrice, 0);
 
               return (
                 <React.Fragment key={catId}>
@@ -222,6 +227,12 @@ export function ProductTable({ products, categories, units }: Props) {
                               {lowCount} low
                             </span>
                           )}
+                          {negativeCount > 0 && (
+                            <span className="flex items-center gap-1 text-xs text-red-600 font-medium">
+                              <AlertTriangle className="h-3 w-3" />
+                              {negativeCount} negative
+                            </span>
+                          )}
                         </div>
                         <span className="text-xs text-muted-foreground tabular-nums">
                           Rs {totalStock.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
@@ -233,8 +244,9 @@ export function ProductTable({ products, categories, units }: Props) {
                   {/* Product rows */}
                   {rows.map((product) => {
                     const low = isLowStock(product);
+                    const negative = isNegativeStock(product);
                     return (
-                      <TableRow key={product.id}>
+                      <TableRow key={product.id} className={negative ? "bg-red-50/50 hover:bg-red-50/70" : undefined}>
                         <TableCell>
                           <Link
                             href={`/inventory/products/${product.id}`}
@@ -263,13 +275,20 @@ export function ProductTable({ products, categories, units }: Props) {
                         </TableCell>
                         <TableCell numeric>
                           <div className="flex items-center justify-end gap-1.5">
-                            {low && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
-                            <span className={low ? "text-amber-600 font-medium" : ""}>
+                            {(low || negative) && (
+                              <AlertTriangle className={`h-3.5 w-3.5 ${negative ? "text-red-600" : "text-amber-500"}`} />
+                            )}
+                            <span className={negative ? "text-red-600 font-semibold" : low ? "text-amber-600 font-medium" : ""}>
                               {product.currentStock.toLocaleString()}
                             </span>
                             <span className="text-xs text-muted-foreground">{product.unit.name}</span>
                           </div>
-                          {low && (
+                          {negative && (
+                            <div className="text-xs text-red-600 text-right">
+                              used more than in stock
+                            </div>
+                          )}
+                          {!negative && low && (
                             <div className="text-xs text-amber-500 text-right">
                               reorder ≤ {product.reorderLevel}
                             </div>
@@ -317,6 +336,11 @@ export function ProductTable({ products, categories, units }: Props) {
         {grouped.some((g) => g.rows.some(isLowStock)) && (
           <span className="ml-2 text-amber-500">
             · {grouped.reduce((s, g) => s + g.rows.filter(isLowStock).length, 0)} low stock
+          </span>
+        )}
+        {grouped.some((g) => g.rows.some(isNegativeStock)) && (
+          <span className="ml-2 text-red-600 font-medium">
+            · {grouped.reduce((s, g) => s + g.rows.filter(isNegativeStock).length, 0)} negative stock
           </span>
         )}
       </p>
