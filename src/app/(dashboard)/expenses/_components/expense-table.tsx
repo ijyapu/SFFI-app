@@ -10,7 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -121,11 +121,13 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
           />
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? "all")}>
             <SelectTrigger className="w-36">
-              <span>
-                {statusFilter === "all"
-                  ? "All statuses"
-                  : (STATUS_CONFIG[statusFilter as keyof typeof STATUS_CONFIG]?.label ?? "All statuses")}
-              </span>
+              <SelectValue>
+                <span className="truncate">
+                  {statusFilter === "all"
+                    ? "All statuses"
+                    : (STATUS_CONFIG[statusFilter as keyof typeof STATUS_CONFIG]?.label ?? "All statuses")}
+                </span>
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All statuses</SelectItem>
@@ -136,11 +138,13 @@ export function ExpenseTable({ expenses, categories, currentUserId, canApprove }
           </Select>
           <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "all")}>
             <SelectTrigger className="w-44">
-              <span>
-                {categoryFilter === "all"
-                  ? "All categories"
-                  : (categories.find((c) => c.id === categoryFilter)?.name ?? "All categories")}
-              </span>
+              <SelectValue>
+                <span className="truncate">
+                  {categoryFilter === "all"
+                    ? "All categories"
+                    : (categories.find((c) => c.id === categoryFilter)?.name ?? "All categories")}
+                </span>
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All categories</SelectItem>
