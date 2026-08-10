@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { differenceInDays, subDays } from "date-fns";
 import type { AppRole } from "@/types/globals";
@@ -15,8 +15,8 @@ export interface Notification {
 }
 
 export async function GET() {
-  const { sessionClaims } = await auth();
-  const role = (sessionClaims?.publicMetadata?.role as AppRole) ?? null;
+  const user = await currentUser();
+  const role = (user?.publicMetadata?.role as AppRole) ?? null;
   if (!role) return NextResponse.json({ notifications: [] });
 
   const now  = new Date();
