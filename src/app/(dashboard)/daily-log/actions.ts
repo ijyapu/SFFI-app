@@ -721,7 +721,22 @@ export async function closeDailyLog(logId: string): Promise<void> {
           );
         }
 
+        // Belt-and-suspenders: the formula check above trusts item.openingQty, which can
+        // drift from the product's real currentStock after backdated edits / reopen cycles
+        // on prior days (openingOutdated). Re-check against the live stock snapshot read at
+        // the top of this transaction — this is what actually determines Product.currentStock
+        // after this close, for every category (finished goods, packaging, raw materials alike).
         const pid = item.productId;
+        const liveStockBefore = stockMap.get(pid) ?? 0;
+        const liveStockAfter  = liveStockBefore + produced - used - waste - damaged;
+        if (liveStockAfter < -0.001) {
+          throw new Error(
+            `Cannot close: "${item.product.name}" real stock is ${liveStockBefore.toFixed(3)} — ` +
+            `Produced/Used/Waste/Damaged for today would push it to ${liveStockAfter.toFixed(3)}. ` +
+            `Its opening quantity may be outdated — try Sync Opening, or correct today's figures.`
+          );
+        }
+
         const addMovement = (type: StockMovementType, qty: number, label: string) => {
           if (qty <= 0) return;
           const before = stockMap.get(pid) ?? 0;
