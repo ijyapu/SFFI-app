@@ -25,24 +25,24 @@ export async function GET() {
   // ── Low stock ──────────────────────────────────────────────────────────────
   if (hasPermission(role, "inventory")) {
     const lowStock = await prisma.$queryRaw<
-      { id: string; name: string; current_stock: string; reorder_level: string }[]
+      { id: string; name: string; currentStock: string; reorderLevel: string }[]
     >`
-      SELECT id, name, current_stock, reorder_level
+      SELECT id, name, "currentStock", "reorderLevel"
       FROM "Product"
       WHERE "deletedAt" IS NULL
-        AND reorder_level > 0
-        AND current_stock <= reorder_level
+        AND "reorderLevel" > 0
+        AND "currentStock" <= "reorderLevel"
       ORDER BY name ASC
       LIMIT 20
     `;
 
     for (const p of lowStock) {
-      const stock = Number(p.current_stock);
+      const stock = Number(p.currentStock);
       notifications.push({
         id:          `low_stock_${p.id}`,
         type:        "low_stock",
         title:       "Low stock",
-        description: `${p.name} — ${stock.toLocaleString(undefined, { maximumFractionDigits: 3 })} left (reorder at ${Number(p.reorder_level).toLocaleString(undefined, { maximumFractionDigits: 3 })})`,
+        description: `${p.name} — ${stock.toLocaleString(undefined, { maximumFractionDigits: 3 })} left (reorder at ${Number(p.reorderLevel).toLocaleString(undefined, { maximumFractionDigits: 3 })})`,
         href:        `/inventory/products/${p.id}`,
         severity:    stock === 0 ? "error" : "warning",
       });
