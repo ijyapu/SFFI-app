@@ -47,6 +47,7 @@ export async function createReceipt(values: ReceiptFormValues) {
   });
 
   revalidatePath("/receipts");
+  revalidatePath("/cash-flow");
 }
 
 export async function updateReceipt(id: string, values: ReceiptFormValues) {
@@ -67,6 +68,7 @@ export async function updateReceipt(id: string, values: ReceiptFormValues) {
   });
 
   revalidatePath("/receipts");
+  revalidatePath("/cash-flow");
 }
 
 export async function deleteReceipt(id: string) {
@@ -76,6 +78,7 @@ export async function deleteReceipt(id: string) {
     data:  { deletedAt: new Date() },
   });
   revalidatePath("/receipts");
+  revalidatePath("/cash-flow");
 }
 
 // ─── Receipt Payments (money paid back / disbursed) ────────────────────────────
@@ -106,6 +109,7 @@ export async function createReceiptPayment(values: ReceiptPaymentFormValues) {
   });
 
   revalidatePath("/receipts");
+  revalidatePath("/cash-flow");
 }
 
 export async function updateReceiptPayment(id: string, values: ReceiptPaymentFormValues) {
@@ -126,6 +130,7 @@ export async function updateReceiptPayment(id: string, values: ReceiptPaymentFor
   });
 
   revalidatePath("/receipts");
+  revalidatePath("/cash-flow");
 }
 
 export async function deleteReceiptPayment(id: string) {
@@ -135,6 +140,7 @@ export async function deleteReceiptPayment(id: string) {
     data:  { deletedAt: new Date() },
   });
   revalidatePath("/receipts");
+  revalidatePath("/cash-flow");
 }
 
 // ─── Duplicate guard ───────────────────────────────────────────────────────────
