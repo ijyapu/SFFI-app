@@ -8,40 +8,41 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { nepalNow } from "@/lib/nepali-date";
 
 const PRESETS = [
   {
     label: "Today",
     getRange: () => {
-      const now = new Date();
+      const now = nepalNow();
       return { from: startOfDay(now), to: endOfDay(now) };
     },
   },
   {
     label: "This Month",
     getRange: () => {
-      const now = new Date();
+      const now = nepalNow();
       return { from: startOfMonth(now), to: endOfMonth(now) };
     },
   },
   {
     label: "Last Month",
     getRange: () => {
-      const last = subMonths(new Date(), 1);
+      const last = subMonths(nepalNow(), 1);
       return { from: startOfMonth(last), to: endOfMonth(last) };
     },
   },
   {
     label: "Last 3 Months",
     getRange: () => ({
-      from: startOfMonth(subMonths(new Date(), 2)),
-      to:   endOfMonth(new Date()),
+      from: startOfMonth(subMonths(nepalNow(), 2)),
+      to:   endOfMonth(nepalNow()),
     }),
   },
   {
     label: "This Year",
     getRange: () => {
-      const now = new Date();
+      const now = nepalNow();
       return { from: startOfYear(now), to: endOfYear(now) };
     },
   },

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { differenceInDays } from "date-fns";
 import { requirePermission } from "@/lib/auth";
+import { nepalNow } from "@/lib/nepali-date";
 import { AgingTable, type AgingRow } from "../_components/aging-table";
 
 export const metadata = { title: "Payables Aging — Reports" };
@@ -15,7 +16,9 @@ function ageBucket(days: number, dueDate: string | null): AgingRow["bucket"] {
 
 export default async function PayablesPage() {
   await requirePermission("reports");
-  const now = new Date();
+  // Server runs in UTC — nepalNow() keeps aging-day counts from shifting by a
+  // day during Nepal's early-morning hours.
+  const now = nepalNow();
 
   const orders = await prisma.purchaseOrder.findMany({
     where: {

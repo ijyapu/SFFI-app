@@ -7,26 +7,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { X } from "lucide-react";
+import { nepalNow } from "@/lib/nepali-date";
 
 const PRESETS = [
   {
     label: "Today",
-    getRange: () => { const now = new Date(); return { from: now, to: now }; },
+    getRange: () => { const now = nepalNow(); return { from: now, to: now }; },
   },
   {
     label: "This Week",
     getRange: () => {
-      const now = new Date();
+      const now = nepalNow();
       return { from: startOfWeek(now, { weekStartsOn: 0 }), to: endOfWeek(now, { weekStartsOn: 0 }) };
     },
   },
   {
     label: "This Month",
-    getRange: () => { const now = new Date(); return { from: startOfMonth(now), to: endOfMonth(now) }; },
+    getRange: () => { const now = nepalNow(); return { from: startOfMonth(now), to: endOfMonth(now) }; },
   },
   {
     label: "Last Month",
-    getRange: () => { const last = subMonths(new Date(), 1); return { from: startOfMonth(last), to: endOfMonth(last) }; },
+    getRange: () => { const last = subMonths(nepalNow(), 1); return { from: startOfMonth(last), to: endOfMonth(last) }; },
   },
 ];
 

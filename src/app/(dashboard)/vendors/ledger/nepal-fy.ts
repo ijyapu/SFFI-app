@@ -1,4 +1,5 @@
 import NepaliDate from "nepali-date";
+import { nepalNow } from "@/lib/nepali-date";
 
 /** Get AD start/end dates for a Nepal fiscal year (BS year → Shrawan 1 to Ashadh end) */
 export function getNepalFYDates(bsYear: number): { from: Date; to: Date } {
@@ -13,7 +14,11 @@ export function getNepalFYDates(bsYear: number): { from: Date; to: Date } {
 
 /** Returns the BS year in which the current Nepal FY started */
 export function getCurrentNepalFYYear(): number {
-  const today = new NepaliDate(new Date());
+  // nepalNow() resolves "today" in Nepal terms first (server may run in UTC,
+  // ~6h behind Nepal) as a local-noon Date — NepaliDate reads local Date
+  // fields internally, so a raw `new Date()` can land on the wrong BS
+  // day/year near the Nepal-morning hours.
+  const today = new NepaliDate(nepalNow());
   // Month >= 3 (Shrawan, 0-indexed) → FY started this BS year
   return today.getMonth() >= 3 ? today.getYear() : today.getYear() - 1;
 }

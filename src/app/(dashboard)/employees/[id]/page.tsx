@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
+import { nepalNow } from "@/lib/nepali-date";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { ArrowLeft, Building2, Phone, Mail, Calendar, TrendingUp, TrendingDown } from "lucide-react";
@@ -42,7 +43,9 @@ export default async function EmployeeDetailPage({
   const { id } = await params;
   const { month: rawMonth, year: rawYear } = await searchParams;
 
-  const now           = new Date();
+  // Server runs in UTC — nepalNow() keeps the default month/year selector
+  // from landing a day early near a month/year boundary.
+  const now           = nepalNow();
   const selectedMonth = rawMonth ? parseInt(rawMonth, 10) : now.getMonth() + 1;
   const selectedYear  = rawYear  ? parseInt(rawYear,  10) : now.getFullYear();
 

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { format, startOfMonth, endOfMonth, subMonths, startOfYear } from "date-fns";
+import { nepalNow } from "@/lib/nepali-date";
 
 interface Props {
   from: string;
@@ -14,23 +15,23 @@ const fmt = (d: Date) => format(d, "yyyy-MM-dd");
 const PRESETS = [
   {
     label: "This Month",
-    from: () => fmt(startOfMonth(new Date())),
-    to:   () => fmt(endOfMonth(new Date())),
+    from: () => fmt(startOfMonth(nepalNow())),
+    to:   () => fmt(endOfMonth(nepalNow())),
   },
   {
     label: "Last Month",
-    from: () => fmt(startOfMonth(subMonths(new Date(), 1))),
-    to:   () => fmt(endOfMonth(subMonths(new Date(), 1))),
+    from: () => fmt(startOfMonth(subMonths(nepalNow(), 1))),
+    to:   () => fmt(endOfMonth(subMonths(nepalNow(), 1))),
   },
   {
     label: "Last 3 Months",
-    from: () => fmt(startOfMonth(subMonths(new Date(), 2))),
-    to:   () => fmt(endOfMonth(new Date())),
+    from: () => fmt(startOfMonth(subMonths(nepalNow(), 2))),
+    to:   () => fmt(endOfMonth(nepalNow())),
   },
   {
     label: "This Year",
-    from: () => fmt(startOfYear(new Date())),
-    to:   () => fmt(endOfMonth(new Date())),
+    from: () => fmt(startOfYear(nepalNow())),
+    to:   () => fmt(endOfMonth(nepalNow())),
   },
 ];
 

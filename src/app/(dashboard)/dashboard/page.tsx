@@ -14,7 +14,7 @@ import { RevenueChart } from "./_components/revenue-chart";
 import { RecentActivity } from "./_components/recent-activity";
 import { ProductInsights } from "./_components/product-insights";
 import { SalesmanInsights } from "./_components/salesman-insights";
-import { toNepaliDateString } from "@/lib/nepali-date";
+import { toNepaliDateString, getNepalTodayStr, nepalDateAsUtcMidnight, nepalNow } from "@/lib/nepali-date";
 import { COMPANY } from "@/lib/company";
 import { formatAmount } from "@/lib/format";
 
@@ -28,9 +28,13 @@ function pctChange(current: number, previous: number) {
 export default async function DashboardPage() {
   await requireMinRole("employee");
 
-  const user           = await currentUser();
-  const firstName      = user?.firstName ?? user?.username ?? "there";
-  const now            = new Date();
+  const user      = await currentUser();
+  const firstName = user?.firstName ?? user?.username ?? "there";
+
+  // Server runs in UTC — nepalNow()/getNepalTodayStr() keep "today" aligned
+  // to Nepal's calendar day for both date-fns math and the DailyLog lookup.
+  const todayStr       = getNepalTodayStr();
+  const now            = nepalNow();
   const monthStart     = startOfMonth(now);
   const lastMonthStart = startOfMonth(subMonths(now, 1));
 
@@ -100,12 +104,7 @@ export default async function DashboardPage() {
       select: { currentStock: true, costPrice: true },
     }),
     prisma.dailyLog.findFirst({
-      where: {
-        logDate: {
-          gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          lt:  new Date(new Date().setHours(23, 59, 59, 999)),
-        },
-      },
+      where: { logDate: nepalDateAsUtcMidnight(todayStr) },
       select: { status: true },
     }),
   ]);

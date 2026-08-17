@@ -3,6 +3,7 @@ import { requirePermission } from "@/lib/auth";
 import { EmployeeTable } from "./_components/employee-table";
 import { Users, UserCheck, DollarSign, Building2 } from "lucide-react";
 import { formatAmount } from "@/lib/format";
+import { nepalNow } from "@/lib/nepali-date";
 
 export const metadata = { title: "Employees" };
 
@@ -22,7 +23,9 @@ export default async function EmployeesPage() {
     }),
   ]);
 
-  const now = new Date();
+  // Server runs in UTC — compare against Nepal's calendar "today", not the
+  // raw server instant, so an employee isn't flagged inactive up to ~6h early.
+  const now = nepalNow();
 
   const activeEmployees = employees.filter(
     (e) => !e.endDate || new Date(e.endDate) > now

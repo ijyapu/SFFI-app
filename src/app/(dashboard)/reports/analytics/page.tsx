@@ -8,6 +8,7 @@ import {
   format,
 } from "date-fns";
 import { prisma } from "@/lib/prisma";
+import { nepalNow } from "@/lib/nepali-date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, ShoppingCart, Receipt, RotateCcw, Package } from "lucide-react";
 import {
@@ -143,7 +144,9 @@ export default async function AnalyticsPage({
     ? (rawPeriod as Period)
     : "monthly";
 
-  const now = new Date();
+  // Server runs in UTC — nepalNow() keeps the bucket math below (which reads
+  // machine-local calendar fields) aligned to Nepal's actual calendar day.
+  const now = nepalNow();
   const { periodStart, prevStart, trendStart, buckets, label, shortLabel, trendTitle, getBucketKey } =
     buildPeriodConfig(period, now);
 

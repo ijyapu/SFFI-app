@@ -5,45 +5,48 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Printer } from "lucide-react";
+import { nepalNow } from "@/lib/nepali-date";
+import { getNepalFYDates, getCurrentNepalFYYear } from "../nepal-fy";
 
 type Supplier = { id: string; name: string; pan: string | null };
 
-// Nepal FY helper (client-side)
-function getNepalFYPresets() {
-  // Approx AD dates for Nepal FY (Shrawan 1 to Ashadh end)
-  // FY 2081-82: 2024-07-16 to 2025-07-15
-  // FY 2082-83: 2025-07-16 to 2026-07-15
-  const today = new Date();
-  const year = today.getFullYear();
+const toDateStr = (d: Date) => d.toISOString().split("T")[0]!;
 
-  // Current FY: if after July 16, it's year/year+1, else (year-1)/year
-  const fyStartYear = today >= new Date(`${year}-07-16`) ? year : year - 1;
+// Nepal FY helper (client-side) — uses the real BS calendar (getNepalFYDates)
+// instead of a hardcoded "07-16" approximation, and nepalNow() instead of the
+// browser's own clock, so both the FY boundary and "today" reflect Nepal's
+// actual calendar rather than an approximation or the visiting device's timezone.
+function getNepalFYPresets() {
+  const now = nepalNow();
+  const currentFYYear = getCurrentNepalFYYear();
+  const currentFY = getNepalFYDates(currentFYYear);
+  const lastFY    = getNepalFYDates(currentFYYear - 1);
 
   return [
     {
-      label: `Nepal FY ${fyStartYear + 57}-${fyStartYear + 58} (Current)`,
-      from: `${fyStartYear}-07-16`,
-      to:   `${fyStartYear + 1}-07-15`,
+      label: `Nepal FY ${currentFYYear}-${currentFYYear + 1} (Current)`,
+      from: toDateStr(currentFY.from),
+      to:   toDateStr(currentFY.to),
     },
     {
-      label: `Nepal FY ${fyStartYear + 56}-${fyStartYear + 57} (Last)`,
-      from: `${fyStartYear - 1}-07-16`,
-      to:   `${fyStartYear}-07-15`,
+      label: `Nepal FY ${currentFYYear - 1}-${currentFYYear} (Last)`,
+      from: toDateStr(lastFY.from),
+      to:   toDateStr(lastFY.to),
     },
     {
       label: "This Month",
-      from: new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0],
-      to:   new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split("T")[0],
+      from: toDateStr(new Date(now.getFullYear(), now.getMonth(), 1)),
+      to:   toDateStr(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
     },
     {
       label: "Last Month",
-      from: new Date(today.getFullYear(), today.getMonth() - 1, 1).toISOString().split("T")[0],
-      to:   new Date(today.getFullYear(), today.getMonth(), 0).toISOString().split("T")[0],
+      from: toDateStr(new Date(now.getFullYear(), now.getMonth() - 1, 1)),
+      to:   toDateStr(new Date(now.getFullYear(), now.getMonth(), 0)),
     },
     {
       label: "This Year (AD)",
-      from: `${year}-01-01`,
-      to:   `${year}-12-31`,
+      from: `${now.getFullYear()}-01-01`,
+      to:   `${now.getFullYear()}-12-31`,
     },
   ];
 }

@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { format, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
-import { toNepaliDateString } from "@/lib/nepali-date";
+import { toNepaliDateString, nepalNow } from "@/lib/nepali-date";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { DateRangePicker } from "./_components/date-range-picker";
@@ -16,7 +16,9 @@ export default async function ProfitLossPage({
   await requirePermission("profitLoss");
 
   const params = await searchParams;
-  const now    = new Date();
+  // Server runs in UTC — nepalNow() keeps startOfMonth/endOfMonth aligned to
+  // the correct Nepal calendar day.
+  const now = nepalNow();
 
   // Parse or default to current month
   const fromDate = params.from
