@@ -62,8 +62,8 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
               <div style={{ fontSize: "22px", fontWeight: "700", color: "#c0392b", letterSpacing: "1px" }}>PURCHASE INVOICE</div>
               <div style={{ fontSize: "13px", fontWeight: "600", marginTop: "4px" }}>{purchase.invoiceNo}</div>
               <div style={{ fontSize: "10px", color: "#555", marginTop: "4px" }}>
-                {format(date, "dd MMMM yyyy")}<br />
-                <span style={{ color: "#888" }}>{toNepaliDateString(date)}</span>
+                {toNepaliDateString(date)}<br />
+                <span style={{ color: "#888" }}>{format(date, "dd MMMM yyyy")}</span>
               </div>
             </div>
           </div>
@@ -163,7 +163,7 @@ export default async function PrintInvoicePage({ params }: { params: Promise<{ i
           {/* ── Footer ── */}
           <div style={{ borderTop: "1px solid #eee", paddingTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
             <div style={{ color: "#aaa", fontSize: "10px" }}>
-              Printed on {format(new Date(), "dd MMM yyyy, HH:mm")} ({toNepaliDateString(new Date())}) · {COMPANY.nameShort} ERP
+              Printed on {toNepaliDateString(new Date())} ({format(new Date(), "dd MMM yyyy, HH:mm")}) · {COMPANY.nameShort} ERP
             </div>
             <div style={{ textAlign: "right" }}>
               <div style={{ borderTop: "1px solid #333", paddingTop: "4px", fontSize: "10px", color: "#555", width: "140px" }}>Authorized Signature</div>

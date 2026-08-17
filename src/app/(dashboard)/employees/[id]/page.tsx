@@ -221,7 +221,7 @@ export default async function EmployeeDetailPage({
         </span>
         <span className="flex items-center gap-1.5">
           <Calendar className="h-3.5 w-3.5" />
-          Joined {format(employee.startDate, "d MMM yyyy")} ({toNepaliDateString(new Date(employee.startDate))})
+          Joined {toNepaliDateString(new Date(employee.startDate))} ({format(employee.startDate, "d MMM yyyy")})
         </span>
       </div>
 
@@ -327,8 +327,8 @@ export default async function EmployeeDetailPage({
                       >
                         <TableCell className="text-xs text-muted-foreground tabular-nums">
                           <span className="flex flex-col leading-snug">
-                            <span>{entry.date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}</span>
-                            <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(entry.date)}</span>
+                            <span>{toNepaliDateString(entry.date)}</span>
+                            <span className="text-[10px] text-muted-foreground/60">{entry.date.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" })}</span>
                           </span>
                         </TableCell>
                         <TableCell>

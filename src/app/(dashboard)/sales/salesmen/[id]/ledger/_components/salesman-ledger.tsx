@@ -211,6 +211,7 @@ export function SalesmanLedger({ commissionPct, openingBalance, rows }: Props) {
                 {dayGroups.map((day) => {
                   const isExpanded = expandedDays.has(day.date);
                   const displayDate = format(new Date(day.date + "T12:00:00"), "EEE, d MMM yyyy");
+                  const nepaliDisplayDate = toNepaliDateString(new Date(day.date + "T12:00:00"));
 
                   return (
                     <div key={day.date}>
@@ -223,8 +224,8 @@ export function SalesmanLedger({ commissionPct, openingBalance, rows }: Props) {
                         <div className={cn(COL_GRID, "items-center")}>
                           {/* Date */}
                           <div>
-                            <p className="text-sm font-semibold">{displayDate}</p>
-                            <p className="text-[11px] text-muted-foreground/60">{toNepaliDateString(new Date(day.date + "T12:00:00"))}</p>
+                            <p className="text-sm font-semibold">{nepaliDisplayDate}</p>
+                            <p className="text-[11px] text-muted-foreground/60">{displayDate}</p>
                             <p className="text-xs text-muted-foreground mt-0.5 tabular-nums">
                               {day.orders.length} dispatch{day.orders.length !== 1 ? "es" : ""}
                             </p>

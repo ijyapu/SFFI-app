@@ -123,8 +123,8 @@ export default async function ProfitLossPage({
 
   const periodLabel =
     fromStr === toStr
-      ? `${format(fromDate, "d MMMM yyyy")} (${toNepaliDateString(fromDate)})`
-      : `${format(fromDate, "d MMM yyyy")} — ${format(toDate, "d MMM yyyy")} · ${toNepaliDateString(fromDate)} — ${toNepaliDateString(toDate)}`;
+      ? `${toNepaliDateString(fromDate)} (${format(fromDate, "d MMMM yyyy")})`
+      : `${toNepaliDateString(fromDate)} — ${toNepaliDateString(toDate)} · ${format(fromDate, "d MMM yyyy")} — ${format(toDate, "d MMM yyyy")}`;
 
   return (
     <div className="space-y-6">

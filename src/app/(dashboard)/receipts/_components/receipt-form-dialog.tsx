@@ -307,7 +307,7 @@ export function ReceiptFormDialog(props: Props) {
                   <div className="text-muted-foreground">
                     Order {m.orderNumber} &nbsp;·&nbsp;
                     Rs {m.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })} &nbsp;·&nbsp;
-                    {format(new Date(m.paidAt), "d MMM yyyy")} ({toNepaliDateString(new Date(m.paidAt))})
+                    {toNepaliDateString(new Date(m.paidAt))} ({format(new Date(m.paidAt), "d MMM yyyy")})
                   </div>
                 </div>
               ))}

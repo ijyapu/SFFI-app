@@ -56,7 +56,7 @@ export default async function StockValuationPage() {
     <StockValuationTable
       categories={categories}
       grandTotal={grandTotal}
-      asOf={`${format(new Date(), "d MMM yyyy, HH:mm")} · ${toNepaliDateString(new Date())}`}
+      asOf={`${toNepaliDateString(new Date())} · ${format(new Date(), "d MMM yyyy, HH:mm")}`}
     />
   );
 }

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { nepalNow, toNepaliDateString } from "@/lib/nepali-date";
 import { ERPSection } from "@/components/ui/erp-section";
 import { TrendingUp, TrendingDown, Package, BarChart2 } from "lucide-react";
 import { formatAmount } from "@/lib/format";
@@ -18,7 +19,9 @@ export default async function CostingPage({
   await requirePermission("costing");
 
   const { from: rawFrom, to: rawTo } = await searchParams;
-  const now   = new Date();
+  // Server runs in UTC — nepalNow() keeps the default month range aligned to
+  // the correct Nepal calendar month.
+  const now   = nepalNow();
   const from  = rawFrom ? parseISO(rawFrom) : startOfMonth(now);
   const to    = rawTo   ? parseISO(rawTo)   : endOfMonth(now);
   const fromStr = format(from, "yyyy-MM-dd");
@@ -106,7 +109,10 @@ export default async function CostingPage({
         <div>
           <h1 className="text-2xl font-semibold">Costing & Margins</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            {format(from, "d MMM yyyy")} — {format(to, "d MMM yyyy")}
+            {toNepaliDateString(from)} — {toNepaliDateString(to)}
+            <span className="text-xs text-muted-foreground/60 ml-1.5">
+              ({format(from, "d MMM yyyy")} — {format(to, "d MMM yyyy")})
+            </span>
           </p>
         </div>
       </div>

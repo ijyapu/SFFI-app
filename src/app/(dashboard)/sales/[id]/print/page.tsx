@@ -91,8 +91,8 @@ export default async function PrintSalesInvoicePage({ params }: { params: Promis
               <div style={{ fontSize: "22px", fontWeight: "700", color: "#c0392b", letterSpacing: "1px" }}>SALES INVOICE</div>
               <div style={{ fontSize: "13px", fontWeight: "600", marginTop: "4px" }}>{so.orderNumber}</div>
               <div style={{ fontSize: "10px", color: "#555", marginTop: "4px" }}>
-                {format(date, "dd MMMM yyyy")}<br />
-                <span style={{ color: "#888" }}>{toNepaliDateString(date)}</span>
+                {toNepaliDateString(date)}<br />
+                <span style={{ color: "#888" }}>{format(date, "dd MMMM yyyy")}</span>
               </div>
               <div style={{ marginTop: "6px", display: "inline-block", padding: "2px 8px", borderRadius: "4px", fontSize: "10px", fontWeight: "600",
                 backgroundColor: so.status === "PAID" ? "#dcfce7" : so.status === "PARTIALLY_PAID" ? "#fef9c3" : so.status === "CANCELLED" ? "#fee2e2" : "#dbeafe",
@@ -192,8 +192,8 @@ export default async function PrintSalesInvoicePage({ params }: { params: Promis
                   {so.payments.map((p) => (
                     <tr key={p.id} style={{ borderBottom: "1px solid #eee" }}>
                       <td style={{ padding: "5px 8px" }}>
-                        <div>{format(new Date(p.paidAt), "dd MMM yyyy")}</div>
-                        <div style={{ fontSize: "9px", color: "#aaa" }}>{toNepaliDateString(new Date(p.paidAt))}</div>
+                        <div>{toNepaliDateString(new Date(p.paidAt))}</div>
+                        <div style={{ fontSize: "9px", color: "#aaa" }}>{format(new Date(p.paidAt), "dd MMM yyyy")}</div>
                       </td>
                       <td style={{ padding: "5px 8px", color: "#555" }}>{METHOD_LABELS[p.method] ?? p.method}</td>
                       <td style={{ padding: "5px 8px", color: "#888" }}>{p.reference ?? "—"}</td>
@@ -216,7 +216,7 @@ export default async function PrintSalesInvoicePage({ params }: { params: Promis
                       {ret.returnNumber} · {ret.returnType === "FRESH" ? "Fresh Return" : "Waste Return"}
                     </span>
                     <span style={{ fontSize: "10px", color: "#888" }}>
-                      {format(new Date(ret.createdAt), "dd MMM yyyy")} · <span style={{ color: "#aaa" }}>{toNepaliDateString(new Date(ret.createdAt))}</span>
+                      {toNepaliDateString(new Date(ret.createdAt))} · <span style={{ color: "#aaa" }}>{format(new Date(ret.createdAt), "dd MMM yyyy")}</span>
                     </span>
                   </div>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "10px" }}>
@@ -251,7 +251,7 @@ export default async function PrintSalesInvoicePage({ params }: { params: Promis
           {/* ── Footer ── */}
           <div style={{ borderTop: "1px solid #eee", paddingTop: "12px", display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "auto" }}>
             <div style={{ color: "#aaa", fontSize: "10px" }}>
-              Printed on {format(new Date(), "dd MMM yyyy, HH:mm")} ({toNepaliDateString(new Date())}) · {COMPANY.nameShort} ERP
+              Printed on {toNepaliDateString(new Date())} ({format(new Date(), "dd MMM yyyy, HH:mm")}) · {COMPANY.nameShort} ERP
             </div>
             <div style={{ display: "flex", gap: "40px" }}>
               <div style={{ textAlign: "center" }}>

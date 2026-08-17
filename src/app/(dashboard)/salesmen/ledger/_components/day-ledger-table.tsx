@@ -122,8 +122,8 @@ function DayRow({ day }: { day: DayGroup }) {
 
         {/* Date */}
         <span className="flex-1 min-w-36">
-          <span className="text-sm font-medium">{displayDate}</span>
-          <span className="block text-[11px] text-muted-foreground/70 tabular-nums">{nepaliDate}</span>
+          <span className="text-sm font-medium">{nepaliDate}</span>
+          <span className="block text-[11px] text-muted-foreground/70 tabular-nums">{displayDate}</span>
         </span>
 
         {/* Opening balance */}

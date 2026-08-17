@@ -154,11 +154,13 @@ function RequestCard({ req }: { req: AccessRequest }) {
             )}
 
             <p className="mt-3 text-[11px] text-muted-foreground">
-              Submitted {new Date(req.createdAt).toLocaleDateString("en-NP", {
-                year: "numeric", month: "short", day: "numeric",
-                hour: "2-digit", minute: "2-digit",
-              })}
-              <span className="ml-1 text-[10px] text-muted-foreground/60">({toNepaliDateString(new Date(req.createdAt))})</span>
+              Submitted {toNepaliDateString(new Date(req.createdAt))}
+              <span className="ml-1 text-[10px] text-muted-foreground/60">
+                ({new Date(req.createdAt).toLocaleDateString("en-NP", {
+                  year: "numeric", month: "short", day: "numeric",
+                  hour: "2-digit", minute: "2-digit",
+                })})
+              </span>
             </p>
           </div>
 

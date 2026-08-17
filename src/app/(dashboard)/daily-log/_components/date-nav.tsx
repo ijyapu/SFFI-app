@@ -43,11 +43,11 @@ export function DateNav({ validDate, prevDay, nextDay, dateLabel, isToday, today
       {/* Date label + calendar picker */}
       <div className="flex items-center gap-1 px-0.5">
         <div className="flex flex-col leading-tight">
-          <span className="text-muted-foreground text-sm">
-            {dateLabel}{isToday ? " (today)" : ""}
+          <span className="text-foreground text-sm font-medium">
+            {nepaliDateLabel}{isToday ? " (today)" : ""}
           </span>
           <span className="text-muted-foreground/60 text-xs">
-            {nepaliDateLabel}
+            {dateLabel}
           </span>
         </div>
 

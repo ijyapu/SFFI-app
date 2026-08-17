@@ -184,8 +184,8 @@ export default async function DailyLogPage({ searchParams }: Props) {
                 Log closed — inventory updated.
                 {log.closedAt && (
                   <span className="ml-1.5 text-xs">
-                    {new Date(log.closedAt).toLocaleString()}
-                    <span className="ml-1 text-[10px] text-muted-foreground/60">({toNepaliDateString(new Date(log.closedAt))})</span>
+                    {toNepaliDateString(new Date(log.closedAt))}
+                    <span className="ml-1 text-[10px] text-muted-foreground/60">({new Date(log.closedAt).toLocaleString()})</span>
                   </span>
                 )}
               </span>
@@ -198,8 +198,8 @@ export default async function DailyLogPage({ searchParams }: Props) {
                 Auto-adjusted after a backdated sale or return — closing quantities recalculated, stock movements unaffected.
                 {log.closedAt && (
                   <span className="ml-1.5 text-xs">
-                    Originally closed {new Date(log.closedAt).toLocaleString()}
-                    <span className="ml-1 text-[10px] text-muted-foreground/60">({toNepaliDateString(new Date(log.closedAt))})</span>
+                    Originally closed {toNepaliDateString(new Date(log.closedAt))}
+                    <span className="ml-1 text-[10px] text-muted-foreground/60">({new Date(log.closedAt).toLocaleString()})</span>
                   </span>
                 )}
               </span>

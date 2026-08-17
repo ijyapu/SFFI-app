@@ -115,8 +115,8 @@ export default async function DailyLogHistoryPage() {
                       className="font-medium text-sm hover:underline flex items-center gap-1"
                     >
                       <span className="flex flex-col leading-snug">
-                        <span>{formatDate(log.logDate)}</span>
-                        <span className="text-[11px] font-normal text-muted-foreground/60">{nepaliDate(log.logDate)}</span>
+                        <span>{nepaliDate(log.logDate)}</span>
+                        <span className="text-[11px] font-normal text-muted-foreground/60">{formatDate(log.logDate)}</span>
                       </span>
                       <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
                     </Link>

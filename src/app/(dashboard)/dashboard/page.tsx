@@ -14,7 +14,7 @@ import { RevenueChart } from "./_components/revenue-chart";
 import { RecentActivity } from "./_components/recent-activity";
 import { ProductInsights } from "./_components/product-insights";
 import { SalesmanInsights } from "./_components/salesman-insights";
-import { toNepaliDateString, getNepalTodayStr, nepalDateAsUtcMidnight, nepalNow } from "@/lib/nepali-date";
+import { toNepaliDateString, getNepalTodayStr, nepalDateAsUtcMidnight, nepalNow, toNepaliMonth } from "@/lib/nepali-date";
 import { COMPANY } from "@/lib/company";
 import { formatAmount } from "@/lib/format";
 
@@ -290,7 +290,7 @@ export default async function DashboardPage() {
       {/* ── 1. Top Summary Strip ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none">
-          <div className="text-xs text-muted-foreground font-medium mb-1">Revenue · {format(now, "MMM")}</div>
+          <div className="text-xs text-muted-foreground font-medium mb-1">Revenue · {toNepaliMonth(now)}</div>
           <div className="text-xl font-bold tabular-nums">{formatAmount(revenue)}</div>
           {revPct !== null && (
             <div className={`text-xs mt-1 flex items-center gap-1 ${revPct >= 0 ? "text-emerald-600" : "text-destructive"}`}>
@@ -300,7 +300,7 @@ export default async function DashboardPage() {
           )}
         </div>
         <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none">
-          <div className="text-xs text-muted-foreground font-medium mb-1">Purchases · {format(now, "MMM")}</div>
+          <div className="text-xs text-muted-foreground font-medium mb-1">Purchases · {toNepaliMonth(now)}</div>
           <div className="text-xl font-bold tabular-nums">{formatAmount(purchases)}</div>
           {purPct !== null && (
             <div className={`text-xs mt-1 flex items-center gap-1 ${purPct <= 0 ? "text-emerald-600" : "text-amber-600"}`}>
@@ -310,7 +310,7 @@ export default async function DashboardPage() {
           )}
         </div>
         <div className="rounded-lg border bg-card px-4 py-3 transition-[transform,box-shadow] duration-150 ease-out hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none">
-          <div className="text-xs text-muted-foreground font-medium mb-1">Gross Profit · {format(now, "MMM")}</div>
+          <div className="text-xs text-muted-foreground font-medium mb-1">Gross Profit · {toNepaliMonth(now)}</div>
           <div className={`text-xl font-bold tabular-nums ${grossProfit < 0 ? "text-destructive" : ""}`}>{formatAmount(grossProfit)}</div>
           <div className="text-xs text-muted-foreground mt-1">
             {revenue > 0 ? `${((grossProfit / revenue) * 100).toFixed(1)}% margin` : "No revenue yet"}
@@ -468,7 +468,7 @@ export default async function DashboardPage() {
       {/* ── 5. Product Insights ── */}
       <div>
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          Product Insights · {format(now, "MMM")}
+          Product Insights · {toNepaliMonth(now)}
         </h2>
         <ProductInsights
           topSellers={topSellers}
@@ -481,7 +481,7 @@ export default async function DashboardPage() {
       {/* ── 6. Salesman Insights ── */}
       <div>
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-          Salesman Insights · {format(now, "MMM")}
+          Salesman Insights · {toNepaliMonth(now)}
         </h2>
         <SalesmanInsights
           topBySales={topSalesmenBySales}

@@ -170,8 +170,8 @@ export function ReturnFormInline({
                   <div className="flex items-center gap-2">
                     <span className={`font-mono text-xs font-semibold ${isFresh ? "text-green-700" : "text-orange-700"}`}>{r.returnNumber}</span>
                     <span className="text-xs text-muted-foreground flex flex-col leading-snug">
-                      <span>{new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
-                      <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(new Date(r.createdAt))}</span>
+                      <span>{toNepaliDateString(new Date(r.createdAt))}</span>
+                      <span className="text-[10px] text-muted-foreground/60">{new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</span>
                     </span>
                     {r.notes && (
                       <span className="text-xs text-muted-foreground italic">· {r.notes}</span>

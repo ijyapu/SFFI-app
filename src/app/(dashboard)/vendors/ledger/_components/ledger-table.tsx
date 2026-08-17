@@ -53,8 +53,8 @@ export function LedgerTable({
           {/* Opening balance row */}
           <tr className="bg-amber-50/60 dark:bg-amber-950/20 font-medium">
             <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
-              {format(fromDate, "dd MMM yyyy")}<br />
-              <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(fromDate)}</span>
+              {toNepaliDateString(fromDate)}<br />
+              <span className="text-[10px] text-muted-foreground/60">{format(fromDate, "dd MMM yyyy")}</span>
             </td>
             <td className="px-4 py-2.5 text-xs text-muted-foreground">—</td>
             <td className="px-4 py-2.5 text-xs font-semibold text-amber-700 dark:text-amber-400">Opening Balance</td>
@@ -86,8 +86,8 @@ export function LedgerTable({
                 className={`${isInvoice ? "" : "bg-emerald-50/30 dark:bg-emerald-950/10"} hover:bg-muted/30 transition-colors`}
               >
                 <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
-                  {format(d, "dd MMM yyyy")}<br />
-                  <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(d)}</span>
+                  {toNepaliDateString(d)}<br />
+                  <span className="text-[10px] text-muted-foreground/60">{format(d, "dd MMM yyyy")}</span>
                 </td>
                 <td className="px-4 py-2.5 text-xs font-mono">
                   <div className="flex items-center gap-1">
@@ -149,8 +149,8 @@ export function LedgerTable({
           {/* Closing balance row */}
           <tr className="border-t-2 border-border bg-muted/30 font-semibold">
             <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
-              {format(toDate, "dd MMM yyyy")}<br />
-              <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(toDate)}</span>
+              {toNepaliDateString(toDate)}<br />
+              <span className="text-[10px] text-muted-foreground/60">{format(toDate, "dd MMM yyyy")}</span>
             </td>
             <td className="px-4 py-2.5" />
             <td className="px-4 py-2.5 text-xs font-bold">Closing Balance</td>

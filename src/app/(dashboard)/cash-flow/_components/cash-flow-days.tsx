@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import NepaliDate from "nepali-date-converter";
 import {
   ChevronRight,
   ArrowDownLeft, ArrowUpRight,
   Minus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import type { DayCashFlow, CashEntry } from "../actions";
 
 function fmtRs(n: number): string {
@@ -22,14 +22,8 @@ function fmtDate(dateStr: string): string {
 }
 
 function fmtNepaliDate(dateStr: string): string {
-  try {
-    const [y, m, d] = dateStr.split("-").map(Number);
-    // Use local noon — the library uses local time internally, UTC midnight maps to the previous day
-    const nd = new NepaliDate(new Date(y!, m! - 1, d!, 12, 0, 0));
-    return nd.format("D MMMM YYYY");
-  } catch {
-    return "";
-  }
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return toNepaliDateString(new Date(Date.UTC(y!, m! - 1, d!)));
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -103,7 +97,7 @@ function DayRow({ day, isToday }: { day: DayCashFlow; isToday: boolean }) {
         {/* Date */}
         <span className="w-52 shrink-0">
           <span className="text-sm font-medium">
-            {fmtDate(day.dateStr)}
+            {fmtNepaliDate(day.dateStr)}
             {isToday && (
               <span className="ml-2 inline-flex items-center rounded px-1 py-0.5 text-[10px] font-medium bg-primary/10 text-primary leading-none">
                 today
@@ -111,7 +105,7 @@ function DayRow({ day, isToday }: { day: DayCashFlow; isToday: boolean }) {
             )}
           </span>
           <span className="block text-xs text-muted-foreground">
-            {fmtNepaliDate(day.dateStr)}
+            {fmtDate(day.dateStr)}
           </span>
         </span>
 

@@ -258,8 +258,8 @@ export function RecordPaymentButton({
                         <div>
                           <p className="text-sm font-mono font-medium">{inv.invoiceNo}</p>
                           <p className="text-xs text-muted-foreground">
-                            <span className="block">{format(new Date(inv.date), "dd MMM yyyy")}</span>
-                            <span className="text-[10px] text-muted-foreground/60">{toNepaliDateString(new Date(inv.date))}</span>
+                            <span className="block">{toNepaliDateString(new Date(inv.date))}</span>
+                            <span className="text-[10px] text-muted-foreground/60">{format(new Date(inv.date), "dd MMM yyyy")}</span>
                           </p>
                         </div>
                         <div className="text-right">

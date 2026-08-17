@@ -1,6 +1,6 @@
 import type { VendorLedgerData } from "../actions";
 import { format } from "date-fns";
-import { toNepaliMonthYear } from "@/lib/nepali-date";
+import { toNepaliDateString } from "@/lib/nepali-date";
 import { AlertCircle, CheckCircle2, FileText } from "lucide-react";
 import { COMPANY } from "@/lib/company";
 
@@ -27,8 +27,9 @@ export function TaxSummary({ data }: { data: VendorLedgerData }) {
             (IRD Purchase Book — VAT Input Credit) · PAN: {COMPANY.pan}
           </span>
         </div>
-        <div className="text-xs text-muted-foreground">
-          {format(fromDate, "d MMM yyyy")} – {format(toDate, "d MMM yyyy")}
+        <div className="text-right text-xs text-muted-foreground leading-snug">
+          <div>{toNepaliDateString(fromDate)} – {toNepaliDateString(toDate)}</div>
+          <div className="text-[10px] text-muted-foreground/60">{format(fromDate, "d MMM yyyy")} – {format(toDate, "d MMM yyyy")}</div>
         </div>
       </div>
 
@@ -57,9 +58,9 @@ export function TaxSummary({ data }: { data: VendorLedgerData }) {
 
           <div className="rounded-md border p-3 space-y-1 text-sm">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Period</p>
-            <p className="font-semibold">{format(fromDate, "d MMMM yyyy")} – {format(toDate, "d MMMM yyyy")}</p>
+            <p className="font-semibold">{toNepaliDateString(fromDate)} – {toNepaliDateString(toDate)}</p>
             <p className="text-xs text-muted-foreground">
-              {toNepaliMonthYear(fromDate)} – {toNepaliMonthYear(toDate)}
+              {format(fromDate, "d MMMM yyyy")} – {format(toDate, "d MMMM yyyy")}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               {t.invoiceCount} invoice{t.invoiceCount !== 1 ? "s" : ""} ·{" "}

@@ -34,6 +34,12 @@ export function toNepaliDayMonth(date: Date): string {
   return `${nd.getDate()} ${MONTHS[nd.getMonth()]}`;
 }
 
+/** Returns Nepali month name only: "Jestha" */
+export function toNepaliMonth(date: Date): string {
+  const nd = new NepaliDate(toLocalNoon(date));
+  return MONTHS[nd.getMonth()]!;
+}
+
 // ─── Nepal-timezone "today" / day-boundary helpers ─────────────────────────────
 // The server (Vercel) runs in UTC, which is 5h45m behind Nepal. Any "today" or
 // date-range cutoff derived from a raw `new Date()` without an explicit

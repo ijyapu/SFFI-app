@@ -32,8 +32,8 @@ function DateCell({ date }: { date: string }) {
   const d = new Date(date);
   return (
     <div>
-      <div className="text-xs">{format(d, "dd MMM yyyy")}</div>
-      <div className="text-[10px] text-muted-foreground/60">{toNepaliDateString(d)}</div>
+      <div className="text-xs">{toNepaliDateString(d)}</div>
+      <div className="text-[10px] text-muted-foreground/60">{format(d, "dd MMM yyyy")}</div>
     </div>
   );
 }
@@ -106,7 +106,7 @@ export function LedgerTable({
           <tr className="bg-amber-50/60 dark:bg-amber-950/10 border-b">
             <th className="px-4 py-3 text-left w-32 font-semibold text-amber-800">Opening Balance</th>
             <th className="px-4 py-3 text-left text-amber-700 text-xs font-normal" colSpan={3}>
-              as of {format(new Date(from), "dd MMM yyyy")} · {toNepaliDateString(new Date(from))}
+              as of {toNepaliDateString(new Date(from))} · {format(new Date(from), "dd MMM yyyy")}
             </th>
             <th className={`px-4 py-3 text-right font-bold tabular-nums w-36 ${openingBalance > 0.005 ? "text-blue-600" : "text-emerald-600"}`}>
               Rs {fmt(openingBalance)}
@@ -137,7 +137,7 @@ export function LedgerTable({
                 <td colSpan={5} className="px-4 py-1.5 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">
                   {group.orderRef}
                   <span className="ml-2 font-normal normal-case tracking-normal text-slate-400">
-                    {format(new Date(group.groupDate), "dd MMM yyyy")} · {toNepaliDateString(new Date(group.groupDate))}
+                    {toNepaliDateString(new Date(group.groupDate))} · {format(new Date(group.groupDate), "dd MMM yyyy")}
                   </span>
                 </td>
               </tr>
@@ -198,7 +198,7 @@ export function LedgerTable({
           <tr className={`border-t-2 ${closingBalance > 0.005 ? "bg-blue-50/60 dark:bg-blue-950/10" : "bg-emerald-50/60 dark:bg-emerald-950/10"}`}>
             <td className="px-4 py-3 font-bold text-sm">Closing Balance</td>
             <td className="px-4 py-3 text-xs text-muted-foreground" colSpan={2}>
-              as of {format(new Date(to), "dd MMM yyyy")} · {toNepaliDateString(new Date(to))}
+              as of {toNepaliDateString(new Date(to))} · {format(new Date(to), "dd MMM yyyy")}
             </td>
             <td className="px-4 py-3 text-xs text-muted-foreground text-right">
               {closingBalance > 0.005 ? "Salesman owes you" : closingBalance < -0.005 ? "You owe salesman" : "Settled"}

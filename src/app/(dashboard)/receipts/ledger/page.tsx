@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { parseISO, format } from "date-fns";
-import { toNepaliDateString } from "@/lib/nepali-date";
+import { toNepaliDateString, toNepaliMonthYear } from "@/lib/nepali-date";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { COMPANY } from "@/lib/company";
@@ -70,7 +70,7 @@ export default async function ReceiptLedgerPage({
 
   for (const row of rows) {
     const key = format(row.receivedAt, "yyyy-MM");
-    const label = format(row.receivedAt, "MMMM yyyy");
+    const label = `${toNepaliMonthYear(row.receivedAt)} (${format(row.receivedAt, "MMMM yyyy")})`;
     if (!groupMap.has(key)) {
       groupMap.set(key, groups.length);
       groups.push({ label, entries: [], monthTotal: 0 });
@@ -97,6 +97,11 @@ export default async function ReceiptLedgerPage({
     from && to ? `${format(from, "d MMM yyyy")} — ${format(to, "d MMM yyyy")}`
     : from     ? `From ${format(from, "d MMM yyyy")}`
     : to       ? `Up to ${format(to, "d MMM yyyy")}`
+    : "All Time";
+  const periodLabelNepali =
+    from && to ? `${toNepaliDateString(from)} — ${toNepaliDateString(to)}`
+    : from     ? `From ${toNepaliDateString(from)}`
+    : to       ? `Up to ${toNepaliDateString(to)}`
     : "All Time";
 
   let runningBalance = 0;
@@ -143,9 +148,9 @@ export default async function ReceiptLedgerPage({
             <p className="text-xs text-red-700 mt-0.5">{COMPANY.address} &nbsp;|&nbsp; {COMPANY.phone} &nbsp;|&nbsp; PAN: {COMPANY.pan}</p>
             <p className="text-xl font-bold mt-1 text-red-700">RECEIPT LEDGER</p>
             <div className="flex justify-between items-end mt-2 text-xs text-gray-600">
-              <span>Period: <span className="font-semibold text-gray-900">{periodLabel}</span></span>
+              <span>Period: <span className="font-semibold text-gray-900">{periodLabelNepali}</span> ({periodLabel})</span>
               <span>{rows.length} entr{rows.length !== 1 ? "ies" : "y"}</span>
-              <span>Generated: {format(new Date(), "d MMM yyyy, h:mm a")} · {toNepaliDateString(new Date())}</span>
+              <span>Generated: {toNepaliDateString(new Date())} · {format(new Date(), "d MMM yyyy, h:mm a")}</span>
             </div>
           </div>
 
@@ -194,8 +199,8 @@ export default async function ReceiptLedgerPage({
                                 {rows.indexOf(r) + 1}
                               </td>
                               <td className="py-1 pr-3 tabular-nums whitespace-nowrap">
-                                <div>{format(r.receivedAt, "d MMM yy")}</div>
-                                <div style={{ fontSize: "9px", color: "#888" }}>{toNepaliDateString(r.receivedAt)}</div>
+                                <div>{toNepaliDateString(r.receivedAt)}</div>
+                                <div style={{ fontSize: "9px", color: "#888" }}>{format(r.receivedAt, "d MMM yy")}</div>
                               </td>
                               <td className="py-1 pr-3 font-mono text-gray-700">
                                 {r.receiptNumber}
@@ -295,7 +300,7 @@ export default async function ReceiptLedgerPage({
               {/* Footer */}
               <div className="mt-6 pt-3 border-t border-gray-300 flex justify-between text-[10px] text-gray-500">
                 <span>{COMPANY.name} — Confidential</span>
-                <span>Printed on {format(new Date(), "d MMMM yyyy")} · {toNepaliDateString(new Date())}</span>
+                <span>Printed on {toNepaliDateString(new Date())} · {format(new Date(), "d MMMM yyyy")}</span>
               </div>
             </>
           )}

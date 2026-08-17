@@ -12,8 +12,8 @@ interface DateDisplayProps {
 }
 
 /**
- * Shows an English date with Nepali (B.S.) date below it.
- * The Nepali line is smaller and muted.
+ * Shows a Nepali (B.S.) date as the primary line, with the English date
+ * below it as a smaller, muted reference.
  */
 export function DateDisplay({
   date,
@@ -29,8 +29,8 @@ export function DateDisplay({
 
   return (
     <span className={`flex flex-col leading-snug ${className ?? ""}`}>
-      <span>{format(d, fmt)}</span>
-      <span className="text-[11px] text-muted-foreground/60">{nepaliStr}</span>
+      <span>{nepaliStr}</span>
+      <span className="text-[11px] text-muted-foreground/60">{format(d, fmt)}</span>
     </span>
   );
 }

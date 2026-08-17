@@ -131,10 +131,10 @@ export function SalesmanSalesTable({ rows, from, to, totalRevenue }: Props) {
         <div>
           <p className="text-xs text-muted-foreground">Period</p>
           <p className="text-sm font-medium">
-            {format(new Date(from), "d MMM yyyy")} — {format(new Date(to), "d MMM yyyy")}
+            {toNepaliDateString(new Date(from))} — {toNepaliDateString(new Date(to))}
           </p>
           <p className="text-[11px] text-muted-foreground/60">
-            {toNepaliDateString(new Date(from))} — {toNepaliDateString(new Date(to))}
+            {format(new Date(from), "d MMM yyyy")} — {format(new Date(to), "d MMM yyyy")}
           </p>
         </div>
       </div>
