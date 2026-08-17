@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { PhotoUpload } from "@/components/ui/photo-upload";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 import { createWithdrawal } from "../../actions";
 
 const schema = z.object({
@@ -119,6 +120,7 @@ export function WithdrawalForm({ employeeId, employeeName, monthlySalary, open, 
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
+                    <NepaliDateHint value={field.value} />
                     <FormMessage />
                   </FormItem>
                 )}

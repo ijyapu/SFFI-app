@@ -12,6 +12,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 import { employeeSchema, type EmployeeFormValues } from "@/lib/validators/employee";
 import { createEmployee, updateEmployee } from "../actions";
 
@@ -279,6 +280,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
                   <FormItem>
                     <FormLabel>Start Date *</FormLabel>
                     <FormControl><Input type="date" {...field} /></FormControl>
+                    <NepaliDateHint value={field.value} />
                     <FormMessage />
                   </FormItem>
                 )}
@@ -290,6 +292,7 @@ export function EmployeeForm({ open, onClose, employee, departments }: Props) {
                   <FormItem>
                     <FormLabel>End Date</FormLabel>
                     <FormControl><Input type="date" {...field} /></FormControl>
+                    <NepaliDateHint value={field.value} />
                     <FormMessage />
                   </FormItem>
                 )}

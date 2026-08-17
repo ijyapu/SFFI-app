@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 import { updateSoSchema, type UpdateSoValues } from "@/lib/validators/sales";
 import { updateSalesOrder } from "../../../actions";
 
@@ -145,6 +146,7 @@ export function SoEditForm({ so, products, detailHref }: { so: SoData; products:
               <FormItem>
                 <FormLabel>Sale Date *</FormLabel>
                 <FormControl><Input type="date" {...field} /></FormControl>
+                <NepaliDateHint value={field.value} />
                 <FormMessage />
               </FormItem>
             )}

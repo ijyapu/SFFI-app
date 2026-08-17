@@ -19,6 +19,7 @@ import { Separator } from "@/components/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 import { createSoSchema, type CreateSoValues } from "@/lib/validators/sales";
 import { createSalesOrder } from "../../actions";
 
@@ -211,6 +212,7 @@ export function SoForm({ salesmen, products, openLogDate }: Props) {
               <FormItem>
                 <FormLabel>Sale Date *</FormLabel>
                 <FormControl><Input type="date" {...field} /></FormControl>
+                <NepaliDateHint value={field.value} />
                 <FormMessage />
                 {!openLogDate && (
                   <p className="flex items-center gap-1.5 text-xs text-amber-600 mt-1">

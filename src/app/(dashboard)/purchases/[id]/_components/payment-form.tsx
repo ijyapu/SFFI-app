@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 import { paymentSchema, type PaymentFormValues } from "@/lib/validators/purchase";
 import { recordPayment } from "../../actions";
 
@@ -118,6 +119,7 @@ export function PaymentForm({ poId, outstanding, open, onClose }: Props) {
                 <FormItem>
                   <FormLabel>Payment Date *</FormLabel>
                   <FormControl><Input type="date" {...field} /></FormControl>
+                  <NepaliDateHint value={field.value} />
                   <FormMessage />
                 </FormItem>
               )}

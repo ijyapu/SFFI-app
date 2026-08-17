@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { PhotoUpload } from "@/components/ui/photo-upload";
 import { Badge } from "@/components/ui/badge";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -383,6 +384,7 @@ export function DeductionDialog({
                         <FormControl>
                           <Input type="date" {...field} />
                         </FormControl>
+                        <NepaliDateHint value={field.value} />
                         <FormMessage />
                       </FormItem>
                     )}

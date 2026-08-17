@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 import { salesmanPaymentSchema, type SalesmanPaymentValues } from "@/lib/validators/sales";
 import { recordSalesmanPayment, updateSalesmanPayment } from "../../actions";
 
@@ -183,6 +184,7 @@ export function SoPaymentForm({
                   <FormControl>
                     <Input type="date" max={todayStr()} {...field} />
                   </FormControl>
+                  <NepaliDateHint value={field.value} />
                   <FormMessage />
                 </FormItem>
               )}

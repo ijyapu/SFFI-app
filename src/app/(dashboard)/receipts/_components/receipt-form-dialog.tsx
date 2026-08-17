@@ -198,6 +198,9 @@ export function ReceiptFormDialog(props: Props) {
                       <FormControl>
                         <Input type="date" {...field} />
                       </FormControl>
+                      {field.value && (
+                        <p className="text-xs text-muted-foreground">{toNepaliDateString(new Date(`${field.value}T12:00:00`))}</p>
+                      )}
                       <FormMessage />
                     </FormItem>
                   )}

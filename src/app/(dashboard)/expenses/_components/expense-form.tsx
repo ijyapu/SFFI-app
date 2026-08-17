@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PhotoUpload } from "@/components/ui/photo-upload";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 import { expenseSchema, type ExpenseFormValues } from "@/lib/validators/expense";
 import { submitExpense, updateExpense } from "../actions";
 
@@ -169,6 +170,7 @@ export function ExpenseForm({ open, onClose, expense, categories }: Props) {
                   <FormItem>
                     <FormLabel>Date *</FormLabel>
                     <FormControl><Input type="date" {...field} /></FormControl>
+                    <NepaliDateHint value={field.value} />
                     <FormMessage />
                   </FormItem>
                 )}

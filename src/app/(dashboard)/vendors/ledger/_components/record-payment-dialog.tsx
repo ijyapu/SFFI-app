@@ -174,6 +174,9 @@ export function RecordPaymentButton({
               <div className="space-y-1">
                 <label className="text-sm font-medium">Payment Date *</label>
                 <Input type="date" value={paidAt} onChange={(e) => setPaidAt(e.target.value)} />
+                {paidAt && (
+                  <p className="text-xs text-muted-foreground">{toNepaliDateString(new Date(`${paidAt}T12:00:00`))}</p>
+                )}
               </div>
             </div>
 

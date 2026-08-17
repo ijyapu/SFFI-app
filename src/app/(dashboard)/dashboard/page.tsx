@@ -278,8 +278,8 @@ export default async function DashboardPage() {
         <div>
           <p className="text-xs text-muted-foreground font-medium">{COMPANY.name}</p>
           <h1 className="text-xl font-semibold tracking-tight mt-0.5">Welcome, {firstName}</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">{format(now, "EEEE, d MMMM yyyy")}</p>
-          <p className="text-muted-foreground/60 text-xs mt-0.5">{toNepaliDateString(now)}</p>
+          <p className="text-muted-foreground text-sm mt-0.5">{toNepaliDateString(now)}</p>
+          <p className="text-muted-foreground/60 text-xs mt-0.5">{format(now, "EEEE, d MMMM yyyy")}</p>
         </div>
         <Link href="/profit-loss" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
           <TrendingUp className="h-4 w-4" />

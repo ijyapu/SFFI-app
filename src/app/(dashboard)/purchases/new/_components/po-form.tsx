@@ -30,6 +30,7 @@ import {
 import { createPurchase, updatePurchase, createSupplierInline, createProductInline } from "../../actions";
 import { getNextSkuPreview } from "@/app/(dashboard)/inventory/actions";
 import { cn } from "@/lib/utils";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 
 type Supplier  = { id: string; name: string; contactName: string | null; phone: string | null };
 type Product   = { id: string; name: string; sku: string; costPrice: number; unit: string };
@@ -233,6 +234,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
+                    <NepaliDateHint value={field.value} />
                     <FormMessage />
                     {!purchaseId && !openLogDate && (
                       <p className="flex items-center gap-1.5 text-xs text-amber-600 mt-1">

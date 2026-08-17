@@ -9,6 +9,7 @@ import { PhotoUpload } from "@/components/ui/photo-upload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { NepaliDateHint } from "@/components/ui/nepali-date-hint";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
@@ -171,6 +172,7 @@ export function BankTransferFormDialog(props: Props) {
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
+                    <NepaliDateHint value={field.value} />
                     <FormMessage />
                   </FormItem>
                 )}
