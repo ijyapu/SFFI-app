@@ -16,6 +16,8 @@ export type CashEntry = {
   direction: "in" | "out";
   method: string | null;
   reference: string | null;
+  /** Which physical pool this moved — lets the UI filter to bank-only or cash-only movement. */
+  bucket: "CASH" | "BANK";
 };
 
 export type DayCashFlow = {
@@ -428,9 +430,9 @@ export async function getCashFlow(from: string, to: string): Promise<CashFlowDat
     if (dateStr < from || dateStr > to) continue;
     const day = dayMap.get(dateStr);
     if (!day) continue;
-    const { id, category, subcategory, description, amount, direction, method, reference } = entry;
-    if (direction === "in") day.inflows.push({ id, category, subcategory, description, amount, direction, method, reference });
-    else                    day.outflows.push({ id, category, subcategory, description, amount, direction, method, reference });
+    const { id, category, subcategory, description, amount, direction, method, reference, bucket } = entry;
+    if (direction === "in") day.inflows.push({ id, category, subcategory, description, amount, direction, method, reference, bucket });
+    else                    day.outflows.push({ id, category, subcategory, description, amount, direction, method, reference, bucket });
   }
 
   // ─── Build DayCashFlow with running balance ───────────────────────────────

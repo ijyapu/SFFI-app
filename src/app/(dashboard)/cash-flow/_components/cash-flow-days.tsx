@@ -60,10 +60,15 @@ function EntryRow({ entry }: { entry: CashEntry }) {
   );
 }
 
-function DayRow({ day, isToday }: { day: DayCashFlow; isToday: boolean }) {
-  const hasActivity = day.inflows.length + day.outflows.length > 0;
+function DayRow({ day, isToday, bucketFilter }: { day: DayCashFlow; isToday: boolean; bucketFilter: BucketFilter }) {
+  const inflows  = bucketFilter === "ALL" ? day.inflows  : day.inflows.filter((e) => e.bucket === bucketFilter);
+  const outflows = bucketFilter === "ALL" ? day.outflows : day.outflows.filter((e) => e.bucket === bucketFilter);
+  const totalIn  = inflows.reduce((s, e) => s + e.amount, 0);
+  const totalOut = outflows.reduce((s, e) => s + e.amount, 0);
+
+  const hasActivity = inflows.length + outflows.length > 0;
   const [expanded, setExpanded] = useState(false);
-  const net = day.totalIn - day.totalOut;
+  const net = totalIn - totalOut;
 
   return (
     <div className="border-b last:border-0">
@@ -116,12 +121,12 @@ function DayRow({ day, isToday }: { day: DayCashFlow; isToday: boolean }) {
 
         {/* Inflows */}
         <span className="hidden md:flex w-28 items-center justify-end gap-1 tabular-nums text-xs text-green-700">
-          {day.totalIn > 0 && <><ArrowDownLeft className="h-3 w-3" />{fmtRs(day.totalIn)}</>}
+          {totalIn > 0 && <><ArrowDownLeft className="h-3 w-3" />{fmtRs(totalIn)}</>}
         </span>
 
         {/* Outflows */}
         <span className="hidden md:flex w-28 items-center justify-end gap-1 tabular-nums text-xs text-red-700">
-          {day.totalOut > 0 && <><ArrowUpRight className="h-3 w-3" />{fmtRs(day.totalOut)}</>}
+          {totalOut > 0 && <><ArrowUpRight className="h-3 w-3" />{fmtRs(totalOut)}</>}
         </span>
 
         {/* Net */}
@@ -141,11 +146,11 @@ function DayRow({ day, isToday }: { day: DayCashFlow; isToday: boolean }) {
       {/* Expanded detail — fade + slide in from top */}
       {expanded && (
         <div className="px-8 pb-4 space-y-3 bg-muted/10 animate-in fade-in-0 slide-in-from-top-1 duration-150">
-          {day.inflows.length > 0 && (
+          {inflows.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-green-700 mb-1.5 flex items-center gap-1">
                 <ArrowDownLeft className="h-3 w-3" />
-                Inflows ({day.inflows.length})
+                Inflows ({inflows.length})
               </p>
               <div className="rounded-md border overflow-x-auto">
                 <table className="w-full text-sm">
@@ -158,17 +163,17 @@ function DayRow({ day, isToday }: { day: DayCashFlow; isToday: boolean }) {
                       <th className="px-3 py-1.5 text-right text-xs font-medium text-muted-foreground">Amount</th>
                     </tr>
                   </thead>
-                  <tbody>{day.inflows.map((e) => <EntryRow key={e.id} entry={e} />)}</tbody>
+                  <tbody>{inflows.map((e) => <EntryRow key={e.id} entry={e} />)}</tbody>
                 </table>
               </div>
             </div>
           )}
 
-          {day.outflows.length > 0 && (
+          {outflows.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-red-700 mb-1.5 flex items-center gap-1">
                 <ArrowUpRight className="h-3 w-3" />
-                Outflows ({day.outflows.length})
+                Outflows ({outflows.length})
               </p>
               <div className="rounded-md border overflow-x-auto">
                 <table className="w-full text-sm">
@@ -181,7 +186,7 @@ function DayRow({ day, isToday }: { day: DayCashFlow; isToday: boolean }) {
                       <th className="px-3 py-1.5 text-right text-xs font-medium text-muted-foreground">Amount</th>
                     </tr>
                   </thead>
-                  <tbody>{day.outflows.map((e) => <EntryRow key={e.id} entry={e} />)}</tbody>
+                  <tbody>{outflows.map((e) => <EntryRow key={e.id} entry={e} />)}</tbody>
                 </table>
               </div>
             </div>
@@ -192,14 +197,51 @@ function DayRow({ day, isToday }: { day: DayCashFlow; isToday: boolean }) {
   );
 }
 
+type BucketFilter = "ALL" | "CASH" | "BANK";
+
+const BUCKET_OPTIONS: { value: BucketFilter; label: string }[] = [
+  { value: "ALL",  label: "All" },
+  { value: "CASH", label: "Cash" },
+  { value: "BANK", label: "Bank" },
+];
+
 type Props = {
   days: DayCashFlow[];
   todayStr: string;
 };
 
 export function CashFlowDays({ days, todayStr }: Props) {
+  const [bucketFilter, setBucketFilter] = useState<BucketFilter>("ALL");
+
   return (
     <div>
+      {/* Bucket filter — isolate bank-rail or cash-only movement */}
+      <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/10">
+        <span className="text-xs text-muted-foreground">Show:</span>
+        <div className="inline-flex rounded-md border p-0.5 bg-background">
+          {BUCKET_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setBucketFilter(opt.value)}
+              className={cn(
+                "px-2.5 py-1 text-xs font-medium rounded transition-colors",
+                bucketFilter === opt.value
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+        {bucketFilter !== "ALL" && (
+          <span className="text-xs text-muted-foreground">
+            Inflow/Outflow/Net below reflect {bucketFilter === "BANK" ? "bank-rail" : "cash-only"} movement only. Opening/Closing balance stay the combined total — see the Cash in Hand / Bank Balance cards above for the point-in-time split.
+          </span>
+        )}
+      </div>
+
       {/* Table header */}
       <div className="flex items-center gap-2 px-4 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">
         <span className="w-4 shrink-0" />
@@ -212,7 +254,7 @@ export function CashFlowDays({ days, todayStr }: Props) {
       </div>
 
       {days.map((day) => (
-        <DayRow key={day.dateStr} day={day} isToday={day.dateStr === todayStr} />
+        <DayRow key={day.dateStr} day={day} isToday={day.dateStr === todayStr} bucketFilter={bucketFilter} />
       ))}
     </div>
   );
