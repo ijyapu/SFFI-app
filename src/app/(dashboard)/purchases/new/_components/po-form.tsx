@@ -453,7 +453,11 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                           <FormControl>
                             <div className="relative">
                               <Input
-                                className={cn("h-8 text-sm", selectedProduct && "pr-9")} type="number" min="0.001" step="0.001"
+                                className={cn(
+                                  "h-8 text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                                  selectedProduct && "pr-9"
+                                )}
+                                type="number" min="0.001" step="0.001"
                                 value={f.value === 0 ? "" : f.value}
                                 onChange={(e) => f.onChange(parseFloat(e.target.value) || 0)}
                               />
