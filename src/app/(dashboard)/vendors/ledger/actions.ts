@@ -23,6 +23,17 @@ export type LedgerEntry = {
   invoiceUrl:    string | null;
   receiptUrl:    string | null;
   purchaseId:    string | null;
+  /** Present only for standalone VendorPayment rows — lets the ledger open an edit dialog with the raw editable fields. */
+  vendorPayment?: {
+    id:          string;
+    amount:      number;
+    method:      string;
+    reference:   string | null;
+    notes:       string | null;
+    receiptUrl:  string | null;
+    paidAt:      string;
+    allocations: { purchaseId: string; amount: number }[];
+  };
 };
 
 export type OutstandingInvoice = {
@@ -121,6 +132,7 @@ export async function getVendorLedger(
     select: {
       id: true, amount: true, method: true, reference: true,
       notes: true, receiptUrl: true, paidAt: true,
+      allocations: { select: { purchaseId: true, amount: true } },
     },
     orderBy: { paidAt: "asc" },
   });
@@ -152,6 +164,7 @@ export async function getVendorLedger(
     vatAmount: number; exciseAmount: number; subtotal: number;
     paymentMethod: string; invoiceUrl: string | null;
     receiptUrl: string | null; purchaseId: string | null;
+    vendorPayment?: LedgerEntry["vendorPayment"];
   };
 
   const rawEntries: RawEntry[] = [];
@@ -206,6 +219,16 @@ export async function getVendorLedger(
       invoiceAmount: 0, paymentAmount: Number(vp.amount),
       vatAmount: 0, exciseAmount: 0, subtotal: 0,
       paymentMethod: vp.method, invoiceUrl: null, receiptUrl: vp.receiptUrl ?? null, purchaseId: null,
+      vendorPayment: {
+        id:          vp.id,
+        amount:      Number(vp.amount),
+        method:      vp.method,
+        reference:   vp.reference,
+        notes:       vp.notes,
+        receiptUrl:  vp.receiptUrl,
+        paidAt:      vp.paidAt.toISOString(),
+        allocations: vp.allocations.map((a) => ({ purchaseId: a.purchaseId, amount: Number(a.amount) })),
+      },
     });
   }
 
@@ -334,6 +357,97 @@ export async function deleteVendorPayment(id: string) {
   await prisma.vendorPayment.delete({ where: { id } });
   revalidatePath("/vendors/ledger");
   revalidatePath("/purchases");
+}
+
+const updatePaymentSchema = recordPaymentSchema.omit({ supplierId: true });
+
+export async function updateVendorPayment(
+  id: string,
+  values: {
+    amount:      number;
+    method:      string;
+    reference?:  string;
+    notes?:      string;
+    receiptUrl?: string;
+    paidAt:      string;
+    allocations?: Array<{ purchaseId: string; amount: number }>;
+  }
+) {
+  await requirePermission("purchases");
+
+  const data = updatePaymentSchema.parse(values);
+
+  const allocTotal = (data.allocations ?? []).reduce((s, a) => s + a.amount, 0);
+  if (allocTotal > data.amount + 0.005) {
+    throw new Error("Allocated amount exceeds payment total");
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // Replace allocations wholesale — simpler and safer than diffing old vs new.
+    await tx.vendorPaymentAllocation.deleteMany({ where: { vendorPaymentId: id } });
+    await tx.vendorPayment.update({
+      where: { id },
+      data: {
+        amount:     data.amount,
+        method:     data.method,
+        reference:  data.reference || null,
+        notes:      data.notes || null,
+        receiptUrl: data.receiptUrl || null,
+        paidAt:     new Date(data.paidAt),
+        allocations: {
+          create: (data.allocations ?? []).map((a) => ({
+            purchaseId: a.purchaseId,
+            amount:     a.amount,
+          })),
+        },
+      },
+    });
+  });
+
+  revalidatePath("/vendors/ledger");
+  revalidatePath("/purchases");
+}
+
+// Outstanding invoices for a supplier, with one payment's own allocations excluded
+// from the "already allocated" sum — used by the edit dialog so the invoice being
+// edited doesn't look like it's competing against its own prior allocation.
+export async function getInvoiceOptionsForPayment(
+  supplierId: string,
+  excludeVendorPaymentId?: string
+): Promise<OutstandingInvoice[]> {
+  await requirePermission("purchases");
+
+  const purchases = await prisma.purchase.findMany({
+    where: { supplierId, deletedAt: null },
+    select: { id: true, invoiceNo: true, date: true, totalCost: true, amountPaid: true },
+    orderBy: { date: "asc" },
+  });
+
+  const allocRows = await prisma.vendorPaymentAllocation.groupBy({
+    by:    ["purchaseId"],
+    where: {
+      purchase: { supplierId },
+      ...(excludeVendorPaymentId ? { vendorPaymentId: { not: excludeVendorPaymentId } } : {}),
+    },
+    _sum: { amount: true },
+  });
+  const allocMap = new Map(allocRows.map((r) => [r.purchaseId, Number(r._sum.amount ?? 0)]));
+
+  return purchases
+    .map((p) => {
+      const allocated  = allocMap.get(p.id) ?? 0;
+      const outstanding = Math.max(0, Number(p.totalCost) - Number(p.amountPaid) - allocated);
+      return {
+        purchaseId:      p.id,
+        invoiceNo:       p.invoiceNo,
+        date:            p.date.toISOString(),
+        totalCost:       Number(p.totalCost),
+        amountPaid:      Number(p.amountPaid),
+        allocatedAmount: allocated,
+        outstanding,
+      };
+    })
+    .filter((p) => p.outstanding > 0.005);
 }
 
 export async function getAllSuppliers() {

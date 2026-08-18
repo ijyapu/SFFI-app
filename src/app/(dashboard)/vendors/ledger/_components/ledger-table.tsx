@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import type { LedgerEntry } from "../actions";
-import { ExternalLink, Receipt } from "lucide-react";
+import { ExternalLink, Receipt, Pencil } from "lucide-react";
 import { ImageLightbox } from "@/components/ui/image-lightbox";
+import { EditPaymentDialog } from "./edit-payment-dialog";
 
 const METHOD_LABEL: Record<string, string> = {
   CASH: "Cash", BANK_TRANSFER: "Bank Transfer", CHECK: "Cheque",
@@ -23,15 +25,19 @@ export function LedgerTable({
   closingBalance,
   from,
   to,
+  supplierId,
 }: {
   entries: LedgerEntry[];
   openingBalance: number;
   closingBalance: number;
   from: string;
   to: string;
+  supplierId: string;
 }) {
   const fromDate = new Date(from);
   const toDate   = new Date(to);
+
+  const [editingPayment, setEditingPayment] = useState<LedgerEntry["vendorPayment"] | null>(null);
 
   return (
     <div className="rounded-lg border overflow-x-auto">
@@ -107,6 +113,16 @@ export function LedgerTable({
                         <Receipt className="h-3 w-3 text-emerald-600 hover:text-emerald-700" />
                       </ImageLightbox>
                     )}
+                    {e.vendorPayment && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingPayment(e.vendorPayment!)}
+                        title="Edit this payment"
+                        className="no-print"
+                      >
+                        <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                      </button>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-2.5 text-xs text-muted-foreground">
@@ -169,6 +185,13 @@ export function LedgerTable({
           </tr>
         </tbody>
       </table>
+
+      <EditPaymentDialog
+        open={!!editingPayment}
+        onClose={() => setEditingPayment(null)}
+        supplierId={supplierId}
+        payment={editingPayment ?? null}
+      />
     </div>
   );
 }

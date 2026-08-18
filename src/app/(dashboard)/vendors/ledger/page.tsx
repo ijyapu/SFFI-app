@@ -233,6 +233,7 @@ export default async function VendorLedgerPage({ searchParams }: PageProps) {
                 closingBalance={ledgerData.closingBalance}
                 from={from}
                 to={to}
+                supplierId={supplierId}
               />
             </div>
 
