@@ -572,7 +572,25 @@ export async function updateDailyLogItem(
 // CLOSE DAY
 // ─────────────────────────────────────────────
 
+// Any unhandled exception thrown from a Server Action (a raw Prisma error, a
+// transaction conflict, etc. — as opposed to our own intentional `throw new
+// Error(...)` calls) can fail to serialize cleanly across the Server Action
+// boundary, and Next falls back to a generic "error occurred, digest included"
+// message with no way to tell what actually went wrong. These three actions
+// run multi-step transactions across every product in a log, so wrap them and
+// always re-throw a plain, message-preserving Error — worst case it's a
+// message the app itself already wrote; best case it turns an opaque crash
+// into something the user (or an admin) can actually act on.
 export async function closeDailyLog(logId: string): Promise<void> {
+  try {
+    await closeDailyLogInner(logId);
+  } catch (e) {
+    console.error("[daily-log] closeDailyLog failed", { logId, error: e });
+    throw new Error(e instanceof Error ? e.message : "Failed to close the day — please try again.");
+  }
+}
+
+async function closeDailyLogInner(logId: string): Promise<void> {
   const { userId } = await requireDailyLogAccess();
 
   const log = await prisma.dailyLog.findUnique({
@@ -847,6 +865,15 @@ export async function closeDailyLog(logId: string): Promise<void> {
 // ─────────────────────────────────────────────
 
 export async function reopenDailyLog(logId: string): Promise<void> {
+  try {
+    await reopenDailyLogInner(logId);
+  } catch (e) {
+    console.error("[daily-log] reopenDailyLog failed", { logId, error: e });
+    throw new Error(e instanceof Error ? e.message : "Failed to reopen the day — please try again.");
+  }
+}
+
+async function reopenDailyLogInner(logId: string): Promise<void> {
   const { userId, role } = await requireDailyLogAccess();
   if (role !== "admin" && role !== "superadmin") throw new Error("Only admins can reopen a closed log");
 
@@ -1047,6 +1074,15 @@ export type RepairResult = {
  * Marks the log AUTO_ADJUSTED and propagates the corrected closing to the next OPEN/REOPENED log.
  */
 export async function repairDailyLog(logId: string): Promise<RepairResult> {
+  try {
+    return await repairDailyLogInner(logId);
+  } catch (e) {
+    console.error("[daily-log] repairDailyLog failed", { logId, error: e });
+    throw new Error(e instanceof Error ? e.message : "Failed to repair the log — please try again.");
+  }
+}
+
+async function repairDailyLogInner(logId: string): Promise<RepairResult> {
   const { userId, role } = await requireDailyLogAccess();
   if (role !== "admin" && role !== "superadmin") {
     throw new Error("Only admins can repair a closed log");
