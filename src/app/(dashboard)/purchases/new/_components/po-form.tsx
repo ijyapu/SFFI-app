@@ -269,7 +269,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
             </div>
 
             {/* Desktop header */}
-            <div className="hidden lg:grid lg:grid-cols-[2fr_1.5fr_70px_110px_90px_90px_90px_90px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40 rounded-md">
+            <div className="hidden lg:grid lg:grid-cols-[2fr_1.5fr_100px_110px_90px_90px_90px_90px_32px] gap-2 px-3 py-2 text-xs font-medium text-muted-foreground bg-muted/40 rounded-md">
               <span>Product</span>
               <span>Description</span>
               <span>Qty</span>
@@ -290,7 +290,7 @@ export function PurchaseForm({ suppliers: initSuppliers, products: initProducts,
                 const selectedProduct = item?.productId ? products.find((p) => p.id === item.productId) : undefined;
 
                 return (
-                  <div key={field.id} className="p-3 space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[2fr_1.5fr_70px_110px_90px_90px_90px_90px_32px] lg:gap-2 lg:items-start">
+                  <div key={field.id} className="p-3 space-y-3 lg:space-y-0 lg:grid lg:grid-cols-[2fr_1.5fr_100px_110px_90px_90px_90px_90px_32px] lg:gap-2 lg:items-start">
 
                     {/* Product combobox + optional category/unit for new products */}
                     <FormField
