@@ -1092,7 +1092,9 @@ export async function updateSalesReturn(
             referenceId:    order.id,
             referenceType:  "SalesReturn",
             createdBy:      userId,
-            isAdminOverride: true,
+            // Zero-tolerance for negative stock, no exceptions -- if the returned
+            // stock this edit is reversing has already been used/sold elsewhere,
+            // applyStockMovement's default guard throws and the edit is refused.
           },
           tx as Parameters<typeof applyStockMovement>[1]
         );

@@ -926,9 +926,10 @@ async function reopenDailyLogInner(logId: string): Promise<void> {
       // Read stock snapshot INSIDE the transaction with RepeatableRead isolation
       const stockSnapshot = await tx.product.findMany({
         where: { id: { in: productIds } },
-        select: { id: true, currentStock: true },
+        select: { id: true, currentStock: true, name: true },
       });
       const stockMap = new Map(stockSnapshot.map((p) => [p.id, Number(p.currentStock)]));
+      const nameMap  = new Map(stockSnapshot.map((p) => [p.id, p.name]));
 
       const pendingMovements: PendingMovement[] = [];
 
@@ -939,6 +940,15 @@ async function reopenDailyLogInner(logId: string): Promise<void> {
         const qty    = Math.abs(net);
         const before = stockMap.get(productId) ?? 0;
         const after  = net > 0 ? before - qty : before + qty;
+        // Zero-tolerance for negative stock -- reversing this day's movements must
+        // never push a product negative. If it would, something else already
+        // consumed the stock this reversal expected to restore.
+        if (after < -0.001) {
+          throw new Error(
+            `Cannot reopen: reversing this day's stock movements would push "${nameMap.get(productId) ?? productId}" ` +
+            `to ${after.toFixed(3)} (currently ${before.toFixed(3)}). Fix that product's stock first.`
+          );
+        }
         stockMap.set(productId, after);
         pendingMovements.push({
           productId,
