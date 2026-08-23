@@ -524,6 +524,12 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
           referenceId:   id,
           referenceType: "Purchase",
           createdBy:     userId,
+          // Correcting a data-entry mistake (e.g. wrong quantity) is bookkeeping,
+          // not a physical stock event -- must always be possible even if the
+          // originally-recorded quantity has since been used elsewhere. The
+          // immediately-following PURCHASE movement (new quantity) brings the
+          // net result back to correct within the same transaction.
+          isAdminOverride: true,
         },
         tx as Parameters<typeof applyStockMovement>[1]
       );
@@ -649,10 +655,11 @@ export async function deletePurchase(id: string) {
           referenceId:   id,
           referenceType: "Purchase",
           createdBy:     userId,
-          // Zero-tolerance for negative stock, no exceptions -- if removing this
-          // purchase's quantity would push stock negative, applyStockMovement's
-          // default guard throws and the delete is refused. Fix the stock
-          // shortfall (or whatever consumed it) before deleting the purchase.
+          // Deleting a purchase must always be possible, even if the product's
+          // stock was already used elsewhere -- otherwise a mistaken or duplicate
+          // purchase becomes permanently undeletable. This is a bookkeeping
+          // correction, not a physical stock event.
+          isAdminOverride: true,
         },
         tx as Parameters<typeof applyStockMovement>[1]
       );
