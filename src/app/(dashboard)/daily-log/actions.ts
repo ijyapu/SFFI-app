@@ -836,8 +836,12 @@ async function closeDailyLogInner(logId: string): Promise<void> {
     },
   });
 
-  // Propagate today's closing quantities into the immediate next OPEN/REOPENED log.
-  // Only one log, one step — no cascade beyond that.
+  // Propagate today's closing quantities forward. If the very next log is still
+  // open, sync its opening directly. If instead there are more CLOSED/AUTO_ADJUSTED
+  // days after this one (e.g. this was an old day just reopened and re-closed),
+  // syncLedgerForward cascades the correction through every one of them until it
+  // reaches an open day — so reopening a day from any point in history stays safe
+  // without needing a manual follow-up fix.
   const immediateNextLog = await prisma.dailyLog.findFirst({
     where:   { logDate: { gt: logDate } },
     orderBy: { logDate: "asc" },
@@ -852,6 +856,8 @@ async function closeDailyLogInner(logId: string): Promise<void> {
         })
       )
     );
+  } else if (immediateNextLog) {
+    await syncLedgerForward(dateLabel, userId);
   }
 
   revalidatePath("/daily-log");
