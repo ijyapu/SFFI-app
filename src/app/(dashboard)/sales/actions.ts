@@ -12,6 +12,7 @@ import {
 } from "@/lib/validators/sales";
 import { getNextDocumentNumber } from "@/lib/doc-counter";
 import { writeAuditLog } from "@/lib/audit";
+import { syncLedgerForward } from "@/app/(dashboard)/daily-log/actions";
 
 type Db = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
@@ -49,6 +50,7 @@ async function syncDailyLogSoldQty(
   items: Array<{ productId: string; quantity: number }>,
   delta: 1 | -1,
   orderDate: Date,
+  userId: string,
 ): Promise<SyncResult> {
   try {
     // Normalise to midnight UTC for the daily log key (orderDate is stored as noon UTC)
@@ -63,8 +65,12 @@ async function syncDailyLogSoldQty(
     });
     if (!log) return { ok: true, logUpdated: false };
 
-    // Skip closed logs — soldQty is read live from sales orders in getDailyLog for display
+    // Closed logs freeze their closing quantities at close time — soldQty itself is
+    // read live in getDailyLog for display, but closing (and every day after) won't
+    // reflect this change on its own. Recompute and cascade forward instead.
     if (log.status === "CLOSED" || log.status === "AUTO_ADJUSTED") {
+      const dateStr = logDateUTC.toISOString().slice(0, 10);
+      await syncLedgerForward(dateStr, userId);
       return { ok: true, logUpdated: false };
     }
 
@@ -303,7 +309,7 @@ export async function createSalesOrder(values: CreateSoValues) {
     }
   }, { timeout: 30000 });
 
-  const syncResult = await syncDailyLogSoldQty(data.items, 1, toNoonUTC(data.orderDate));
+  const syncResult = await syncDailyLogSoldQty(data.items, 1, toNoonUTC(data.orderDate), userId);
   if (!syncResult.ok) {
     console.warn("[sales] createSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
   }
@@ -384,6 +390,7 @@ export async function confirmSalesOrder(id: string) {
     so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
     1,
     so.orderDate,
+    userId,
   );
   if (!syncResult.ok) {
     console.warn("[sales] confirmSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
@@ -535,13 +542,14 @@ export async function updateSalesOrder(id: string, values: UpdateSoValues) {
       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
       -1,
       oldOrderDate,
+      userId,
     );
     if (!oldSync.ok) {
       console.warn("[sales] updateSalesOrder: failed to reverse old daily log soldQty:", oldSync.warning);
     }
 
     // Increment new date's soldQty
-    const newSync = await syncDailyLogSoldQty(data.items, 1, newOrderDate);
+    const newSync = await syncDailyLogSoldQty(data.items, 1, newOrderDate, userId);
     if (!newSync.ok) {
       console.warn("[sales] updateSalesOrder: failed to sync new daily log soldQty:", newSync.warning);
     }
@@ -620,6 +628,7 @@ export async function voidSalesOrder(id: string) {
       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
       -1,
       so.orderDate,
+      userId,
     );
     if (!syncResult.ok) {
       console.warn("[sales] voidSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
@@ -724,6 +733,7 @@ export async function deleteSalesOrder(id: string) {
       so.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity) })),
       -1,
       so.orderDate,
+      userId,
     );
     if (!syncResult.ok) {
       console.warn("[sales] deleteSalesOrder: failed to sync daily log soldQty:", syncResult.warning);
@@ -1027,6 +1037,10 @@ export async function processSalesReturn(soId: string, values: SalesReturnValues
     },
   });
 
+  // Keep the Daily Log ledger in sync — a fresh return changes freshReturnQty, which
+  // feeds into closing; no-op if that day's log is still open.
+  await syncLedgerForward(so.orderDate.toISOString().slice(0, 10), userId);
+
   revalidatePath(`/sales/${soId}`);
   revalidatePath("/sales");
   revalidatePath("/inventory");
@@ -1051,7 +1065,7 @@ export async function updateSalesReturn(
       salesOrder: {
         select: {
           id: true, orderNumber: true, totalAmount: true,
-          commissionPct: true, status: true,
+          commissionPct: true, status: true, orderDate: true,
         },
       },
     },
@@ -1092,9 +1106,11 @@ export async function updateSalesReturn(
             referenceId:    order.id,
             referenceType:  "SalesReturn",
             createdBy:      userId,
-            // Zero-tolerance for negative stock, no exceptions -- if the returned
-            // stock this edit is reversing has already been used/sold elsewhere,
-            // applyStockMovement's default guard throws and the edit is refused.
+            // Correcting a return's recorded quantity is bookkeeping, not a physical
+            // stock event -- must always be possible even if that stock has since
+            // been used elsewhere. The immediately-following RETURN_IN (new quantity)
+            // brings the net result back to correct within the same transaction.
+            isAdminOverride: true,
           },
           tx as Parameters<typeof applyStockMovement>[1]
         );
@@ -1150,6 +1166,10 @@ export async function updateSalesReturn(
     before: { totalAmount: oldTotal, itemCount: existing.items.length },
     after:  { totalAmount: newTotal, itemCount: items.length },
   });
+
+  if (existing.returnType === "FRESH") {
+    await syncLedgerForward(order.orderDate.toISOString().slice(0, 10), userId);
+  }
 
   revalidatePath(`/sales/${order.id}`);
   revalidatePath("/sales");

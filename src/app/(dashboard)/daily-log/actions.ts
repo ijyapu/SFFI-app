@@ -1081,6 +1081,201 @@ async function reopenDailyLogInner(logId: string): Promise<void> {
 }
 
 // ─────────────────────────────────────────────
+// LEDGER SYNC (internal — called after backdated purchase/sale edits)
+// ─────────────────────────────────────────────
+
+type LedgerItem = {
+  id: string;
+  productId: string;
+  openingQty: Prisma.Decimal;
+  producedQty: Prisma.Decimal;
+  usedQty: Prisma.Decimal;
+  soldQty: Prisma.Decimal;
+  freshReturnQty: Prisma.Decimal;
+  wasteQty: Prisma.Decimal;
+  damagedQty: Prisma.Decimal;
+  closingQty: Prisma.Decimal;
+};
+
+/**
+ * Recomputes one day's soldQty/freshReturnQty/closingQty from live source records
+ * (same formula as repairDailyLog), using the given openingQty overrides where provided.
+ * Returns the resulting productId -> closingQty map, and whether anything changed.
+ */
+async function recomputeDay(
+  tx: Prisma.TransactionClient,
+  logId: string,
+  logDate: Date,
+  openingOverrides: Map<string, number>
+): Promise<{ closingMap: Map<string, number>; changed: boolean }> {
+  const nextDay = new Date(logDate.getTime() + 24 * 60 * 60 * 1000);
+  const items: LedgerItem[] = await tx.dailyLogItem.findMany({ where: { dailyLogId: logId } });
+  const productIds = items.map((i) => i.productId);
+
+  const [soldSums, freshReturnSums, purchaseSums, adjMovements] = await Promise.all([
+    tx.salesOrderItem.groupBy({
+      by: ["productId"],
+      where: { salesOrder: { status: { in: ["CONFIRMED", "PARTIALLY_PAID", "PAID"] }, deletedAt: null, orderDate: { gte: logDate, lt: nextDay } } },
+      _sum: { quantity: true },
+    }),
+    tx.salesReturnItem.groupBy({
+      by: ["productId"],
+      where: { salesReturn: { returnType: "FRESH", salesOrder: { deletedAt: null, orderDate: { gte: logDate, lt: nextDay } } } },
+      _sum: { quantity: true },
+    }),
+    tx.purchaseLineItem.groupBy({
+      by: ["productId"],
+      where: { productId: { not: null }, purchase: { deletedAt: null, date: { gte: logDate, lt: nextDay } } },
+      _sum: { quantity: true },
+    }),
+    tx.stockMovement.findMany({
+      where: { productId: { in: productIds }, type: { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] }, referenceType: null, createdAt: { gte: logDate, lt: nextDay } },
+      select: { productId: true, type: true, quantity: true },
+    }),
+  ]);
+  const soldMap = new Map(soldSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)]));
+  const freshMap = new Map(freshReturnSums.map((s) => [s.productId, Number(s._sum.quantity ?? 0)]));
+  const purchaseMap = new Map(purchaseSums.filter((s) => s.productId != null).map((s) => [s.productId!, Number(s._sum.quantity ?? 0)]));
+  const adjInMap = new Map<string, number>();
+  const adjOutMap = new Map<string, number>();
+  for (const mv of adjMovements) {
+    const qty = Number(mv.quantity);
+    if (mv.type === StockMovementType.ADJUSTMENT_IN) adjInMap.set(mv.productId, (adjInMap.get(mv.productId) ?? 0) + qty);
+    else adjOutMap.set(mv.productId, (adjOutMap.get(mv.productId) ?? 0) + qty);
+  }
+
+  const closingMap = new Map<string, number>();
+  let changed = false;
+
+  for (const item of items) {
+    const opening = openingOverrides.get(item.productId) ?? Number(item.openingQty);
+    const produced = Number(item.producedQty);
+    const used = Number(item.usedQty);
+    const waste = Number(item.wasteQty);
+    const damaged = Number(item.damagedQty);
+    const oldClosing = Number(item.closingQty);
+    const oldOpening = Number(item.openingQty);
+
+    const liveSold = soldMap.get(item.productId) ?? 0;
+    const sold = Number(item.soldQty) > liveSold ? Number(item.soldQty) : liveSold;
+    const liveFresh = freshMap.get(item.productId) ?? 0;
+    const freshReturn = Number(item.freshReturnQty) > liveFresh ? Number(item.freshReturnQty) : liveFresh;
+    const purchased = purchaseMap.get(item.productId) ?? 0;
+    const adjustIn = adjInMap.get(item.productId) ?? 0;
+    const adjustOut = adjOutMap.get(item.productId) ?? 0;
+
+    const newClosing = opening + purchased + produced + freshReturn + adjustIn - used - sold - waste - damaged - adjustOut;
+    closingMap.set(item.productId, newClosing);
+
+    const openingChanged = Math.abs(opening - oldOpening) > 0.0005;
+    const closingChanged = Math.abs(newClosing - oldClosing) > 0.0005;
+    const soldChanged = Math.abs(sold - Number(item.soldQty)) > 0.0005;
+    const freshChanged = Math.abs(freshReturn - Number(item.freshReturnQty)) > 0.0005;
+
+    if (openingChanged || closingChanged || soldChanged || freshChanged) {
+      changed = true;
+      await tx.dailyLogItem.update({
+        where: { id: item.id },
+        data: {
+          ...(openingChanged ? { openingQty: opening } : {}),
+          closingQty: newClosing,
+          soldQty: sold,
+          freshReturnQty: freshReturn,
+        },
+      });
+    }
+  }
+
+  return { closingMap, changed };
+}
+
+/**
+ * Call after any backdated purchase/sale edit, delete, or return that lands on `dateStr`.
+ * If that day's log is still OPEN/REOPENED, its figures are already computed live — nothing
+ * to do. If it's CLOSED/AUTO_ADJUSTED, its closing quantities are frozen at close time and
+ * won't reflect the correction on their own; this recomputes that day and cascades the
+ * correction forward through every consecutive CLOSED/AUTO_ADJUSTED day until it reaches an
+ * OPEN/REOPENED (or nonexistent) day, syncing that day's opening quantities too. No stock
+ * movements are touched — this only keeps the ledger's own numbers internally consistent
+ * with what Product.currentStock and live purchase/sales records already say.
+ */
+export async function syncLedgerForward(dateStr: string, actingUserId: string): Promise<{ daysUpdated: number }> {
+  try {
+    return await syncLedgerForwardInner(dateStr, actingUserId);
+  } catch (e) {
+    console.error("[daily-log] syncLedgerForward failed", { dateStr, error: e });
+    // This is a best-effort consistency pass, not the source of truth for stock —
+    // never let a sync failure block the caller's own (already-committed) mutation.
+    return { daysUpdated: 0 };
+  }
+}
+
+async function syncLedgerForwardInner(dateStr: string, actingUserId: string): Promise<{ daysUpdated: number }> {
+  const startDate = parseDateParam(dateStr);
+  const startLog = await prisma.dailyLog.findUnique({ where: { logDate: startDate }, select: { id: true, status: true } });
+  if (!startLog || startLog.status === "OPEN" || startLog.status === "REOPENED") {
+    return { daysUpdated: 0 }; // nothing frozen — live figures already reflect the change
+  }
+
+  let daysUpdated = 0;
+
+  await prisma.$transaction(
+    async (tx) => {
+      let currentId: string | null = startLog.id;
+      let currentDate = startDate;
+      let openingOverrides = new Map<string, number>();
+
+      while (currentId) {
+        const { closingMap, changed } = await recomputeDay(tx, currentId, currentDate, openingOverrides);
+        if (changed) {
+          daysUpdated++;
+          await tx.dailyLog.update({ where: { id: currentId }, data: { autoAdjustedAt: new Date(), autoAdjustedBy: actingUserId, status: "AUTO_ADJUSTED" } });
+        }
+
+        const nextLog: { id: string; logDate: Date; status: string } | null = await tx.dailyLog.findFirst({
+          where: { logDate: { gt: currentDate } },
+          orderBy: { logDate: "asc" },
+          select: { id: true, logDate: true, status: true },
+        });
+        if (!nextLog) break;
+
+        if (nextLog.status === "OPEN" || nextLog.status === "REOPENED") {
+          // Sync its opening quantities from this day's corrected closing, then stop —
+          // an open day computes everything else live.
+          const items = await tx.dailyLogItem.findMany({ where: { dailyLogId: nextLog.id }, select: { id: true, productId: true, openingQty: true } });
+          for (const item of items) {
+            const correct = closingMap.get(item.productId);
+            if (correct !== undefined && Math.abs(correct - Number(item.openingQty)) > 0.0005) {
+              await tx.dailyLogItem.update({ where: { id: item.id }, data: { openingQty: correct } });
+            }
+          }
+          break;
+        }
+
+        currentId = nextLog.id;
+        currentDate = nextLog.logDate;
+        openingOverrides = closingMap;
+      }
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 60000 }
+  );
+
+  if (daysUpdated > 0) {
+    await writeAuditLog({
+      userId: actingUserId,
+      action: "DAILY_LOG_LEDGER_SYNC",
+      entityType: "DailyLog",
+      entityId: startLog.id,
+      after: { fromDate: dateStr, daysUpdated },
+    });
+    revalidatePath("/daily-log");
+    revalidatePath("/daily-log/history");
+  }
+
+  return { daysUpdated };
+}
+
+// ─────────────────────────────────────────────
 // HISTORY LIST
 // ─────────────────────────────────────────────
 
