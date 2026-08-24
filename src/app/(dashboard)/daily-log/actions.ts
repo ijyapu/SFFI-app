@@ -5,6 +5,7 @@ import { currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { StockMovementType, Prisma } from "@prisma/client";
 import { writeAuditLog } from "@/lib/audit";
+import { applyStockMovement } from "@/lib/stock";
 
 async function requireDailyLogAccess() {
   const user = await currentUser();
@@ -1079,6 +1080,141 @@ async function reopenDailyLogInner(logId: string): Promise<void> {
     entityId:   logId,
     after: { date: dateLabel, reopenedBy: userId },
   });
+
+  revalidatePath("/daily-log");
+  revalidatePath("/daily-log/history");
+  revalidatePath("/inventory");
+  revalidatePath("/inventory/stock-levels");
+}
+
+// ─────────────────────────────────────────────
+// CORRECT ENTRY (admin only) — fix produced/used/waste/damaged on a CLOSED/
+// AUTO_ADJUSTED day without a full reopen. Applies only the delta between the
+// old and new values as a stock movement (not the day's full amount), so a
+// small correction only needs a small amount of stock to be available —
+// unlike Reopen, which must reverse everything the day ever moved.
+// ─────────────────────────────────────────────
+
+export type CorrectEntryValues = {
+  producedQty: number;
+  usedQty: number;
+  wasteQty: number;
+  damagedQty: number;
+};
+
+export async function correctDailyLogEntry(
+  logId: string,
+  productId: string,
+  values: CorrectEntryValues
+): Promise<void> {
+  try {
+    await correctDailyLogEntryInner(logId, productId, values);
+  } catch (e) {
+    console.error("[daily-log] correctDailyLogEntry failed", { logId, productId, error: e });
+    throw new Error(e instanceof Error ? e.message : "Failed to correct this entry — please try again.");
+  }
+}
+
+async function correctDailyLogEntryInner(
+  logId: string,
+  productId: string,
+  values: CorrectEntryValues
+): Promise<void> {
+  const { userId, role } = await requireDailyLogAccess();
+  if (role !== "admin" && role !== "superadmin") {
+    throw new Error("Only admins can correct a closed day's entries");
+  }
+
+  const log = await prisma.dailyLog.findUnique({ where: { id: logId }, select: { logDate: true, status: true } });
+  if (!log) throw new Error("Log not found");
+  if (log.status !== "CLOSED" && log.status !== "AUTO_ADJUSTED") {
+    throw new Error("This day is still open — edit the row directly instead of using Correct Entry");
+  }
+
+  const item = await prisma.dailyLogItem.findFirst({
+    where: { dailyLogId: logId, productId },
+    include: { product: { select: { name: true } } },
+  });
+  if (!item) throw new Error("Product not found in this log");
+
+  const old = {
+    produced: Number(item.producedQty),
+    used:     Number(item.usedQty),
+    waste:    Number(item.wasteQty),
+    damaged:  Number(item.damagedQty),
+  };
+  const delta = {
+    produced: values.producedQty - old.produced,
+    used:     values.usedQty - old.used,
+    waste:    values.wasteQty - old.waste,
+    damaged:  values.damagedQty - old.damaged,
+  };
+  if (
+    Math.abs(delta.produced) < 0.0005 && Math.abs(delta.used) < 0.0005 &&
+    Math.abs(delta.waste) < 0.0005 && Math.abs(delta.damaged) < 0.0005
+  ) {
+    return; // nothing changed
+  }
+
+  const dateLabel = log.logDate.toISOString().slice(0, 10);
+
+  await prisma.$transaction(
+    async (tx) => {
+      // Produced adds stock: a higher number needs more added (DAILY_IN); a lower
+      // number means some of what was added must come back out (DAILY_OUT).
+      if (delta.produced > 0.0005) {
+        await applyStockMovement(
+          { productId, type: StockMovementType.DAILY_IN, quantity: delta.produced, notes: `Daily log ${dateLabel} — correction: produced +${delta.produced.toFixed(3)}`, referenceId: logId, referenceType: "DailyLog", createdBy: userId },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      } else if (delta.produced < -0.0005) {
+        await applyStockMovement(
+          { productId, type: StockMovementType.DAILY_OUT, quantity: -delta.produced, notes: `Daily log ${dateLabel} — correction: produced ${delta.produced.toFixed(3)}`, referenceId: logId, referenceType: "DailyLog", createdBy: userId },
+          tx as Parameters<typeof applyStockMovement>[1]
+        );
+      }
+
+      // Used/waste/damaged subtract stock: a higher number needs more removed
+      // (DAILY_OUT); a lower number means some of what was removed comes back (DAILY_IN).
+      for (const [field, label] of [["used", "used"], ["waste", "waste"], ["damaged", "damaged"]] as const) {
+        const d = delta[field];
+        if (d > 0.0005) {
+          await applyStockMovement(
+            { productId, type: StockMovementType.DAILY_OUT, quantity: d, notes: `Daily log ${dateLabel} — correction: ${label} +${d.toFixed(3)}`, referenceId: logId, referenceType: "DailyLog", createdBy: userId },
+            tx as Parameters<typeof applyStockMovement>[1]
+          );
+        } else if (d < -0.0005) {
+          await applyStockMovement(
+            { productId, type: StockMovementType.DAILY_IN, quantity: -d, notes: `Daily log ${dateLabel} — correction: ${label} ${d.toFixed(3)}`, referenceId: logId, referenceType: "DailyLog", createdBy: userId },
+            tx as Parameters<typeof applyStockMovement>[1]
+          );
+        }
+      }
+
+      await tx.dailyLogItem.update({
+        where: { id: item.id },
+        data: {
+          producedQty: values.producedQty,
+          usedQty:     values.usedQty,
+          wasteQty:    values.wasteQty,
+          damagedQty:  values.damagedQty,
+        },
+      });
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15000 }
+  );
+
+  await writeAuditLog({
+    userId,
+    action:     "DAILY_LOG_ENTRY_CORRECT",
+    entityType: "DailyLog",
+    entityId:   logId,
+    after: { date: dateLabel, product: item.product.name, old, new: values },
+  });
+
+  // Recompute this day's closing and cascade the correction forward through
+  // every subsequent CLOSED/AUTO_ADJUSTED day, same as any other backdated edit.
+  await syncLedgerForward(dateLabel, userId);
 
   revalidatePath("/daily-log");
   revalidatePath("/daily-log/history");

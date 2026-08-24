@@ -46,7 +46,8 @@ type Props = {
 };
 
 export default async function DailyLogPage({ searchParams }: Props) {
-  await requirePermission("inventory");
+  const role = await requirePermission("inventory");
+  const isAdmin = role === "admin" || role === "superadmin";
 
   const { date: dateParam } = await searchParams;
   const todayStr = getTodayStr();
@@ -265,7 +266,7 @@ export default async function DailyLogPage({ searchParams }: Props) {
           </div>
 
           {/* Main table — key forces full remount when log changes so stale state is never shown */}
-          <DailyLogTable key={log.id} items={log.items} isOpen={isOpen} />
+          <DailyLogTable key={log.id} items={log.items} isOpen={isOpen} logId={log.id} isAdmin={isAdmin} />
         </>
       )}
     </div>

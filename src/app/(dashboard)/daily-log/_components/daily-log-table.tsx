@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/table";
 import type { DailyLogItemRow } from "../actions";
 import { updateDailyLogItem } from "../actions";
+import { CorrectEntryDialog } from "./correct-entry-dialog";
 
 type RowState = DailyLogItemRow & {
   _saving: boolean;
@@ -19,6 +20,8 @@ type RowState = DailyLogItemRow & {
 type Props = {
   items: DailyLogItemRow[];
   isOpen: boolean;
+  logId: string;
+  isAdmin: boolean;
 };
 
 function calcClosing(row: RowState): number {
@@ -60,7 +63,7 @@ function describeSaveError(err: unknown): { message: string; isSessionError: boo
   return { message: "Couldn't save — check your internet connection and try again.", isSessionError: false };
 }
 
-export function DailyLogTable({ items, isOpen }: Props) {
+export function DailyLogTable({ items, isOpen, logId, isAdmin }: Props) {
   const [rows, setRows] = useState<RowState[]>(() =>
     items.map((item) => ({ ...item, _saving: false, _saved: false, _dirty: false }))
   );
@@ -338,8 +341,19 @@ export function DailyLogTable({ items, isOpen }: Props) {
                     >
                       {/* Product — sticky left */}
                       <TableCell className="sticky left-0 z-10 bg-background px-3 py-1.5 border-r border-border/30">
-                        <div className={cn("font-medium text-xs leading-tight", hasRowActivity ? "text-foreground" : "")}>
+                        <div className={cn("font-medium text-xs leading-tight flex items-center gap-1.5", hasRowActivity ? "text-foreground" : "")}>
                           {row.productName}
+                          {!isOpen && isAdmin && (
+                            <CorrectEntryDialog
+                              logId={logId}
+                              productId={row.productId}
+                              productName={row.productName}
+                              producedQty={row.producedQty}
+                              usedQty={row.usedQty}
+                              wasteQty={row.wasteQty}
+                              damagedQty={row.damagedQty}
+                            />
+                          )}
                         </div>
                         <div className="flex items-center gap-1 leading-tight mt-0.5">
                           <span className="text-[10px] text-muted-foreground font-mono">{row.productSku}</span>
