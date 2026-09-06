@@ -31,6 +31,9 @@ export default async function PrintReturnPage({ params }: { params: Promise<{ id
   if (!ret) notFound();
 
   const totalAmount = Number(ret.totalAmount);
+  const subtotal    = ret.items.reduce((s, i) => s + Number(i.grossAmount), 0);
+  const vatTotal    = ret.items.reduce((s, i) => s + Number(i.vatAmount), 0);
+  const exciseTotal = ret.items.reduce((s, i) => s + Number(i.exciseAmount), 0);
   const returnDate  = new Date(ret.returnDate);
   const invoiceDate = new Date(ret.purchase.date);
 
@@ -100,11 +103,17 @@ export default async function PrintReturnPage({ params }: { params: Promise<{ id
                 <th style={{ padding: "8px 10px", textAlign: "left",  fontWeight: "600", fontSize: "10px", textTransform: "uppercase" }}>Product</th>
                 <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: "600", fontSize: "10px", textTransform: "uppercase" }}>Qty Returned</th>
                 <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: "600", fontSize: "10px", textTransform: "uppercase" }}>Unit Price</th>
+                <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: "600", fontSize: "10px", textTransform: "uppercase" }}>Gross</th>
+                <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: "600", fontSize: "10px", textTransform: "uppercase" }}>VAT</th>
+                <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: "600", fontSize: "10px", textTransform: "uppercase" }}>Excise</th>
                 <th style={{ padding: "8px 10px", textAlign: "right", fontWeight: "600", fontSize: "10px", textTransform: "uppercase" }}>Amount</th>
               </tr>
             </thead>
             <tbody>
               {ret.items.map((item, idx) => {
+                const gross     = Number(item.grossAmount);
+                const vatAmt    = Number(item.vatAmount);
+                const exciseAmt = Number(item.exciseAmount);
                 const lineTotal = Number(item.lineTotal);
                 const isEven    = idx % 2 === 0;
                 return (
@@ -121,6 +130,13 @@ export default async function PrintReturnPage({ params }: { params: Promise<{ id
                       {item.product.unit?.name && <span style={{ color: "#aaa", fontSize: "10px" }}> {item.product.unit.name}</span>}
                     </td>
                     <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmt(Number(item.unitPrice))}</td>
+                    <td style={{ padding: "8px 10px", textAlign: "right" }}>{fmt(gross)}</td>
+                    <td style={{ padding: "8px 10px", textAlign: "right", color: vatAmt > 0 ? "#1d4ed8" : "#ccc" }}>
+                      {vatAmt > 0 ? fmt(vatAmt) : "—"}
+                    </td>
+                    <td style={{ padding: "8px 10px", textAlign: "right", color: exciseAmt > 0 ? "#7c3aed" : "#ccc" }}>
+                      {exciseAmt > 0 ? fmt(exciseAmt) : "—"}
+                    </td>
                     <td style={{ padding: "8px 10px", textAlign: "right", fontWeight: "600" }}>{fmt(lineTotal)}</td>
                   </tr>
                 );
@@ -131,7 +147,20 @@ export default async function PrintReturnPage({ params }: { params: Promise<{ id
           {/* ── Total ── */}
           <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "24px" }}>
             <div style={{ width: "260px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", backgroundColor: "#c0392b", color: "white", borderRadius: "6px", fontWeight: "700", fontSize: "13px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", color: "#555" }}>
+                <span>Subtotal</span><span>{fmt(subtotal)}</span>
+              </div>
+              {vatTotal > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", color: "#1d4ed8" }}>
+                  <span>VAT</span><span>{fmt(vatTotal)}</span>
+                </div>
+              )}
+              {exciseTotal > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", color: "#7c3aed" }}>
+                  <span>Excise Duty</span><span>{fmt(exciseTotal)}</span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", backgroundColor: "#c0392b", color: "white", borderRadius: "6px", fontWeight: "700", fontSize: "13px", marginTop: "4px" }}>
                 <span>Total Returned</span><span>{fmt(totalAmount)}</span>
               </div>
               <div style={{ color: "#888", fontSize: "10px", marginTop: "6px", textAlign: "right" }}>

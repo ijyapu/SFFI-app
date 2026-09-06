@@ -143,6 +143,8 @@ export type ReturnableItem = {
   unitName: string;
   quantityPurchased: number;
   unitPrice: number;
+  vatPct: number;
+  excisePct: number;
   alreadyReturned: number;
   maxReturnable: number;
 };
@@ -192,6 +194,8 @@ export async function getPurchaseItemsForReturn(purchaseId: string, excludeRetur
         unitName: item.product.unit.name,
         quantityPurchased: qty,
         unitPrice: Number(item.unitPrice),
+        vatPct: Number(item.vatPct ?? 0),
+        excisePct: Number(item.excisePct ?? 0),
         alreadyReturned: 0,
         maxReturnable: 0,
       });
@@ -235,7 +239,14 @@ export async function createSupplierReturn(values: CreateSupplierReturnValues): 
         `Cannot return ${item.quantity} of "${info.productName}" — only ${info.maxReturnable.toFixed(3)} left returnable on this invoice.`
       );
     }
-    return { ...item, productName: info.productName, lineTotal: item.quantity * item.unitPrice };
+    const grossAmount  = item.quantity * item.unitPrice;
+    const vatAmount    = grossAmount * (info.vatPct / 100);
+    const exciseAmount = grossAmount * (info.excisePct / 100);
+    return {
+      ...item, productName: info.productName,
+      grossAmount, vatPct: info.vatPct, vatAmount, excisePct: info.excisePct, exciseAmount,
+      lineTotal: grossAmount + vatAmount + exciseAmount,
+    };
   });
   const totalAmount = computedItems.reduce((s, i) => s + i.lineTotal, 0);
   const returnDate = new Date(data.returnDate);
@@ -258,6 +269,11 @@ export async function createSupplierReturn(values: CreateSupplierReturnValues): 
             productId: i.productId,
             quantity: i.quantity,
             unitPrice: i.unitPrice,
+            grossAmount: i.grossAmount,
+            vatPct: i.vatPct,
+            vatAmount: i.vatAmount,
+            excisePct: i.excisePct,
+            exciseAmount: i.exciseAmount,
             lineTotal: i.lineTotal,
           })),
         },
@@ -329,7 +345,14 @@ export async function updateSupplierReturn(returnId: string, values: UpdateSuppl
         `Cannot return ${item.quantity} of "${info.productName}" — only ${info.maxReturnable.toFixed(3)} left returnable on this invoice.`
       );
     }
-    return { ...item, lineTotal: item.quantity * item.unitPrice };
+    const grossAmount  = item.quantity * item.unitPrice;
+    const vatAmount    = grossAmount * (info.vatPct / 100);
+    const exciseAmount = grossAmount * (info.excisePct / 100);
+    return {
+      ...item,
+      grossAmount, vatPct: info.vatPct, vatAmount, excisePct: info.excisePct, exciseAmount,
+      lineTotal: grossAmount + vatAmount + exciseAmount,
+    };
   });
   const totalAmount = computedItems.reduce((s, i) => s + i.lineTotal, 0);
   const oldDateStr = toDateStr(existing.returnDate);
@@ -377,7 +400,19 @@ export async function updateSupplierReturn(returnId: string, values: UpdateSuppl
         returnDate,
         reason: data.reason || null,
         totalAmount,
-        items: { create: computedItems.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal })) },
+        items: {
+          create: computedItems.map((i) => ({
+            productId: i.productId,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            grossAmount: i.grossAmount,
+            vatPct: i.vatPct,
+            vatAmount: i.vatAmount,
+            excisePct: i.excisePct,
+            exciseAmount: i.exciseAmount,
+            lineTotal: i.lineTotal,
+          })),
+        },
       },
     });
   }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 20000 });

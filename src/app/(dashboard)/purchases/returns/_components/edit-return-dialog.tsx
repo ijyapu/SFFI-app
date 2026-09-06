@@ -68,8 +68,17 @@ export function EditReturnDialog({ row, open, onClose }: { row: SupplierReturnRo
     );
   }
 
+  function lineAmounts(it: ItemRow) {
+    const gross   = it.selectedQty * it.unitPrice;
+    const vat     = gross * (it.vatPct / 100);
+    const excise  = gross * (it.excisePct / 100);
+    return { gross, vat, excise, total: gross + vat + excise };
+  }
+
   const selectedItems = items.filter((it) => it.selectedQty > 0);
-  const totalAmount = selectedItems.reduce((s, it) => s + it.selectedQty * it.unitPrice, 0);
+  const totalAmount = selectedItems.reduce((s, it) => s + lineAmounts(it).total, 0);
+  const totalVat    = selectedItems.reduce((s, it) => s + lineAmounts(it).vat, 0);
+  const totalExcise = selectedItems.reduce((s, it) => s + lineAmounts(it).excise, 0);
 
   function handleSave() {
     if (selectedItems.length === 0) {
@@ -136,45 +145,58 @@ export function EditReturnDialog({ row, open, onClose }: { row: SupplierReturnRo
                     <TableHead>Product</TableHead>
                     <TableHead numeric>Purchased</TableHead>
                     <TableHead numeric className="w-28">Return Qty</TableHead>
+                    <TableHead numeric>VAT</TableHead>
+                    <TableHead numeric>Excise</TableHead>
                     <TableHead numeric>Amount (Rs)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {items.length === 0 && (
-                    <TableEmptyRow colSpan={4} message="No returnable items on this invoice." />
+                    <TableEmptyRow colSpan={6} message="No returnable items on this invoice." />
                   )}
-                  {items.map((it) => (
-                    <TableRow key={it.productId} className={it.maxReturnable <= 0 ? "opacity-40" : ""}>
-                      <TableCell>
-                        <div className="text-sm font-medium">{it.productName}</div>
-                        <div className="text-[10px] text-muted-foreground font-mono">{it.sku} · {it.unitName}</div>
-                      </TableCell>
-                      <TableCell numeric className="text-sm">{it.quantityPurchased}</TableCell>
-                      <TableCell numeric>
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.001"
-                          max={it.maxReturnable}
-                          disabled={it.maxReturnable <= 0}
-                          value={it.selectedQty === 0 ? "" : it.selectedQty}
-                          onChange={(e) => setQty(it.productId, parseFloat(e.target.value) || 0)}
-                          placeholder="0"
-                          className="h-8 w-24 rounded border border-input bg-transparent px-2 text-right text-xs tabular-nums outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-40"
-                        />
-                      </TableCell>
-                      <TableCell numeric className="text-sm font-medium">
-                        {it.selectedQty > 0 ? Rs(it.selectedQty * it.unitPrice) : "—"}
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {items.map((it) => {
+                    const amounts = lineAmounts(it);
+                    return (
+                      <TableRow key={it.productId} className={it.maxReturnable <= 0 ? "opacity-40" : ""}>
+                        <TableCell>
+                          <div className="text-sm font-medium">{it.productName}</div>
+                          <div className="text-[10px] text-muted-foreground font-mono">{it.sku} · {it.unitName}</div>
+                        </TableCell>
+                        <TableCell numeric className="text-sm">{it.quantityPurchased}</TableCell>
+                        <TableCell numeric>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            max={it.maxReturnable}
+                            disabled={it.maxReturnable <= 0}
+                            value={it.selectedQty === 0 ? "" : it.selectedQty}
+                            onChange={(e) => setQty(it.productId, parseFloat(e.target.value) || 0)}
+                            placeholder="0"
+                            className="h-8 w-24 rounded border border-input bg-transparent px-2 text-right text-xs tabular-nums outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-40"
+                          />
+                        </TableCell>
+                        <TableCell numeric className="text-sm text-blue-600">
+                          {it.selectedQty > 0 && it.vatPct > 0 ? Rs(amounts.vat) : "—"}
+                        </TableCell>
+                        <TableCell numeric className="text-sm text-purple-600">
+                          {it.selectedQty > 0 && it.excisePct > 0 ? Rs(amounts.excise) : "—"}
+                        </TableCell>
+                        <TableCell numeric className="text-sm font-medium">
+                          {it.selectedQty > 0 ? Rs(amounts.total) : "—"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
 
             {selectedItems.length > 0 && (
-              <div className="flex justify-end text-sm font-semibold">
-                Total: Rs {Rs(totalAmount)}
+              <div className="flex flex-col items-end gap-0.5 text-sm">
+                {totalVat > 0 && <div className="text-blue-600">VAT: Rs {Rs(totalVat)}</div>}
+                {totalExcise > 0 && <div className="text-purple-600">Excise: Rs {Rs(totalExcise)}</div>}
+                <div className="font-semibold">Total: Rs {Rs(totalAmount)}</div>
               </div>
             )}
 

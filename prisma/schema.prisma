@@ -502,7 +502,12 @@ model SupplierReturnItem {
   productId        String
   quantity         Decimal @db.Decimal(10, 3)
   unitPrice        Decimal @db.Decimal(10, 2)
-  lineTotal        Decimal @db.Decimal(10, 2)
+  grossAmount      Decimal @default(0) @db.Decimal(10, 2) // quantity * unitPrice, before tax
+  vatPct           Decimal @default(0) @db.Decimal(5, 2) // copied from the original invoice line
+  vatAmount        Decimal @default(0) @db.Decimal(10, 2)
+  excisePct        Decimal @default(0) @db.Decimal(5, 2) // copied from the original invoice line
+  exciseAmount     Decimal @default(0) @db.Decimal(10, 2)
+  lineTotal        Decimal @db.Decimal(10, 2) // grossAmount + vatAmount + exciseAmount
 
   supplierReturn SupplierReturn @relation(fields: [supplierReturnId], references: [id], onDelete: Cascade)
   product        Product        @relation(fields: [productId], references: [id])
