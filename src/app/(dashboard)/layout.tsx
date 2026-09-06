@@ -13,10 +13,12 @@ export default async function DashboardLayout({
 
   return (
     <SidebarProvider defaultOpen={sidebarOpen}>
-      <AppSidebar />
+      <div className="print:hidden contents">
+        <AppSidebar />
+      </div>
       <SidebarInset>
         <AppHeader />
-        <div className="flex flex-1 flex-col gap-4 p-6 overflow-x-hidden min-w-0">{children}</div>
+        <div className="flex flex-1 flex-col gap-4 p-6 overflow-x-hidden min-w-0 print:p-0">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );
