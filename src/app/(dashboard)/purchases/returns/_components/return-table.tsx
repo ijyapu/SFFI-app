@@ -5,7 +5,7 @@ import Link from "next/link";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Pencil } from "lucide-react";
+import { Pencil, Printer } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
@@ -50,7 +50,7 @@ export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
               <TableHead>Reason</TableHead>
               <TableHead numeric>Items</TableHead>
               <TableHead numeric>Amount (Rs)</TableHead>
-              <TableHead className="w-12" />
+              <TableHead className="w-20" />
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -80,9 +80,16 @@ export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
                 <TableCell numeric>{r.itemCount}</TableCell>
                 <TableCell numeric className="font-medium text-orange-600">{Rs(r.totalAmount)}</TableCell>
                 <TableCell>
-                  <Button variant="ghost" size="icon-sm" title="Open / edit this return">
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Link href={`/purchases/returns/${r.id}/print`} target="_blank" onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon-sm" title="Print return note">
+                        <Printer className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
+                    <Button variant="ghost" size="icon-sm" title="Open / edit this return">
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

@@ -3,7 +3,8 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
+import { Loader2, Printer } from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -185,6 +186,12 @@ export function EditReturnDialog({ row, open, onClose }: { row: SupplierReturnRo
         )}
 
         <DialogFooter>
+          <Link href={`/purchases/returns/${row.id}/print`} target="_blank" className="mr-auto">
+            <Button variant="outline" type="button">
+              <Printer className="h-3.5 w-3.5" />
+              Print
+            </Button>
+          </Link>
           <Button variant="outline" onClick={onClose} disabled={isPending}>
             Cancel
           </Button>
