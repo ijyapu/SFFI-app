@@ -189,7 +189,7 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
         createdAt: { gte: logDate, lt: nextDay },
         OR: [
           { type: { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] }, referenceType: null },
-          { type: StockMovementType.RETURN_OUT, referenceType: "SupplierReturn" },
+          { type: { in: [StockMovementType.RETURN_IN, StockMovementType.RETURN_OUT] }, referenceType: "SupplierReturn" },
         ],
       },
       select: { productId: true, type: true, quantity: true },
@@ -205,7 +205,7 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
   for (const mv of adjustmentMovements) {
     const pid = mv.productId;
     const qty = Number(mv.quantity);
-    if (mv.type === StockMovementType.ADJUSTMENT_IN) {
+    if (mv.type === StockMovementType.ADJUSTMENT_IN || mv.type === StockMovementType.RETURN_IN) {
       adjustInMap.set(pid, (adjustInMap.get(pid) ?? 0) + qty);
     } else {
       adjustOutMap.set(pid, (adjustOutMap.get(pid) ?? 0) + qty);
@@ -638,14 +638,14 @@ async function closeDailyLogInner(logId: string): Promise<void> {
 
   // Read inventory adjustments for this day BEFORE the transaction (read-only, no race risk)
   // referenceType: null → only movements created from the Inventory section (no referenceType set)
-  // Supplier returns (RETURN_OUT, referenceType "SupplierReturn") count as an out-adjustment too.
+  // Supplier returns (RETURN_OUT/RETURN_IN, referenceType "SupplierReturn") count as an adjustment too.
   const adjMovements = await prisma.stockMovement.findMany({
     where: {
       productId: { in: productIds },
       createdAt: { gte: logDate, lt: nextDay },
       OR: [
         { type: { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] }, referenceType: null },
-        { type: StockMovementType.RETURN_OUT, referenceType: "SupplierReturn" },
+        { type: { in: [StockMovementType.RETURN_IN, StockMovementType.RETURN_OUT] }, referenceType: "SupplierReturn" },
       ],
     },
     select: { productId: true, type: true, quantity: true },
@@ -654,7 +654,7 @@ async function closeDailyLogInner(logId: string): Promise<void> {
   const adjOutMap = new Map<string, number>();
   for (const mv of adjMovements) {
     const qty = Number(mv.quantity);
-    if (mv.type === StockMovementType.ADJUSTMENT_IN) {
+    if (mv.type === StockMovementType.ADJUSTMENT_IN || mv.type === StockMovementType.RETURN_IN) {
       adjInMap.set(mv.productId, (adjInMap.get(mv.productId) ?? 0) + qty);
     } else {
       adjOutMap.set(mv.productId, (adjOutMap.get(mv.productId) ?? 0) + qty);
@@ -1132,7 +1132,7 @@ async function recomputeDay(
         createdAt: { gte: logDate, lt: nextDay },
         OR: [
           { type: { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] }, referenceType: null },
-          { type: StockMovementType.RETURN_OUT, referenceType: "SupplierReturn" },
+          { type: { in: [StockMovementType.RETURN_IN, StockMovementType.RETURN_OUT] }, referenceType: "SupplierReturn" },
         ],
       },
       select: { productId: true, type: true, quantity: true },
@@ -1145,8 +1145,11 @@ async function recomputeDay(
   const adjOutMap = new Map<string, number>();
   for (const mv of adjMovements) {
     const qty = Number(mv.quantity);
-    if (mv.type === StockMovementType.ADJUSTMENT_IN) adjInMap.set(mv.productId, (adjInMap.get(mv.productId) ?? 0) + qty);
-    else adjOutMap.set(mv.productId, (adjOutMap.get(mv.productId) ?? 0) + qty);
+    if (mv.type === StockMovementType.ADJUSTMENT_IN || mv.type === StockMovementType.RETURN_IN) {
+      adjInMap.set(mv.productId, (adjInMap.get(mv.productId) ?? 0) + qty);
+    } else {
+      adjOutMap.set(mv.productId, (adjOutMap.get(mv.productId) ?? 0) + qty);
+    }
   }
 
   const closingMap = new Map<string, number>();

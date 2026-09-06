@@ -122,3 +122,11 @@ export const createSupplierReturnSchema = z.object({
 });
 
 export type CreateSupplierReturnValues = z.infer<typeof createSupplierReturnSchema>;
+
+export const updateSupplierReturnSchema = z.object({
+  returnDate: z.string().min(1, "Date is required"),
+  reason:     z.string().max(500).optional(),
+  items:      z.array(supplierReturnItemSchema).min(1, "Select at least one item to return").max(200),
+});
+
+export type UpdateSupplierReturnValues = z.infer<typeof updateSupplierReturnSchema>;

@@ -4,10 +4,13 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
 import type { SupplierReturnRow } from "../actions";
+import { EditReturnDialog } from "./edit-return-dialog";
 
 function Rs(n: number) {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -15,6 +18,7 @@ function Rs(n: number) {
 
 export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
   const [search, setSearch] = useState("");
+  const [editing, setEditing] = useState<SupplierReturnRow | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -46,21 +50,27 @@ export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
               <TableHead>Reason</TableHead>
               <TableHead numeric>Items</TableHead>
               <TableHead numeric>Amount (Rs)</TableHead>
+              <TableHead className="w-12" />
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.length === 0 && (
-              <TableEmptyRow colSpan={7} message={search ? "No returns match your search." : "No purchase returns recorded yet."} />
+              <TableEmptyRow colSpan={8} message={search ? "No returns match your search." : "No purchase returns recorded yet."} />
             )}
             {filtered.map((r) => (
-              <TableRow key={r.id}>
+              <TableRow key={r.id} className="cursor-pointer hover:bg-muted/30" onClick={() => setEditing(r)}>
                 <TableCell className="font-mono font-medium">{r.returnNumber}</TableCell>
                 <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                   <DateDisplay date={r.returnDate} />
                 </TableCell>
                 <TableCell className="max-w-40 truncate">{r.supplierName}</TableCell>
                 <TableCell className="font-mono">
-                  <Link href={`/purchases/${r.purchaseId}/print`} target="_blank" className="hover:underline">
+                  <Link
+                    href={`/purchases/${r.purchaseId}/print`}
+                    target="_blank"
+                    className="hover:underline"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {r.invoiceNo}
                   </Link>
                 </TableCell>
@@ -69,6 +79,11 @@ export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
                 </TableCell>
                 <TableCell numeric>{r.itemCount}</TableCell>
                 <TableCell numeric className="font-medium text-orange-600">{Rs(r.totalAmount)}</TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="icon-sm" title="Open / edit this return">
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -78,6 +93,10 @@ export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
       <p className="text-xs text-muted-foreground">
         {filtered.length} of {returns.length} return{returns.length !== 1 ? "s" : ""}
       </p>
+
+      {editing && (
+        <EditReturnDialog row={editing} open={!!editing} onClose={() => setEditing(null)} />
+      )}
     </div>
   );
 }

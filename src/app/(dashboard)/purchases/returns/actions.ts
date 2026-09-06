@@ -10,7 +10,9 @@ import { writeAuditLog } from "@/lib/audit";
 import { syncLedgerForward } from "@/app/(dashboard)/daily-log/actions";
 import {
   createSupplierReturnSchema,
+  updateSupplierReturnSchema,
   type CreateSupplierReturnValues,
+  type UpdateSupplierReturnValues,
 } from "@/lib/validators/purchase";
 
 async function requirePurchasesAccess() {
@@ -72,6 +74,42 @@ export async function getSupplierReturns(): Promise<SupplierReturnRow[]> {
   }));
 }
 
+export type SupplierReturnDetail = {
+  id: string;
+  purchaseId: string;
+  supplierId: string;
+  invoiceNo: string;
+  supplierName: string;
+  returnDate: string; // YYYY-MM-DD
+  reason: string | null;
+  items: { productId: string; quantity: number; unitPrice: number }[];
+};
+
+export async function getSupplierReturnDetail(returnId: string): Promise<SupplierReturnDetail> {
+  await requirePurchasesAccess();
+
+  const r = await prisma.supplierReturn.findUnique({
+    where: { id: returnId },
+    include: {
+      purchase: { select: { invoiceNo: true } },
+      supplier: { select: { name: true } },
+      items: { select: { productId: true, quantity: true, unitPrice: true } },
+    },
+  });
+  if (!r || r.deletedAt) throw new Error("Return not found");
+
+  return {
+    id: r.id,
+    purchaseId: r.purchaseId,
+    supplierId: r.supplierId,
+    invoiceNo: r.purchase.invoiceNo,
+    supplierName: r.supplier.name,
+    returnDate: toDateStr(r.returnDate),
+    reason: r.reason,
+    items: r.items.map((i) => ({ productId: i.productId, quantity: Number(i.quantity), unitPrice: Number(i.unitPrice) })),
+  };
+}
+
 // ─────────────────────────────────────────────
 // PICKER DATA (for the Add Return form)
 // ─────────────────────────────────────────────
@@ -109,7 +147,7 @@ export type ReturnableItem = {
   maxReturnable: number;
 };
 
-export async function getPurchaseItemsForReturn(purchaseId: string): Promise<ReturnableItem[]> {
+export async function getPurchaseItemsForReturn(purchaseId: string, excludeReturnId?: string): Promise<ReturnableItem[]> {
   await requirePurchasesAccess();
 
   const purchase = await prisma.purchase.findUnique({
@@ -123,9 +161,16 @@ export async function getPurchaseItemsForReturn(purchaseId: string): Promise<Ret
   });
   if (!purchase) throw new Error("Purchase not found");
 
+  // When editing an existing return, its own quantities don't count against the cap —
+  // they're being replaced, not added on top of.
   const alreadyReturnedSums = await prisma.supplierReturnItem.groupBy({
     by: ["productId"],
-    where: { supplierReturn: { purchaseId, deletedAt: null } },
+    where: {
+      supplierReturn: {
+        purchaseId, deletedAt: null,
+        ...(excludeReturnId ? { id: { not: excludeReturnId } } : {}),
+      },
+    },
     _sum: { quantity: true },
   });
   const returnedMap = new Map(alreadyReturnedSums.map((r) => [r.productId, Number(r._sum.quantity ?? 0)]));
@@ -248,6 +293,106 @@ export async function createSupplierReturn(values: CreateSupplierReturnValues): 
 
   // Keep the Daily Log ledger in sync if the return date's day is already closed.
   await syncLedgerForward(dateLabel, userId);
+
+  revalidatePath("/purchases");
+  revalidatePath("/purchases/returns");
+  revalidatePath("/inventory");
+  revalidatePath("/vendors/ledger");
+}
+
+// ─────────────────────────────────────────────
+// UPDATE
+// ─────────────────────────────────────────────
+
+export async function updateSupplierReturn(returnId: string, values: UpdateSupplierReturnValues): Promise<void> {
+  const userId = await requirePurchasesAccess();
+  const data = updateSupplierReturnSchema.parse(values);
+
+  const existing = await prisma.supplierReturn.findUnique({
+    where: { id: returnId },
+    include: {
+      items: { select: { productId: true, quantity: true } },
+      purchase: { select: { invoiceNo: true } },
+    },
+  });
+  if (!existing || existing.deletedAt) throw new Error("Return not found");
+
+  // Re-check against what's returnable, excluding this return's own current quantities.
+  const returnable = await getPurchaseItemsForReturn(existing.purchaseId, returnId);
+  const returnableMap = new Map(returnable.map((r) => [r.productId, r]));
+
+  const computedItems = data.items.map((item) => {
+    const info = returnableMap.get(item.productId);
+    if (!info) throw new Error(`"${item.productId}" was not purchased on this invoice`);
+    if (item.quantity > info.maxReturnable + 0.0005) {
+      throw new Error(
+        `Cannot return ${item.quantity} of "${info.productName}" — only ${info.maxReturnable.toFixed(3)} left returnable on this invoice.`
+      );
+    }
+    return { ...item, lineTotal: item.quantity * item.unitPrice };
+  });
+  const totalAmount = computedItems.reduce((s, i) => s + i.lineTotal, 0);
+  const oldDateStr = toDateStr(existing.returnDate);
+  const returnDate = new Date(data.returnDate);
+  const newDateStr = toDateStr(returnDate);
+
+  await prisma.$transaction(async (tx) => {
+    // Reverse every old item's quantity (adds stock back) before applying the new set.
+    for (const old of existing.items) {
+      await applyStockMovement(
+        {
+          productId: old.productId,
+          type: StockMovementType.RETURN_IN,
+          quantity: Number(old.quantity),
+          notes: `Return ${existing.returnNumber} edited — reversing previous quantity`,
+          referenceId: returnId,
+          referenceType: "SupplierReturn",
+          createdBy: userId,
+        },
+        tx as Parameters<typeof applyStockMovement>[1]
+      );
+    }
+
+    await tx.supplierReturnItem.deleteMany({ where: { supplierReturnId: returnId } });
+
+    for (const item of computedItems) {
+      await applyStockMovement(
+        {
+          productId: item.productId,
+          type: StockMovementType.RETURN_OUT,
+          quantity: item.quantity,
+          unitCost: item.unitPrice,
+          notes: `Returned to supplier — invoice ${existing.purchase.invoiceNo}, return ${existing.returnNumber} (edited)`,
+          referenceId: returnId,
+          referenceType: "SupplierReturn",
+          createdBy: userId,
+        },
+        tx as Parameters<typeof applyStockMovement>[1]
+      );
+    }
+
+    await tx.supplierReturn.update({
+      where: { id: returnId },
+      data: {
+        returnDate,
+        reason: data.reason || null,
+        totalAmount,
+        items: { create: computedItems.map((i) => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, lineTotal: i.lineTotal })) },
+      },
+    });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 20000 });
+
+  await writeAuditLog({
+    userId,
+    action: "SUPPLIER_RETURN_EDIT",
+    entityType: "SupplierReturn",
+    entityId: returnId,
+    after: { invoiceNo: existing.purchase.invoiceNo, date: newDateStr, totalAmount, itemCount: computedItems.length },
+  });
+
+  // Keep the ledger in sync for both the old and new return date, if they differ.
+  await syncLedgerForward(oldDateStr, userId);
+  if (newDateStr !== oldDateStr) await syncLedgerForward(newDateStr, userId);
 
   revalidatePath("/purchases");
   revalidatePath("/purchases/returns");
