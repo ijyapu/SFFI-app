@@ -18,6 +18,7 @@ import {
   FlaskConical,
   Wallet,
   Banknote,
+  Undo2,
   type LucideIcon,
 } from "lucide-react";
 import type { PermissionKey } from "@/lib/roles";
@@ -64,6 +65,12 @@ export const NAV_GROUPS: NavGroup[] = [
         title: "Purchases",
         href: "/purchases",
         icon: ShoppingCart,
+        permission: "purchases",
+      },
+      {
+        title: "Purchase Returns",
+        href: "/purchases/returns",
+        icon: Undo2,
         permission: "purchases",
       },
       {

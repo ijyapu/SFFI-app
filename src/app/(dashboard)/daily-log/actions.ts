@@ -181,13 +181,16 @@ export async function getDailyLog(dateStr: string): Promise<DailyLogRow | null> 
       },
       _sum: { quantity: true },
     }),
-    // Inventory adjustments for this date — exclude any legacy DailyLog-sourced ones
+    // Inventory adjustments for this date, plus supplier returns (also a real stock-out
+    // outside the day's normal produced/used/sold flow) — exclude any legacy DailyLog-sourced ones
     prisma.stockMovement.findMany({
       where: {
-        productId:     { in: productIds },
-        type:          { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] },
-        referenceType: null,
-        createdAt:     { gte: logDate, lt: nextDay },
+        productId: { in: productIds },
+        createdAt: { gte: logDate, lt: nextDay },
+        OR: [
+          { type: { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] }, referenceType: null },
+          { type: StockMovementType.RETURN_OUT, referenceType: "SupplierReturn" },
+        ],
       },
       select: { productId: true, type: true, quantity: true },
     }),
@@ -635,12 +638,15 @@ async function closeDailyLogInner(logId: string): Promise<void> {
 
   // Read inventory adjustments for this day BEFORE the transaction (read-only, no race risk)
   // referenceType: null → only movements created from the Inventory section (no referenceType set)
+  // Supplier returns (RETURN_OUT, referenceType "SupplierReturn") count as an out-adjustment too.
   const adjMovements = await prisma.stockMovement.findMany({
     where: {
-      productId:     { in: productIds },
-      type:          { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] },
-      referenceType: null,
-      createdAt:     { gte: logDate, lt: nextDay },
+      productId: { in: productIds },
+      createdAt: { gte: logDate, lt: nextDay },
+      OR: [
+        { type: { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] }, referenceType: null },
+        { type: StockMovementType.RETURN_OUT, referenceType: "SupplierReturn" },
+      ],
     },
     select: { productId: true, type: true, quantity: true },
   });
@@ -1121,7 +1127,14 @@ async function recomputeDay(
       _sum: { quantity: true },
     }),
     tx.stockMovement.findMany({
-      where: { productId: { in: productIds }, type: { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] }, referenceType: null, createdAt: { gte: logDate, lt: nextDay } },
+      where: {
+        productId: { in: productIds },
+        createdAt: { gte: logDate, lt: nextDay },
+        OR: [
+          { type: { in: [StockMovementType.ADJUSTMENT_IN, StockMovementType.ADJUSTMENT_OUT] }, referenceType: null },
+          { type: StockMovementType.RETURN_OUT, referenceType: "SupplierReturn" },
+        ],
+      },
       select: { productId: true, type: true, quantity: true },
     }),
   ]);

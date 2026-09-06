@@ -7,7 +7,7 @@ import { ERPPageHeader } from "@/components/ui/erp-page-header";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "@/lib/utils";
 import { DateFilter } from "@/components/ui/date-filter";
-import { Plus } from "lucide-react";
+import { Plus, Undo2 } from "lucide-react";
 import { purchaseNewHref } from "@/lib/purchase-nav";
 
 export const metadata = { title: "Purchases" };
@@ -24,7 +24,7 @@ export default async function PurchasesPage({ searchParams }: Props) {
     ...(rawTo   ? { lte: new Date(rawTo   + "T23:59:59.999Z") } : {}),
   } : undefined;
 
-  const [purchases, suppliers] = await Promise.all([
+  const [purchases, suppliers, returnedPurchaseIds] = await Promise.all([
     prisma.purchase.findMany({
       where: { deletedAt: null, ...(dateWhere ? { date: dateWhere } : {}) },
       include: { supplier: { select: { id: true, name: true } } },
@@ -35,7 +35,13 @@ export default async function PurchasesPage({ searchParams }: Props) {
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    prisma.supplierReturn.findMany({
+      where: { deletedAt: null },
+      select: { purchaseId: true },
+      distinct: ["purchaseId"],
+    }),
   ]);
+  const returnedSet = new Set(returnedPurchaseIds.map((r) => r.purchaseId));
 
   const serialised = purchases.map((p) => ({
     id:           p.id,
@@ -44,6 +50,7 @@ export default async function PurchasesPage({ searchParams }: Props) {
     supplierName: p.supplier.name,
     date:         p.date.toISOString(),
     totalCost:    Number(p.totalCost),
+    hasReturn:    returnedSet.has(p.id),
   }));
 
   const totalSpend = serialised.reduce((s, p) => s + p.totalCost, 0);
@@ -54,10 +61,16 @@ export default async function PurchasesPage({ searchParams }: Props) {
         title="Purchases"
         subtitle={`${serialised.length} invoice${serialised.length !== 1 ? "s" : ""}`}
         action={
-          <Link href={purchaseNewHref(rawFrom, rawTo)} className={cn(buttonVariants({}))}>
-            <Plus className="h-4 w-4" />
-            New Purchase
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/purchases/returns" className={cn(buttonVariants({ variant: "outline" }))}>
+              <Undo2 className="h-4 w-4" />
+              Purchase Returns
+            </Link>
+            <Link href={purchaseNewHref(rawFrom, rawTo)} className={cn(buttonVariants({}))}>
+              <Plus className="h-4 w-4" />
+              New Purchase
+            </Link>
+          </div>
         }
       />
 

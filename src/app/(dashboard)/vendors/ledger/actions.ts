@@ -10,11 +10,12 @@ import { z } from "zod";
 export type LedgerEntry = {
   id:            string;
   date:          string;
-  type:          "INVOICE" | "PAYMENT";
+  type:          "INVOICE" | "PAYMENT" | "RETURN";
   reference:     string;
   description:   string;
   invoiceAmount: number;
   paymentAmount: number;
+  returnAmount:  number;
   balance:       number;
   vatAmount:     number;
   exciseAmount:  number;
@@ -137,6 +138,16 @@ export async function getVendorLedger(
     orderBy: { paidAt: "asc" },
   });
 
+  // Supplier returns — goods sent back reduce what's owed on that invoice
+  const allSupplierReturns = await prisma.supplierReturn.findMany({
+    where: { supplierId, deletedAt: null },
+    select: {
+      id: true, returnNumber: true, returnDate: true, totalAmount: true, reason: true, purchaseId: true,
+      purchase: { select: { invoiceNo: true } },
+    },
+    orderBy: { returnDate: "asc" },
+  });
+
   // ── Opening balance ──────────────────────────────────────────────────────
   const baseOpening = Number(supplier.openingBalance);
   let computedOpening = baseOpening;
@@ -155,12 +166,15 @@ export async function getVendorLedger(
   for (const vp of allVendorPayments) {
     if (vp.paidAt < from) computedOpening -= Number(vp.amount);
   }
+  for (const sr of allSupplierReturns) {
+    if (sr.returnDate < from) computedOpening -= Number(sr.totalAmount);
+  }
 
   // ── Ledger entries ───────────────────────────────────────────────────────
   type RawEntry = {
-    id: string; date: Date; type: "INVOICE" | "PAYMENT";
+    id: string; date: Date; type: "INVOICE" | "PAYMENT" | "RETURN";
     reference: string; description: string;
-    invoiceAmount: number; paymentAmount: number;
+    invoiceAmount: number; paymentAmount: number; returnAmount: number;
     vatAmount: number; exciseAmount: number; subtotal: number;
     paymentMethod: string; invoiceUrl: string | null;
     receiptUrl: string | null; purchaseId: string | null;
@@ -180,7 +194,7 @@ export async function getVendorLedger(
       id: `inv-${p.id}`, date: p.date, type: "INVOICE",
       reference: p.invoiceNo,
       description: `Purchase Invoice${p.notes ? ` · ${p.notes}` : ""}`,
-      invoiceAmount: Number(p.totalCost), paymentAmount: 0,
+      invoiceAmount: Number(p.totalCost), paymentAmount: 0, returnAmount: 0,
       vatAmount: vatAmt, exciseAmount: exciseAmt, subtotal: sub,
       paymentMethod: "", invoiceUrl: p.invoiceUrl, receiptUrl: null, purchaseId: p.id,
     });
@@ -191,7 +205,7 @@ export async function getVendorLedger(
         id: `pay-${p.id}`, date: p.date, type: "PAYMENT",
         reference: p.invoiceNo,
         description: `Payment at purchase · ${p.invoiceNo}`,
-        invoiceAmount: 0, paymentAmount: Number(p.amountPaid),
+        invoiceAmount: 0, paymentAmount: Number(p.amountPaid), returnAmount: 0,
         vatAmount: 0, exciseAmount: 0, subtotal: 0,
         paymentMethod: p.paymentMethod, invoiceUrl: null, receiptUrl: null, purchaseId: p.id,
       });
@@ -204,9 +218,21 @@ export async function getVendorLedger(
       id: `sp-${sp.id}`, date: sp.paidAt, type: "PAYMENT",
       reference: sp.reference ?? sp.purchaseOrder.orderNumber,
       description: `PO Payment · ${sp.purchaseOrder.orderNumber}${sp.notes ? ` · ${sp.notes}` : ""}`,
-      invoiceAmount: 0, paymentAmount: Number(sp.amount),
+      invoiceAmount: 0, paymentAmount: Number(sp.amount), returnAmount: 0,
       vatAmount: 0, exciseAmount: 0, subtotal: 0,
       paymentMethod: sp.method, invoiceUrl: null, receiptUrl: null, purchaseId: null,
+    });
+  }
+
+  for (const sr of allSupplierReturns) {
+    if (sr.returnDate < from || sr.returnDate > to) continue;
+    rawEntries.push({
+      id: `sr-${sr.id}`, date: sr.returnDate, type: "RETURN",
+      reference: sr.returnNumber,
+      description: `Return to supplier · ${sr.purchase.invoiceNo}${sr.reason ? ` · ${sr.reason}` : ""}`,
+      invoiceAmount: 0, paymentAmount: 0, returnAmount: Number(sr.totalAmount),
+      vatAmount: 0, exciseAmount: 0, subtotal: 0,
+      paymentMethod: "", invoiceUrl: null, receiptUrl: null, purchaseId: null,
     });
   }
 
@@ -216,7 +242,7 @@ export async function getVendorLedger(
       id: `vp-${vp.id}`, date: vp.paidAt, type: "PAYMENT",
       reference: vp.reference ?? "—",
       description: `Credit Settlement${vp.notes ? ` · ${vp.notes}` : ""}`,
-      invoiceAmount: 0, paymentAmount: Number(vp.amount),
+      invoiceAmount: 0, paymentAmount: Number(vp.amount), returnAmount: 0,
       vatAmount: 0, exciseAmount: 0, subtotal: 0,
       paymentMethod: vp.method, invoiceUrl: null, receiptUrl: vp.receiptUrl ?? null, purchaseId: null,
       vendorPayment: {
@@ -241,7 +267,7 @@ export async function getVendorLedger(
 
   let balance = computedOpening;
   const entries: LedgerEntry[] = rawEntries.map((e) => {
-    balance += e.invoiceAmount - e.paymentAmount;
+    balance += e.invoiceAmount - e.paymentAmount - e.returnAmount;
     return { ...e, date: e.date.toISOString(), balance };
   });
 
@@ -255,11 +281,18 @@ export async function getVendorLedger(
   const totalInvoiced   = invoiceEntries.reduce((s, e) => s + e.invoiceAmount, 0);
   const totalPaid       = rawEntries.filter((e) => e.type === "PAYMENT").reduce((s, e) => s + e.paymentAmount, 0);
 
+  // Returned amount per purchaseId — reduces what's still owed on that invoice
+  const returnedByPurchase = new Map<string, number>();
+  for (const sr of allSupplierReturns) {
+    returnedByPurchase.set(sr.purchaseId, (returnedByPurchase.get(sr.purchaseId) ?? 0) + Number(sr.totalAmount));
+  }
+
   // ── Outstanding invoices (all time, for payment allocation dialog) ────────
   const outstandingInvoices: OutstandingInvoice[] = allPurchases
     .map((p) => {
       const allocated  = allocMap.get(p.id) ?? 0;
-      const outstanding = Math.max(0, Number(p.totalCost) - Number(p.amountPaid) - allocated);
+      const returned   = returnedByPurchase.get(p.id) ?? 0;
+      const outstanding = Math.max(0, Number(p.totalCost) - Number(p.amountPaid) - allocated - returned);
       return {
         purchaseId:      p.id,
         invoiceNo:       p.invoiceNo,

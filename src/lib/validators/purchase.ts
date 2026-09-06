@@ -104,3 +104,21 @@ export const newProductSchema = z.object({
 });
 
 export type NewProductValues = z.infer<typeof newProductSchema>;
+
+// ─── Supplier Return ──────────────────────────
+
+export const supplierReturnItemSchema = z.object({
+  productId: z.string().min(1, "Select a product"),
+  quantity:  z.number().min(0.001, "Quantity must be > 0").max(999_999),
+  unitPrice: z.number().min(0, "Price must be ≥ 0").max(9_999_999),
+});
+
+export const createSupplierReturnSchema = z.object({
+  purchaseId: z.string().min(1, "Select an invoice"),
+  supplierId: z.string().min(1, "Select a vendor"),
+  returnDate: z.string().min(1, "Date is required"),
+  reason:     z.string().max(500).optional(),
+  items:      z.array(supplierReturnItemSchema).min(1, "Select at least one item to return").max(200),
+});
+
+export type CreateSupplierReturnValues = z.infer<typeof createSupplierReturnSchema>;

@@ -13,23 +13,22 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum StockMovementType {
-  PURCHASE       // goods received from supplier
-  SALE           // goods dispatched on sale
-  ADJUSTMENT_IN  // manual stock increase (requires notes)
+  PURCHASE // goods received from supplier
+  SALE // goods dispatched on sale
+  ADJUSTMENT_IN // manual stock increase (requires notes)
   ADJUSTMENT_OUT // manual stock decrease (requires notes)
-  RETURN_IN      // customer return → stock in
-  RETURN_OUT     // supplier return → stock out
-  DAILY_IN       // daily log: produced
-  DAILY_OUT      // daily log: used / sold / waste / damaged
+  RETURN_IN // customer return → stock in
+  RETURN_OUT // supplier return → stock out
+  DAILY_IN // daily log: produced
+  DAILY_OUT // daily log: used / sold / waste / damaged
 }
 
 enum DailyLogStatus {
   OPEN
   CLOSED
-  REOPENED       // admin reopened; manual edits allowed again
-  AUTO_ADJUSTED  // cascade recalculation applied after a backdated change
+  REOPENED // admin reopened; manual edits allowed again
+  AUTO_ADJUSTED // cascade recalculation applied after a backdated change
 }
-
 
 enum PurchaseOrderStatus {
   DRAFT
@@ -44,8 +43,8 @@ enum SalesOrderStatus {
   CONFIRMED
   PARTIALLY_PAID
   PAID
-  CANCELLED  // voided: sale didn't happen, stock restored
-  LOST       // dispatched: goods gone, stock NOT restored, financial obligation waived
+  CANCELLED // voided: sale didn't happen, stock restored
+  LOST // dispatched: goods gone, stock NOT restored, financial obligation waived
 }
 
 enum PaymentMethod {
@@ -83,8 +82,8 @@ enum RecipeOverheadCategory {
 }
 
 enum BankTransferDirection {
-  DEPOSIT     // cash-in-hand -> bank
-  WITHDRAWAL  // bank -> cash-in-hand
+  DEPOSIT // cash-in-hand -> bank
+  WITHDRAWAL // bank -> cash-in-hand
 }
 
 // ─────────────────────────────────────────────
@@ -108,12 +107,12 @@ model Unit {
 }
 
 model Product {
-  id           String  @id @default(cuid())
-  name         String
-  sku          String  @unique
-  description  String?
-  categoryId   String
-  unitId       String
+  id          String  @id @default(cuid())
+  name        String
+  sku         String  @unique
+  description String?
+  categoryId  String
+  unitId      String
 
   // Pricing
   costPrice    Decimal @default(0) @db.Decimal(10, 2)
@@ -134,6 +133,7 @@ model Product {
   purchaseReturnItems PurchaseReturnItem[]
   salesReturnItems    SalesReturnItem[]
   purchaseLineItems   PurchaseLineItem[]
+  supplierReturnItems SupplierReturnItem[]
   dailyLogItems       DailyLogItem[]
   recipe              Recipe?
   recipeIngredients   RecipeIngredient[]
@@ -149,7 +149,7 @@ model Product {
 model Recipe {
   id           String   @id @default(cuid())
   productId    String   @unique
-  yieldQty     Decimal  @default(1)  @db.Decimal(10, 3)
+  yieldQty     Decimal  @default(1) @db.Decimal(10, 3)
   deductionPct Decimal  @default(35) @db.Decimal(5, 2)
   notes        String?
   createdAt    DateTime @default(now())
@@ -195,17 +195,17 @@ model RecipeOverheadLine {
 }
 
 model StockMovement {
-  id             String            @id @default(cuid())
-  productId      String
-  type           StockMovementType
-  quantity       Decimal           @db.Decimal(10, 3) // always positive
-  quantityBefore Decimal           @db.Decimal(10, 3)
-  quantityAfter  Decimal           @db.Decimal(10, 3)
-  unitCost       Decimal?          @db.Decimal(10, 2)
-  notes          String? // required for ADJUSTMENT_IN / ADJUSTMENT_OUT
-  referenceId    String? // ID of the source document
-  referenceType  String? // "PurchaseOrder" | "SalesOrder" | "PurchaseReturn" | "SalesReturn"
-  isAdminOverride Boolean          @default(false) // true if negative stock was allowed
+  id              String            @id @default(cuid())
+  productId       String
+  type            StockMovementType
+  quantity        Decimal           @db.Decimal(10, 3) // always positive
+  quantityBefore  Decimal           @db.Decimal(10, 3)
+  quantityAfter   Decimal           @db.Decimal(10, 3)
+  unitCost        Decimal?          @db.Decimal(10, 2)
+  notes           String? // required for ADJUSTMENT_IN / ADJUSTMENT_OUT
+  referenceId     String? // ID of the source document
+  referenceType   String? // "PurchaseOrder" | "SalesOrder" | "PurchaseReturn" | "SalesReturn"
+  isAdminOverride Boolean           @default(false) // true if negative stock was allowed
 
   product   Product  @relation(fields: [productId], references: [id])
   createdBy String // Clerk userId
@@ -219,7 +219,7 @@ model StockMovement {
 
 model DailyLog {
   id        String         @id @default(cuid())
-  logDate   DateTime       @db.Date         // date-only, one log per day
+  logDate   DateTime       @db.Date // date-only, one log per day
   status    DailyLogStatus @default(OPEN)
   notes     String?
   createdBy String
@@ -240,7 +240,7 @@ model DailyLog {
 }
 
 model DailyLogItem {
-  id         String   @id @default(cuid())
+  id         String @id @default(cuid())
   dailyLogId String
   productId  String
 
@@ -251,8 +251,8 @@ model DailyLogItem {
   freshReturnQty Decimal @default(0) @db.Decimal(10, 3) // FRESH sales returns restocked today
   wasteQty       Decimal @default(0) @db.Decimal(10, 3)
   damagedQty     Decimal @default(0) @db.Decimal(10, 3)
-  closingQty   Decimal @default(0) @db.Decimal(10, 3) // stored when day is closed
-  notes        String?
+  closingQty     Decimal @default(0) @db.Decimal(10, 3) // stored when day is closed
+  notes          String?
 
   dailyLog DailyLog @relation(fields: [dailyLogId], references: [id])
   product  Product  @relation(fields: [productId], references: [id])
@@ -270,19 +270,20 @@ model DailyLogItem {
 // ─────────────────────────────────────────────
 
 model Supplier {
-  id          String  @id @default(cuid())
-  name        String
-  contactName String?
-  email       String?
-  phone       String?
-  address     String?
-  pan            String?  // PAN number (Permanent Account Number)
-  openingBalance Decimal  @default(0) @db.Decimal(10, 2) // amount owed to vendor before system use
+  id             String  @id @default(cuid())
+  name           String
+  contactName    String?
+  email          String?
+  phone          String?
+  address        String?
+  pan            String? // PAN number (Permanent Account Number)
+  openingBalance Decimal @default(0) @db.Decimal(10, 2) // amount owed to vendor before system use
 
   purchaseOrders  PurchaseOrder[]
   payments        SupplierPayment[]
   purchases       Purchase[]
   vendorPayments  VendorPayment[]
+  supplierReturns SupplierReturn[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -304,10 +305,10 @@ model PurchaseOrder {
 
   notes String?
 
-  supplier  Supplier            @relation(fields: [supplierId], references: [id])
-  items     PurchaseOrderItem[]
-  payments  SupplierPayment[]
-  returns   PurchaseReturn[]
+  supplier Supplier            @relation(fields: [supplierId], references: [id])
+  items    PurchaseOrderItem[]
+  payments SupplierPayment[]
+  returns  PurchaseReturn[]
 
   createdBy String
   createdAt DateTime  @default(now())
@@ -320,7 +321,7 @@ model PurchaseOrder {
 }
 
 model PurchaseOrderItem {
-  id              String @id @default(cuid())
+  id              String  @id @default(cuid())
   purchaseOrderId String
   productId       String
   quantity        Decimal @db.Decimal(10, 3)
@@ -336,13 +337,13 @@ model PurchaseOrderItem {
 }
 
 model PurchaseReturn {
-  id              String @id @default(cuid())
-  returnNumber    String @unique
+  id              String  @id @default(cuid())
+  returnNumber    String  @unique
   purchaseOrderId String
   reason          String
   totalAmount     Decimal @db.Decimal(10, 2)
 
-  purchaseOrder PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  purchaseOrder PurchaseOrder        @relation(fields: [purchaseOrderId], references: [id])
   items         PurchaseReturnItem[]
 
   createdBy String
@@ -389,12 +390,12 @@ model VendorPayment {
   supplierId String
   amount     Decimal       @db.Decimal(10, 2)
   method     PaymentMethod
-  reference  String?       // cheque no, bank ref, etc.
+  reference  String? // cheque no, bank ref, etc.
   notes      String?
-  receiptUrl String?       // photo of payment receipt
+  receiptUrl String? // photo of payment receipt
   paidAt     DateTime      @default(now())
 
-  supplier    Supplier                   @relation(fields: [supplierId], references: [id])
+  supplier    Supplier                  @relation(fields: [supplierId], references: [id])
   allocations VendorPaymentAllocation[]
 
   createdBy String
@@ -412,7 +413,7 @@ model VendorPaymentAllocation {
   amount          Decimal @db.Decimal(10, 2)
 
   vendorPayment VendorPayment @relation(fields: [vendorPaymentId], references: [id], onDelete: Cascade)
-  purchase      Purchase      @relation(fields: [purchaseId],      references: [id])
+  purchase      Purchase      @relation(fields: [purchaseId], references: [id])
 
   @@index([vendorPaymentId])
   @@index([purchaseId])
@@ -423,7 +424,7 @@ model Purchase {
   invoiceNo     String   @unique
   supplierId    String
   date          DateTime
-  paymentMethod String   // "CASH" | "CREDIT"
+  paymentMethod String // "CASH" | "CREDIT"
   subtotal      Decimal  @db.Decimal(10, 2)
   vatTotal      Decimal  @default(0) @db.Decimal(10, 2)
   totalCost     Decimal  @db.Decimal(10, 2)
@@ -431,9 +432,10 @@ model Purchase {
   notes         String?
   invoiceUrl    String?
 
-  supplier            Supplier                   @relation(fields: [supplierId], references: [id])
+  supplier            Supplier                  @relation(fields: [supplierId], references: [id])
   items               PurchaseLineItem[]
   vendorPaymentAllocs VendorPaymentAllocation[]
+  supplierReturns     SupplierReturn[]
 
   createdBy String
   createdAt DateTime  @default(now())
@@ -445,26 +447,67 @@ model Purchase {
 }
 
 model PurchaseLineItem {
-  id          String  @id @default(cuid())
-  purchaseId  String
-  productId   String?
-  productName String
-  categoryId  String? // for auto-creating new products
-  unitId      String? // for auto-creating new products
-  description String?
-  quantity    Decimal @db.Decimal(10, 3)
-  unitPrice   Decimal @db.Decimal(10, 2)
-  grossAmount Decimal @db.Decimal(10, 2)
+  id           String  @id @default(cuid())
+  purchaseId   String
+  productId    String?
+  productName  String
+  categoryId   String? // for auto-creating new products
+  unitId       String? // for auto-creating new products
+  description  String?
+  quantity     Decimal @db.Decimal(10, 3)
+  unitPrice    Decimal @db.Decimal(10, 2)
+  grossAmount  Decimal @db.Decimal(10, 2)
   vatPct       Decimal @default(0) @db.Decimal(5, 2)
   vatAmount    Decimal @default(0) @db.Decimal(10, 2)
   excisePct    Decimal @default(0) @db.Decimal(5, 2)
   exciseAmount Decimal @default(0) @db.Decimal(10, 2)
   lineTotal    Decimal @db.Decimal(10, 2)
 
-  purchase Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  product  Product?  @relation(fields: [productId], references: [id])
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [productId], references: [id])
 
   @@index([purchaseId])
+  @@index([productId])
+}
+
+/// Goods returned to a supplier against a specific purchase invoice (excess
+/// delivered, wrong item, damaged on arrival, etc). Distinct from the legacy
+/// PurchaseReturn model, which is tied to the older PurchaseOrder flow.
+model SupplierReturn {
+  id           String   @id @default(cuid())
+  returnNumber String   @unique
+  purchaseId   String
+  supplierId   String
+  returnDate   DateTime
+  reason       String?
+  totalAmount  Decimal  @db.Decimal(10, 2)
+
+  purchase Purchase             @relation(fields: [purchaseId], references: [id])
+  supplier Supplier             @relation(fields: [supplierId], references: [id])
+  items    SupplierReturnItem[]
+
+  createdBy String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([purchaseId])
+  @@index([supplierId])
+  @@index([returnDate])
+}
+
+model SupplierReturnItem {
+  id               String  @id @default(cuid())
+  supplierReturnId String
+  productId        String
+  quantity         Decimal @db.Decimal(10, 3)
+  unitPrice        Decimal @db.Decimal(10, 2)
+  lineTotal        Decimal @db.Decimal(10, 2)
+
+  supplierReturn SupplierReturn @relation(fields: [supplierReturnId], references: [id], onDelete: Cascade)
+  product        Product        @relation(fields: [productId], references: [id])
+
+  @@index([supplierReturnId])
   @@index([productId])
 }
 
@@ -478,10 +521,10 @@ model Salesman {
   email          String?
   phone          String?
   address        String?
-  pan            String?   // PAN number
+  pan            String? // PAN number
   dob            DateTime? // Date of birth
-  citizenshipNo  String?   // Citizenship certificate number
-  photo          String?   // Profile photo URL
+  citizenshipNo  String? // Citizenship certificate number
+  photo          String? // Profile photo URL
   openingBalance Decimal   @default(0) @db.Decimal(10, 2)
   commissionPct  Decimal   @default(25.00) @db.Decimal(5, 2)
 
@@ -503,19 +546,19 @@ model SalesOrder {
   orderDate   DateTime         @default(now())
   dueDate     DateTime?
 
-  subtotal         Decimal @db.Decimal(10, 2)
-  taxAmount        Decimal @default(0) @db.Decimal(10, 2)
-  totalAmount      Decimal @db.Decimal(10, 2)
-  amountPaid       Decimal @default(0) @db.Decimal(10, 2) // must never exceed factoryAmount
+  subtotal    Decimal @db.Decimal(10, 2)
+  taxAmount   Decimal @default(0) @db.Decimal(10, 2)
+  totalAmount Decimal @db.Decimal(10, 2)
+  amountPaid  Decimal @default(0) @db.Decimal(10, 2) // must never exceed factoryAmount
 
   // Commission fields — snapshot from customer at dispatch time
-  commissionPct    Decimal @default(25.00) @db.Decimal(5, 2)  // e.g. 25.00 or 30.00
-  commissionAmount Decimal @default(0) @db.Decimal(10, 2)     // commissionPct% of net amount
-  factoryAmount    Decimal @default(0) @db.Decimal(10, 2)     // (100 - commissionPct)% of net amount
+  commissionPct    Decimal @default(25.00) @db.Decimal(5, 2) // e.g. 25.00 or 30.00
+  commissionAmount Decimal @default(0) @db.Decimal(10, 2) // commissionPct% of net amount
+  factoryAmount    Decimal @default(0) @db.Decimal(10, 2) // (100 - commissionPct)% of net amount
 
   notes String?
 
-  salesman Salesman         @relation(fields: [customerId], references: [id])
+  salesman Salesman          @relation(fields: [customerId], references: [id])
   items    SalesOrderItem[]
   payments SalesmanPayment[]
   returns  SalesReturn[]
@@ -546,14 +589,14 @@ model SalesOrderItem {
 }
 
 model SalesReturn {
-  id           String   @id @default(cuid())
-  returnNumber String   @unique
+  id           String  @id @default(cuid())
+  returnNumber String  @unique
   salesOrderId String
   notes        String?
-  totalAmount  Decimal  @db.Decimal(10, 2)
-  returnType   String   @default("WASTE") // "WASTE" | "FRESH"
+  totalAmount  Decimal @db.Decimal(10, 2)
+  returnType   String  @default("WASTE") // "WASTE" | "FRESH"
 
-  salesOrder SalesOrder      @relation(fields: [salesOrderId], references: [id])
+  salesOrder SalesOrder        @relation(fields: [salesOrderId], references: [id])
   items      SalesReturnItem[]
 
   createdBy String
@@ -608,20 +651,20 @@ model Department {
 }
 
 model Employee {
-  id            String    @id @default(cuid())
-  employeeNo    String    @unique
-  firstName     String
-  lastName      String
-  email         String?   @unique
-  phone         String
-  citizenshipId String?
-  address       String?
-  departmentId  String
+  id             String    @id @default(cuid())
+  employeeNo     String    @unique
+  firstName      String
+  lastName       String
+  email          String?   @unique
+  phone          String
+  citizenshipId  String?
+  address        String?
+  departmentId   String
   position       String
   basicSalary    Decimal   @db.Decimal(10, 2)
   openingBalance Decimal   @default(0) @db.Decimal(10, 2)
   startDate      DateTime
-  endDate       DateTime? // set when employee leaves
+  endDate        DateTime? // set when employee leaves
 
   clerkUserId String? @unique // links to Clerk user if they have app access
 
@@ -642,15 +685,15 @@ model SalaryWithdrawal {
   employeeId  String
   amount      Decimal  @db.Decimal(10, 2)
   takenAt     DateTime @default(now())
-  filedBy     String?  // name of person who filed/recorded this entry
-  givenBy     String?  // name of person who physically handed the cash
+  filedBy     String? // name of person who filed/recorded this entry
+  givenBy     String? // name of person who physically handed the cash
   paymentMode String   @default("CASH") // "CASH" or "ONLINE"
   notes       String?
-  photoUrl    String?  // proof of payment photo
+  photoUrl    String? // proof of payment photo
 
   employee         Employee          @relation(fields: [employeeId], references: [id])
   appliedDeduction PayrollDeduction? // null until applied to a payroll run
-  recordedBy       String            // Clerk userId
+  recordedBy       String // Clerk userId
   createdAt        DateTime          @default(now())
 
   @@index([employeeId])
@@ -682,11 +725,11 @@ model PayrollItem {
   carryoverIn  Decimal @default(0) @db.Decimal(10, 2) // outstanding salary carried from previous month
   allowances   Decimal @default(0) @db.Decimal(10, 2)
   deductions   Decimal @default(0) @db.Decimal(10, 2) // total amount paid out in partial payments
-  netPay       Decimal @db.Decimal(10, 2)             // remaining = basicSalary + carryoverIn − deductions
+  netPay       Decimal @db.Decimal(10, 2) // remaining = basicSalary + carryoverIn − deductions
   notes        String?
 
-  payrollRun       PayrollRun        @relation(fields: [payrollRunId], references: [id])
-  employee         Employee          @relation(fields: [employeeId], references: [id])
+  payrollRun       PayrollRun         @relation(fields: [payrollRunId], references: [id])
+  employee         Employee           @relation(fields: [employeeId], references: [id])
   deductionEntries PayrollDeduction[]
 
   @@unique([payrollRunId, employeeId]) // one payslip per employee per run
@@ -703,12 +746,12 @@ model PayrollDeduction {
   paymentMode   String   @default("CASH") // "CASH" or "ONLINE"
   notes         String?
   photoUrl      String?
-  recordedBy    String   // Clerk userId
+  recordedBy    String // Clerk userId
   createdAt     DateTime @default(now())
 
   // When set, this deduction applies a prior SalaryWithdrawal — the cash already
   // left the business on the withdrawal date. NOT a new cash outflow in Cash Flow.
-  withdrawalId  String?  @unique
+  withdrawalId String? @unique
 
   payrollItem PayrollItem       @relation(fields: [payrollItemId], references: [id], onDelete: Cascade)
   withdrawal  SalaryWithdrawal? @relation(fields: [withdrawalId], references: [id])
@@ -757,18 +800,18 @@ model Expense {
 // ─────────────────────────────────────────────
 
 model AccessRequest {
-  id           String              @id @default(cuid())
-  fullName     String
-  workEmail    String
-  department   String
-  jobTitle     String
-  phone        String?
-  reason       String?
-  status       AccessRequestStatus @default(PENDING)
-  reviewedBy   String?             // Clerk userId of admin who actioned it
-  reviewNote   String?
-  createdAt    DateTime            @default(now())
-  updatedAt    DateTime            @updatedAt
+  id         String              @id @default(cuid())
+  fullName   String
+  workEmail  String
+  department String
+  jobTitle   String
+  phone      String?
+  reason     String?
+  status     AccessRequestStatus @default(PENDING)
+  reviewedBy String? // Clerk userId of admin who actioned it
+  reviewNote String?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
 
   @@index([status])
   @@index([createdAt])
@@ -787,12 +830,12 @@ enum AccessRequestStatus {
 model Receipt {
   id            String        @id @default(cuid())
   receiptNumber String        @unique
-  receivedFrom  String        // name of person or entity
+  receivedFrom  String // name of person or entity
   amount        Decimal       @db.Decimal(10, 2)
   method        PaymentMethod
-  reference     String?       // cheque no, bank ref, etc.
+  reference     String? // cheque no, bank ref, etc.
   notes         String?
-  photoUrl      String?       // optional proof photo
+  photoUrl      String? // optional proof photo
   receivedAt    DateTime      @default(now())
 
   createdBy String
@@ -810,10 +853,10 @@ model Receipt {
 model ReceiptPayment {
   id            String        @id @default(cuid())
   paymentNumber String        @unique
-  paidTo        String        // name of person or entity paid
+  paidTo        String // name of person or entity paid
   amount        Decimal       @db.Decimal(10, 2)
   method        PaymentMethod
-  reference     String?       // cheque no, bank ref, etc.
+  reference     String? // cheque no, bank ref, etc.
   notes         String?
   photoUrl      String?
   paidAt        DateTime      @default(now())
@@ -831,14 +874,14 @@ model ReceiptPayment {
 // ─────────────────────────────────────────────
 
 model BankTransfer {
-  id            String                @id @default(cuid())
-  direction     BankTransferDirection
-  bankName      String?               // which bank account the money moved to/from
-  amount        Decimal               @db.Decimal(10, 2)
-  reference     String?               // deposit slip / bank ref no
-  notes         String?
-  photoUrl      String?               // proof of deposit/withdrawal slip
-  transactedAt  DateTime              @default(now())
+  id           String                @id @default(cuid())
+  direction    BankTransferDirection
+  bankName     String? // which bank account the money moved to/from
+  amount       Decimal               @db.Decimal(10, 2)
+  reference    String? // deposit slip / bank ref no
+  notes        String?
+  photoUrl     String? // proof of deposit/withdrawal slip
+  transactedAt DateTime              @default(now())
 
   createdBy String
   createdAt DateTime  @default(now())
@@ -873,15 +916,15 @@ model AuditLog {
 // ─────────────────────────────────────────────
 
 model CompanySettings {
-  id          String   @id @default("main")
-  name        String
-  nameShort   String
-  slogan      String
-  address     String
-  phone       String
-  pan         String
-  owner       String
-  established Int
+  id                 String   @id @default("main")
+  name               String
+  nameShort          String
+  slogan             String
+  address            String
+  phone              String
+  pan                String
+  owner              String
+  established        Int
   updatedAt          DateTime @updatedAt
   updatedBy          String?
   cashOpeningBalance Decimal  @default(0) @db.Decimal(12, 2)

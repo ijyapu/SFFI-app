@@ -25,6 +25,7 @@ type Purchase = {
   supplierName: string;
   date: string;
   totalCost: number;
+  hasReturn: boolean;
 };
 
 type Supplier = { id: string; name: string };
@@ -65,6 +66,7 @@ export function PurchaseTable({
 }) {
   const [search,           setSearch]           = useState("");
   const [activeSupplier,   setActiveSupplier]   = useState<string | null>(null);
+  const [returnsOnly,      setReturnsOnly]      = useState(false);
   const [sortKey,          setSortKey]          = useState<SortKey>("date");
   const [sortDir,          setSortDir]          = useState<SortDir>("desc");
 
@@ -90,7 +92,8 @@ export function PurchaseTable({
     const rows = purchases.filter((p) => {
       const matchSupplier = !activeSupplier || p.supplierId === activeSupplier;
       const matchSearch   = !q || p.invoiceNo.toLowerCase().includes(q) || p.supplierName.toLowerCase().includes(q);
-      return matchSupplier && matchSearch;
+      const matchReturns  = !returnsOnly || p.hasReturn;
+      return matchSupplier && matchSearch && matchReturns;
     });
     return [...rows].sort((a, b) => {
       let cmp = 0;
@@ -100,7 +103,7 @@ export function PurchaseTable({
       else if (sortKey === "totalCost")    cmp = a.totalCost - b.totalCost;
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [purchases, search, activeSupplier, sortKey, sortDir]);
+  }, [purchases, search, activeSupplier, returnsOnly, sortKey, sortDir]);
 
   async function handleDelete(id: string, invoiceNo: string) {
     try {
@@ -153,13 +156,22 @@ export function PurchaseTable({
 
       {/* ── Main Table ── */}
       <div className="flex-1 min-w-0 space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
           <Input
             placeholder="Search by invoice no. or vendor..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="max-w-xs"
           />
+          <label className="flex items-center gap-1.5 text-sm text-muted-foreground cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={returnsOnly}
+              onChange={(e) => setReturnsOnly(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-input"
+            />
+            Returns only
+          </label>
           {activeSupplier && (
             <button
               onClick={() => setActiveSupplier(null)}
@@ -191,7 +203,19 @@ export function PurchaseTable({
               {filtered.map((p) => (
                 <TableRow key={p.id}>
                   <TableCell className="max-w-35 truncate">{p.supplierName}</TableCell>
-                  <TableCell className="font-mono font-medium">{p.invoiceNo}</TableCell>
+                  <TableCell className="font-mono font-medium">
+                    <div className="flex items-center gap-1.5">
+                      {p.invoiceNo}
+                      {p.hasReturn && (
+                        <span
+                          title="This invoice has one or more supplier returns"
+                          className="inline-flex items-center rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-sans font-semibold text-orange-700"
+                        >
+                          Return
+                        </span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                     <DateDisplay date={p.date} />
                   </TableCell>

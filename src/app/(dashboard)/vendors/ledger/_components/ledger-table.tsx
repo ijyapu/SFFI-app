@@ -51,6 +51,7 @@ export function LedgerTable({
             <th className="px-4 py-2.5 text-right font-medium text-muted-foreground text-xs whitespace-nowrap">VAT (13%)</th>
             <th className="px-4 py-2.5 text-right font-medium text-muted-foreground text-xs whitespace-nowrap">Excise (5%)</th>
             <th className="px-4 py-2.5 text-right font-medium text-muted-foreground text-xs whitespace-nowrap">Payment (Cr)</th>
+            <th className="px-4 py-2.5 text-right font-medium text-muted-foreground text-xs whitespace-nowrap">Return (Cr)</th>
             <th className="px-4 py-2.5 text-right font-medium text-muted-foreground text-xs whitespace-nowrap">Balance (Rs)</th>
           </tr>
         </thead>
@@ -68,6 +69,7 @@ export function LedgerTable({
             <td className="px-4 py-2.5 text-right text-xs">—</td>
             <td className="px-4 py-2.5 text-right text-xs">—</td>
             <td className="px-4 py-2.5 text-right text-xs">—</td>
+            <td className="px-4 py-2.5 text-right text-xs">—</td>
             <td className="px-4 py-2.5 text-right font-semibold tabular-nums whitespace-nowrap">
               <span className={openingBalance > 0 ? "text-destructive" : openingBalance < 0 ? "text-emerald-600" : ""}>
                 Rs {Rs(openingBalance)}
@@ -77,7 +79,7 @@ export function LedgerTable({
 
           {entries.length === 0 && (
             <tr>
-              <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground text-sm">
+              <td colSpan={9} className="px-4 py-10 text-center text-muted-foreground text-sm">
                 No transactions in this period.
               </td>
             </tr>
@@ -86,10 +88,13 @@ export function LedgerTable({
           {entries.map((e) => {
             const d = new Date(e.date);
             const isInvoice = e.type === "INVOICE";
+            const rowTint = e.type === "RETURN"
+              ? "bg-orange-50/40 dark:bg-orange-950/10"
+              : isInvoice ? "" : "bg-emerald-50/30 dark:bg-emerald-950/10";
             return (
               <tr
                 key={e.id}
-                className={`${isInvoice ? "" : "bg-emerald-50/30 dark:bg-emerald-950/10"} hover:bg-muted/30 transition-colors`}
+                className={`${rowTint} hover:bg-muted/30 transition-colors`}
               >
                 <td className="px-4 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
                   {toNepaliDateString(d)}<br />
@@ -151,6 +156,11 @@ export function LedgerTable({
                 <td className="px-4 py-2.5 text-right tabular-nums text-xs">
                   {e.paymentAmount > 0 ? (
                     <span className="text-emerald-600 font-medium">Rs {Rs(e.paymentAmount)}</span>
+                  ) : "—"}
+                </td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-xs">
+                  {e.returnAmount > 0 ? (
+                    <span className="text-orange-600 font-medium">Rs {Rs(e.returnAmount)}</span>
                   ) : "—"}
                 </td>
                 <td className="px-4 py-2.5 text-right tabular-nums text-xs font-semibold whitespace-nowrap">
