@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DateDisplay } from "@/components/ui/date-display";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -10,7 +11,6 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableEmptyRow,
 } from "@/components/ui/table";
 import type { SupplierReturnRow } from "../actions";
-import { EditReturnDialog } from "./edit-return-dialog";
 
 function Rs(n: number) {
   return n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -18,7 +18,7 @@ function Rs(n: number) {
 
 export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
   const [search, setSearch] = useState("");
-  const [editing, setEditing] = useState<SupplierReturnRow | null>(null);
+  const router = useRouter();
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -58,7 +58,11 @@ export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
               <TableEmptyRow colSpan={8} message={search ? "No returns match your search." : "No purchase returns recorded yet."} />
             )}
             {filtered.map((r) => (
-              <TableRow key={r.id} className="cursor-pointer hover:bg-muted/30" onClick={() => setEditing(r)}>
+              <TableRow
+                key={r.id}
+                className="cursor-pointer hover:bg-muted/30"
+                onClick={() => router.push(`/purchases/returns/${r.id}/edit`)}
+              >
                 <TableCell className="font-mono font-medium">{r.returnNumber}</TableCell>
                 <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
                   <DateDisplay date={r.returnDate} />
@@ -86,9 +90,11 @@ export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
                         <Printer className="h-3.5 w-3.5" />
                       </Button>
                     </Link>
-                    <Button variant="ghost" size="icon-sm" title="Open / edit this return">
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
+                    <Link href={`/purchases/returns/${r.id}/edit`} onClick={(e) => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon-sm" title="Open / edit this return">
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
                   </div>
                 </TableCell>
               </TableRow>
@@ -100,10 +106,6 @@ export function ReturnTable({ returns }: { returns: SupplierReturnRow[] }) {
       <p className="text-xs text-muted-foreground">
         {filtered.length} of {returns.length} return{returns.length !== 1 ? "s" : ""}
       </p>
-
-      {editing && (
-        <EditReturnDialog row={editing} open={!!editing} onClose={() => setEditing(null)} />
-      )}
     </div>
   );
 }

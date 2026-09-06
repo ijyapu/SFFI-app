@@ -1,25 +1,18 @@
+import Link from "next/link";
 import { requirePermission } from "@/lib/auth";
 import { ERPPageHeader } from "@/components/ui/erp-page-header";
-import { getSupplierReturns, getPurchaseInvoicesForReturn } from "./actions";
-import { prisma } from "@/lib/prisma";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { cn } from "@/lib/utils";
+import { Plus } from "lucide-react";
+import { getSupplierReturns } from "./actions";
 import { ReturnTable } from "./_components/return-table";
-import { AddReturnDialog } from "./_components/add-return-dialog";
 
 export const metadata = { title: "Purchase Returns" };
 
 export default async function PurchaseReturnsPage() {
   await requirePermission("purchases");
 
-  const [returns, invoices, suppliers] = await Promise.all([
-    getSupplierReturns(),
-    getPurchaseInvoicesForReturn(),
-    prisma.supplier.findMany({
-      where: { deletedAt: null },
-      select: { id: true, name: true },
-      orderBy: { name: "asc" },
-    }),
-  ]);
-
+  const returns = await getSupplierReturns();
   const totalReturned = returns.reduce((s, r) => s + r.totalAmount, 0);
 
   return (
@@ -28,7 +21,12 @@ export default async function PurchaseReturnsPage() {
         title="Purchase Returns"
         subtitle={`${returns.length} return${returns.length !== 1 ? "s" : ""} · Rs ${totalReturned.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} total`}
         backHref="/purchases"
-        action={<AddReturnDialog invoices={invoices} suppliers={suppliers} />}
+        action={
+          <Link href="/purchases/returns/new" className={cn(buttonVariants({}))}>
+            <Plus className="h-4 w-4" />
+            Add Return
+          </Link>
+        }
       />
 
       <ReturnTable returns={returns} />

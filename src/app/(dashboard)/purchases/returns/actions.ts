@@ -76,6 +76,7 @@ export async function getSupplierReturns(): Promise<SupplierReturnRow[]> {
 
 export type SupplierReturnDetail = {
   id: string;
+  returnNumber: string;
   purchaseId: string;
   supplierId: string;
   invoiceNo: string;
@@ -100,6 +101,7 @@ export async function getSupplierReturnDetail(returnId: string): Promise<Supplie
 
   return {
     id: r.id,
+    returnNumber: r.returnNumber,
     purchaseId: r.purchaseId,
     supplierId: r.supplierId,
     invoiceNo: r.purchase.invoiceNo,
