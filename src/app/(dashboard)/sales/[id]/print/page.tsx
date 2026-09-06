@@ -4,7 +4,7 @@ import { requirePermission } from "@/lib/auth";
 import { format } from "date-fns";
 import { toNepaliDateString } from "@/lib/nepali-date";
 import { COMPANY } from "@/lib/company";
-import { PrintTrigger } from "./_components/print-trigger";
+import { PrintTrigger } from "@/components/ui/print-trigger";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

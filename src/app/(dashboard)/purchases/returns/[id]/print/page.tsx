@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/lib/auth";
 import { format } from "date-fns";
 import { toNepaliDateString } from "@/lib/nepali-date";
-import { PrintTrigger } from "@/app/(dashboard)/purchases/[id]/print/_components/print-trigger";
+import { PrintTrigger } from "@/components/ui/print-trigger";
 import { COMPANY } from "@/lib/company";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {

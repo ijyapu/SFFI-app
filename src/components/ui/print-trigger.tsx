@@ -3,6 +3,11 @@
 import { useEffect } from "react";
 import { Printer } from "lucide-react";
 
+/**
+ * Floating "Print / Close" controls for a print-preview page. Positioned below
+ * the dashboard header's height (h-12) so it never overlaps the notification
+ * bell / user menu that the print route still renders underneath it.
+ */
 export function PrintTrigger() {
   useEffect(() => {
     // Wait for all resources (logo image, fonts) before triggering print
@@ -16,7 +21,7 @@ export function PrintTrigger() {
   }, []);
 
   return (
-    <div className="no-print fixed top-4 right-4 z-50 flex gap-2 print:hidden">
+    <div className="no-print fixed top-16 right-4 z-[60] flex gap-2 print:hidden">
       <button
         onClick={() => window.print()}
         className="flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white shadow-lg hover:bg-red-700 transition-colors"
