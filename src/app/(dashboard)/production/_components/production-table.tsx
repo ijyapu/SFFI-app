@@ -10,11 +10,31 @@ import {
 import type { ProductionEntryRow } from "../actions";
 import { upsertProductionEntry } from "../actions";
 
+type Snapshot = { producedQty: number; usedQty: number; wasteQty: number; damagedQty: number };
+
 type RowState = ProductionEntryRow & {
   _saving: boolean;
   _saved: boolean;
   _dirty: boolean;
+  // Last values actually persisted to the server — used to compute the stock
+  // delta locally so the "in stock" badge updates immediately without a refresh.
+  _lastSaved: Snapshot;
 };
+
+function toSnapshot(item: ProductionEntryRow): Snapshot {
+  return { producedQty: item.producedQty, usedQty: item.usedQty, wasteQty: item.wasteQty, damagedQty: item.damagedQty };
+}
+
+// Mirrors the server's own delta-to-stock math in production/actions.ts:
+// produced adds stock, used/waste/damaged subtract it.
+function stockDelta(from: Snapshot, to: Snapshot): number {
+  return (
+    (to.producedQty - from.producedQty) -
+    (to.usedQty - from.usedQty) -
+    (to.wasteQty - from.wasteQty) -
+    (to.damagedQty - from.damagedQty)
+  );
+}
 
 type Props = {
   date: string; // YYYY-MM-DD
@@ -43,14 +63,14 @@ function describeSaveError(err: unknown): { message: string; isSessionError: boo
 
 export function ProductionTable({ date, items }: Props) {
   const [rows, setRows] = useState<RowState[]>(() =>
-    items.map((item) => ({ ...item, _saving: false, _saved: false, _dirty: false }))
+    items.map((item) => ({ ...item, _saving: false, _saved: false, _dirty: false, _lastSaved: toSnapshot(item) }))
   );
   const [collapsedCats, setCollapsedCats] = useState<Set<string>>(new Set());
 
   // Full remount happens via `key={date}` on the parent, but keep state in sync
   // defensively if items ever change without a remount.
   useEffect(() => {
-    setRows(items.map((item) => ({ ...item, _saving: false, _saved: false, _dirty: false })));
+    setRows(items.map((item) => ({ ...item, _saving: false, _saved: false, _dirty: false, _lastSaved: toSnapshot(item) })));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
@@ -71,15 +91,16 @@ export function ProductionTable({ date, items }: Props) {
 
       setRows((p) => p.map((r) => r.productId === productId ? { ...r, _saving: true, _dirty: false } : r));
 
+      const newSnapshot: Snapshot = {
+        producedQty: row.producedQty, usedQty: row.usedQty, wasteQty: row.wasteQty, damagedQty: row.damagedQty,
+      };
+
       try {
-        await upsertProductionEntry(date, productId, {
-          producedQty: row.producedQty,
-          usedQty: row.usedQty,
-          wasteQty: row.wasteQty,
-          damagedQty: row.damagedQty,
-          notes: row.notes,
-        });
-        setRows((p) => p.map((r) => r.productId === productId ? { ...r, _saving: false, _saved: true } : r));
+        await upsertProductionEntry(date, productId, { ...newSnapshot, notes: row.notes });
+        setRows((p) => p.map((r) => r.productId === productId
+          ? { ...r, _saving: false, _saved: true, currentStock: r.currentStock + stockDelta(r._lastSaved, newSnapshot), _lastSaved: newSnapshot }
+          : r
+        ));
         setTimeout(() => {
           setRows((p) => p.map((r) => r.productId === productId ? { ...r, _saved: false } : r));
         }, 2000);
