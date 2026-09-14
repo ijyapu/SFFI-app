@@ -172,7 +172,11 @@ async function upsertProductionEntryInner(
     { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead, timeout: 15000 }
   );
 
-  revalidatePath("/production");
+  // Not revalidating "/production" itself: the table already reflects the
+  // saved value locally the moment the save succeeds, and re-rendering the
+  // currently-mounted page as part of this same action response was causing
+  // a downstream render failure to surface as if the save itself had failed
+  // -- even though the transaction above had already committed cleanly.
   revalidatePath("/inventory");
   revalidatePath("/inventory/stock-levels");
 }
