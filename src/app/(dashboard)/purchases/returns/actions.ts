@@ -7,7 +7,6 @@ import { applyStockMovement } from "@/lib/stock";
 import { StockMovementType, Prisma } from "@prisma/client";
 import { getNextDocumentNumber } from "@/lib/doc-counter";
 import { writeAuditLog } from "@/lib/audit";
-import { syncLedgerForward } from "@/app/(dashboard)/daily-log/actions";
 import {
   createSupplierReturnSchema,
   updateSupplierReturnSchema,
@@ -309,9 +308,6 @@ export async function createSupplierReturn(values: CreateSupplierReturnValues): 
     after: { invoiceNo: purchase.invoiceNo, date: dateLabel, totalAmount, itemCount: computedItems.length },
   });
 
-  // Keep the Daily Log ledger in sync if the return date's day is already closed.
-  await syncLedgerForward(dateLabel, userId);
-
   revalidatePath("/purchases");
   revalidatePath("/purchases/returns");
   revalidatePath("/inventory");
@@ -357,7 +353,6 @@ export async function updateSupplierReturn(returnId: string, values: UpdateSuppl
     };
   });
   const totalAmount = computedItems.reduce((s, i) => s + i.lineTotal, 0);
-  const oldDateStr = toDateStr(existing.returnDate);
   const returnDate = new Date(data.returnDate);
   const newDateStr = toDateStr(returnDate);
 
@@ -426,10 +421,6 @@ export async function updateSupplierReturn(returnId: string, values: UpdateSuppl
     entityId: returnId,
     after: { invoiceNo: existing.purchase.invoiceNo, date: newDateStr, totalAmount, itemCount: computedItems.length },
   });
-
-  // Keep the ledger in sync for both the old and new return date, if they differ.
-  await syncLedgerForward(oldDateStr, userId);
-  if (newDateStr !== oldDateStr) await syncLedgerForward(newDateStr, userId);
 
   revalidatePath("/purchases");
   revalidatePath("/purchases/returns");

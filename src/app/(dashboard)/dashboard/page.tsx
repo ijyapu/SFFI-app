@@ -7,14 +7,14 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button-variants";
 import {
   TrendingUp, TrendingDown, ShoppingCart, Receipt,
-  Package, ArrowUpRight, CheckCircle2, Clock,
+  Package, ArrowUpRight,
   BookOpen, Users,
 } from "lucide-react";
 import { RevenueChart } from "./_components/revenue-chart";
 import { RecentActivity } from "./_components/recent-activity";
 import { ProductInsights } from "./_components/product-insights";
 import { SalesmanInsights } from "./_components/salesman-insights";
-import { toNepaliDateString, getNepalTodayStr, nepalDateAsUtcMidnight, nepalNow, toNepaliMonth } from "@/lib/nepali-date";
+import { toNepaliDateString, nepalNow, toNepaliMonth } from "@/lib/nepali-date";
 import { COMPANY } from "@/lib/company";
 import { formatAmount } from "@/lib/format";
 
@@ -31,9 +31,7 @@ export default async function DashboardPage() {
   const user      = await currentUser();
   const firstName = user?.firstName ?? user?.username ?? "there";
 
-  // Server runs in UTC — nepalNow()/getNepalTodayStr() keep "today" aligned
-  // to Nepal's calendar day for both date-fns math and the DailyLog lookup.
-  const todayStr       = getNepalTodayStr();
+  // Server runs in UTC — nepalNow() keeps "today" aligned to Nepal's calendar day.
   const now            = nepalNow();
   const monthStart     = startOfMonth(now);
   const lastMonthStart = startOfMonth(subMonths(now, 1));
@@ -52,7 +50,6 @@ export default async function DashboardPage() {
     recentSalesOrders,
     recentPurchaseOrders,
     inventoryProducts,
-    todayLog,
   ] = await Promise.all([
     prisma.salesOrder.aggregate({
       where: { status: { not: "CANCELLED" }, orderDate: { gte: monthStart }, deletedAt: null },
@@ -102,10 +99,6 @@ export default async function DashboardPage() {
     prisma.product.findMany({
       where: { deletedAt: null },
       select: { currentStock: true, costPrice: true },
-    }),
-    prisma.dailyLog.findFirst({
-      where: { logDate: nepalDateAsUtcMidnight(todayStr) },
-      select: { status: true },
     }),
   ]);
 
@@ -330,33 +323,13 @@ export default async function DashboardPage() {
         <div className="space-y-3">
           <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Today&apos;s Operations</h2>
           <div className="grid grid-cols-2 gap-3">
-            <Link href="/daily-log" className="rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-[transform,box-shadow,background-color] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none">
-              <div className="text-xs text-muted-foreground font-medium mb-1.5">Daily Log</div>
-              {!todayLog ? (
-                <>
-                  <div className="flex items-center gap-1.5">
-                    <Clock className="h-4 w-4 text-amber-500 shrink-0" />
-                    <span className="text-sm font-semibold text-amber-600">Not started</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Today&apos;s log pending</div>
-                </>
-              ) : todayLog.status === "OPEN" || todayLog.status === "REOPENED" ? (
-                <>
-                  <div className="flex items-center gap-1.5">
-                    <BookOpen className="h-4 w-4 text-foreground/60 shrink-0" />
-                    <span className="text-sm font-semibold">In progress</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Open — not yet closed</div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-1.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
-                    <span className="text-sm font-semibold text-emerald-600">Closed</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5">Today&apos;s log complete</div>
-                </>
-              )}
+            <Link href="/production" className="rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-[transform,box-shadow,background-color] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none">
+              <div className="text-xs text-muted-foreground font-medium mb-1.5">Production</div>
+              <div className="flex items-center gap-1.5">
+                <BookOpen className="h-4 w-4 text-foreground/60 shrink-0" />
+                <span className="text-sm font-semibold">Log today&apos;s entries</span>
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5">Produced, used, waste, damaged</div>
             </Link>
 
             <Link href="/purchases" className="rounded-lg border bg-card px-4 py-3 hover:bg-muted/30 transition-[transform,box-shadow,background-color] duration-150 ease-out hover:-translate-y-1 hover:shadow-md active:translate-y-0 motion-reduce:transition-none">
@@ -518,7 +491,7 @@ export default async function DashboardPage() {
         <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Quick Access</h2>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {([
-            { href: "/daily-log",  label: "Daily Log",  Icon: BookOpen },
+            { href: "/production", label: "Production", Icon: BookOpen },
             { href: "/sales",      label: "Sales",      Icon: TrendingUp },
             { href: "/purchases",  label: "Purchases",  Icon: ShoppingCart },
             { href: "/inventory",  label: "Inventory",  Icon: Package },

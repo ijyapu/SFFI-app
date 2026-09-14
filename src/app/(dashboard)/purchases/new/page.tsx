@@ -14,7 +14,7 @@ export default async function NewPurchasePage({
   await requirePermission("purchases");
   const { from: rawFrom, to: rawTo } = await searchParams;
 
-  const [suppliers, products, categories, units, openLog] = await Promise.all([
+  const [suppliers, products, categories, units] = await Promise.all([
     prisma.supplier.findMany({
       where: { deletedAt: null },
       select: { id: true, name: true, contactName: true, phone: true },
@@ -27,14 +27,7 @@ export default async function NewPurchasePage({
     }),
     prisma.category.findMany({ where: { deletedAt: null }, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.unit.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.dailyLog.findFirst({
-      where: { status: { in: ["OPEN", "REOPENED"] } },
-      orderBy: { logDate: "desc" },
-      select: { logDate: true },
-    }),
   ]);
-
-  const openLogDate = openLog?.logDate.toISOString().slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -49,7 +42,6 @@ export default async function NewPurchasePage({
         products={products.map((p) => ({ id: p.id, name: p.name, sku: p.sku, costPrice: Number(p.costPrice), unit: p.unit.name }))}
         categories={categories}
         units={units}
-        openLogDate={openLogDate}
         detailHref={purchaseListHref(rawFrom, rawTo)}
       />
     </div>

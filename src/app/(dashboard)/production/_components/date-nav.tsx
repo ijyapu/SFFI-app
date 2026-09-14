@@ -22,7 +22,7 @@ export function DateNav({ validDate, prevDay, nextDay, dateLabel, isToday, today
   const [isPending, startTransition] = useTransition();
 
   function navigate(date: string) {
-    startTransition(() => router.push(`/daily-log?date=${date}`));
+    startTransition(() => router.push(`/production?date=${date}`));
   }
 
   const [y, m, d] = validDate.split("-").map(Number);

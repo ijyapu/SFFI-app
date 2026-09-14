@@ -14,11 +14,6 @@ import {
   type CreatePurchaseValues, type NewProductValues,
 } from "@/lib/validators/purchase";
 import { getNextDocumentNumber } from "@/lib/doc-counter";
-import { syncLedgerForward } from "@/app/(dashboard)/daily-log/actions";
-
-function toDateStr(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
 
 type Db = Omit<typeof prisma, "$connect" | "$disconnect" | "$on" | "$transaction" | "$use" | "$extends">;
 
@@ -481,10 +476,6 @@ export async function createPurchase(values: CreatePurchaseValues) {
     }
   });
 
-  // Keep the Daily Log ledger in sync if this (possibly backdated) purchase
-  // landed on an already-closed day — no-op if the day is still open.
-  await syncLedgerForward(toDateStr(new Date(data.date)), userId);
-
   revalidatePath("/purchases");
   revalidatePath("/inventory");
   revalidatePath("/costing");
@@ -503,8 +494,6 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
 
   const existing = await prisma.purchase.findUnique({ where: { id }, select: { date: true } });
   if (!existing) throw new Error("Purchase not found");
-  const oldDateStr = toDateStr(existing.date);
-  const newDateStr = toDateStr(new Date(data.date));
 
   const computedItems = data.items.map((item) => {
     const grossAmount  = item.quantity * item.unitPrice;
@@ -638,11 +627,6 @@ export async function updatePurchase(id: string, values: CreatePurchaseValues) {
     }
   });
 
-  // Keep the Daily Log ledger in sync if this edit landed on an already-closed day
-  // (or moved off one) — no-op if the day is still open.
-  await syncLedgerForward(oldDateStr, userId);
-  if (newDateStr !== oldDateStr) await syncLedgerForward(newDateStr, userId);
-
   revalidatePath("/purchases");
   revalidatePath("/inventory");
   revalidatePath("/costing");
@@ -655,7 +639,6 @@ export async function deletePurchase(id: string) {
     where: { id },
     select: {
       invoiceNo: true,
-      date: true,
       items: { select: { productId: true, quantity: true, unitPrice: true } },
     },
   });
@@ -690,9 +673,6 @@ export async function deletePurchase(id: string) {
       data: { deletedAt: new Date() },
     });
   });
-
-  // Keep the Daily Log ledger in sync if this purchase's date is an already-closed day.
-  await syncLedgerForward(toDateStr(purchase.date), userId);
 
   revalidatePath("/purchases");
   revalidatePath("/inventory");

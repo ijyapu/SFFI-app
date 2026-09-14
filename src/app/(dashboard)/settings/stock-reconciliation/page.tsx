@@ -100,7 +100,7 @@ export default async function StockReconciliationPage() {
         <strong className="text-foreground">How this works:</strong>{" "}
         <span>
           StockMovement is the authoritative audit trail — every stock change
-          (purchase, sale, adjustment, return, daily log) writes a record here.
+          (purchase, sale, adjustment, return, production entry) writes a record here.
           Product.currentStock is a cached live total updated atomically alongside
           each movement. This page checks whether the two agree. A mismatch
           indicates a data integrity issue that should be investigated.

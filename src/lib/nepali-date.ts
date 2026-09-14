@@ -82,8 +82,8 @@ export function nepalDayEnd(dateStr: string): Date {
 /**
  * Represents a Nepal-calendar-day string as UTC midnight of that same
  * calendar date — the convention used for `@db.Date` (date-only) columns
- * like DailyLog.logDate, which store a logical calendar day rather than a
- * real timezone instant. Not the same as nepalDayStart(), which represents
+ * like ProductionEntry.date, which store a logical calendar day rather than
+ * a real timezone instant. Not the same as nepalDayStart(), which represents
  * the actual Nepal-midnight instant (00:00 NPT = 18:15 UTC previous day).
  */
 export function nepalDateAsUtcMidnight(dateStr: string): Date {

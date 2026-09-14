@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
-import { Plus, Trash2, RotateCcw, PackageCheck, Wallet, ChevronsUpDown, Check, AlertTriangle } from "lucide-react";
+import { Plus, Trash2, RotateCcw, PackageCheck, Wallet, ChevronsUpDown, Check } from "lucide-react";
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from "@/components/ui/form";
@@ -38,10 +38,9 @@ type ReturnLine = { key: number; productId: string; quantity: number | ""; unitP
 type Props = {
   salesmen:    Salesman[];
   products:    Product[];
-  openLogDate?: string; // YYYY-MM-DD of the currently open daily log
 };
 
-export function SoForm({ salesmen, products, openLogDate }: Props) {
+export function SoForm({ salesmen, products }: Props) {
   const router = useRouter();
   const returnKeyRef = useRef(0);
 
@@ -62,14 +61,12 @@ export function SoForm({ salesmen, products, openLogDate }: Props) {
     resolver: zodResolver(createSoSchema),
     defaultValues: {
       customerId: "",
-      orderDate:  openLogDate ?? new Date().toISOString().split("T")[0],
+      orderDate:  new Date().toISOString().split("T")[0],
       notes:      "",
       items:      [{ productId: "", quantity: 1, unitPrice: 0 }],
       amountPaid: 0,
     },
   });
-
-  const watchDate = form.watch("orderDate");
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -214,18 +211,6 @@ export function SoForm({ salesmen, products, openLogDate }: Props) {
                 <FormControl><Input type="date" {...field} /></FormControl>
                 <NepaliDateHint value={field.value} />
                 <FormMessage />
-                {!openLogDate && (
-                  <p className="flex items-center gap-1.5 text-xs text-amber-600 mt-1">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    No daily log is currently open. This sale won&apos;t appear in a production log until one is opened.
-                  </p>
-                )}
-                {openLogDate && watchDate && watchDate !== openLogDate && (
-                  <p className="flex items-center gap-1.5 text-xs text-amber-600 mt-1">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                    Date doesn&apos;t match the open daily log ({openLogDate}). The log will be auto-adjusted, but verify this is intentional.
-                  </p>
-                )}
               </FormItem>
             )}
           />

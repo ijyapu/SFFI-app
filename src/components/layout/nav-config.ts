@@ -50,8 +50,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Operations",
     items: [
       {
-        title: "Daily Log",
-        href: "/daily-log",
+        title: "Production",
+        href: "/production",
         icon: ClipboardList,
         permission: "inventory",
       },

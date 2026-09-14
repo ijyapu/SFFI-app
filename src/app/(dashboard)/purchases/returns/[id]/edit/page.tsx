@@ -25,7 +25,7 @@ export default async function EditSupplierReturnPage({ params }: { params: Promi
     <div className="space-y-6">
       <ERPPageHeader
         title={`Return — ${existing.invoiceNo}`}
-        subtitle={`${existing.supplierName} · editing recomputes stock, Vendor Ledger, and the Daily Log`}
+        subtitle={`${existing.supplierName} · editing recomputes stock and Vendor Ledger immediately`}
         backHref="/purchases/returns"
       />
       <ReturnForm mode="edit" existing={existing} />
