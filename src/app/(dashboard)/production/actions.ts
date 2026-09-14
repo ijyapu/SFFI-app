@@ -29,6 +29,7 @@ export type ProductionEntryRow = {
   categoryId: string;
   categoryName: string;
   unitName: string;
+  currentStock: number;
   producedQty: number;
   usedQty: number;
   wasteQty: number;
@@ -61,6 +62,7 @@ export async function getProductionEntries(dateStr: string): Promise<ProductionE
       categoryId: p.category.id,
       categoryName: p.category.name,
       unitName: p.unit.name,
+      currentStock: Number(p.currentStock),
       producedQty: Number(e?.producedQty ?? 0),
       usedQty: Number(e?.usedQty ?? 0),
       wasteQty: Number(e?.wasteQty ?? 0),

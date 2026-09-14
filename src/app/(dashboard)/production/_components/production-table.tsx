@@ -246,8 +246,19 @@ export function ProductionTable({ date, items }: Props) {
                       className={cn("align-middle transition-colors duration-100", !hasRowActivity && "text-muted-foreground/60")}
                     >
                       <TableCell className="sticky left-0 z-10 bg-background px-3 py-1.5 border-r border-border/30">
-                        <div className={cn("font-medium text-xs leading-tight", hasRowActivity ? "text-foreground" : "")}>
-                          {row.productName}
+                        <div className="flex items-center gap-1.5">
+                          <div className={cn("font-medium text-xs leading-tight", hasRowActivity ? "text-foreground" : "")}>
+                            {row.productName}
+                          </div>
+                          <span
+                            className={cn(
+                              "inline-flex items-center rounded px-1 py-0.5 text-[10px] font-semibold tabular-nums whitespace-nowrap",
+                              row.currentStock <= 0 ? "bg-red-100 text-red-700" : "bg-emerald-50 text-emerald-700"
+                            )}
+                            title="Current stock in Inventory"
+                          >
+                            {fmt(row.currentStock)} in stock
+                          </span>
                         </div>
                         <div className="flex items-center gap-1 leading-tight mt-0.5">
                           <span className="text-[10px] text-muted-foreground font-mono">{row.productSku}</span>
