@@ -13,6 +13,9 @@ const isPublicRoute = createRouteMatcher([
   "/api/webhooks(.*)",
   "/api/health",
   "/api/test-email",
+  // Vercel Cron requests carry no Clerk session -- secured instead by the
+  // CRON_SECRET bearer-token check inside the route handler itself.
+  "/api/cron(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

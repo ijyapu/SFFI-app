@@ -118,7 +118,15 @@ function bucketOfPaymentMode(mode: string | null | undefined): Bucket {
 
 export async function getCashFlow(from: string, to: string): Promise<CashFlowData> {
   await requirePermission("cashFlow");
+  return getCashFlowData(from, to);
+}
 
+/**
+ * Unauthenticated core — same computation as getCashFlow, minus the permission
+ * check. Exists so trusted server-only contexts with no signed-in user (e.g.
+ * the monthly report cron job) can reuse this logic directly.
+ */
+export async function getCashFlowData(from: string, to: string): Promise<CashFlowData> {
   const cutoff = nepalDayEnd(to);
 
   const [

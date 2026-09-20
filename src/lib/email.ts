@@ -245,3 +245,140 @@ export async function sendRejectionEmail(to: string, name: string, note?: string
   });
   logEmail("rejection", to, !error, error ?? { id: data?.id });
 }
+
+// ─── 5. Monthly report (to the admin) ─────────────────────────────────────────
+// Called from: /api/cron/monthly-report
+
+function rs(n: number): string {
+  return `Rs ${Math.round(n).toLocaleString("en-IN")}`;
+}
+
+/** Small ▲/▼ pill showing % change vs. last month. null = no comparable base. */
+function deltaBadge(pct: number | null, goodDirection: "up" | "down" = "up"): string {
+  if (pct === null) return `<span style="font-size:11px;color:#9ca3af;">new</span>`;
+  const isUp = pct >= 0;
+  const isGood = goodDirection === "up" ? isUp : !isUp;
+  const color = isGood ? "#166534" : "#991b1b";
+  const bg    = isGood ? "#dcfce7" : "#fee2e2";
+  const arrow = isUp ? "▲" : "▼";
+  return badge(`${arrow} ${Math.abs(pct).toFixed(0)}%`, color, bg);
+}
+
+function statCard(label: string, value: string, delta?: string): string {
+  return `<td style="padding:12px 14px;width:50%;vertical-align:top;">
+    <p style="margin:0 0 4px;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.05em;">${label}</p>
+    <p style="margin:0;font-size:20px;font-weight:700;color:#111827;">${value}${delta ? ` <span style="font-size:12px;">${delta}</span>` : ""}</p>
+  </td>`;
+}
+
+function sectionTitle(text: string): string {
+  return `<p style="margin:28px 0 8px;font-size:13px;font-weight:700;color:#111827;border-bottom:2px solid #e5e7eb;padding-bottom:6px;">${text}</p>`;
+}
+
+function miniList(rows: { label: string; value: string }[], emptyText = "No activity"): string {
+  if (rows.length === 0) {
+    return `<p style="margin:6px 0 0;font-size:12px;color:#9ca3af;">${emptyText}</p>`;
+  }
+  return `<table style="width:100%;border-collapse:collapse;margin:6px 0 0;">
+    ${rows.map((r) => `<tr>
+      <td style="padding:4px 0;font-size:13px;color:#374151;">${esc(r.label)}</td>
+      <td style="padding:4px 0;font-size:13px;color:#111827;font-weight:600;text-align:right;">${r.value}</td>
+    </tr>`).join("")}
+  </table>`;
+}
+
+export type MonthlyReportEmailData = {
+  monthLabel: string;
+  prevMonthLabel: string;
+  sales: { revenue: number; revenueDeltaPct: number | null; orderCount: number; topProducts: { name: string; revenue: number }[]; topSalesmen: { name: string; revenue: number }[] };
+  purchases: { spend: number; spendDeltaPct: number | null; invoiceCount: number; topVendors: { name: string; amount: number }[] };
+  production: { producedValue: number; producedDeltaPct: number | null; wasteValue: number; damagedValue: number };
+  expenses: { total: number; totalDeltaPct: number | null; byCategory: { name: string; amount: number }[] };
+  cashFlow: { totalIn: number; totalOut: number; net: number; prevNet: number; closingCash: number; closingBank: number };
+  outstanding: { receivables: number; payables: number };
+  inventoryAlerts: { negative: { name: string; sku: string; stock: number }[]; low: { name: string; sku: string; stock: number; reorderLevel: number }[] };
+};
+
+export async function sendMonthlyReportEmail(to: string, d: MonthlyReportEmailData) {
+  if (!resend) { logEmail("monthly-report", to, false, "RESEND_API_KEY not set"); return; }
+
+  const hasAlerts = d.inventoryAlerts.negative.length > 0 || d.inventoryAlerts.low.length > 0;
+
+  const body = `
+    <h1 style="margin:0 0 4px;font-size:20px;font-weight:700;color:#111827;">Monthly Report</h1>
+    <p style="margin:0 0 20px;font-size:13px;color:#6b7280;">${d.monthLabel} · compared to ${d.prevMonthLabel}</p>
+
+    <table style="width:100%;border-collapse:collapse;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;">
+      <tr style="border-bottom:1px solid #e5e7eb;">
+        ${statCard("Sales Revenue", rs(d.sales.revenue), deltaBadge(d.sales.revenueDeltaPct, "up"))}
+        ${statCard("Purchases", rs(d.purchases.spend), deltaBadge(d.purchases.spendDeltaPct, "down"))}
+      </tr>
+      <tr>
+        ${statCard("Expenses", rs(d.expenses.total), deltaBadge(d.expenses.totalDeltaPct, "down"))}
+        ${statCard("Net Cash Flow", rs(d.cashFlow.net), deltaBadge(pctChangeForEmail(d.cashFlow.net, d.cashFlow.prevNet), "up"))}
+      </tr>
+    </table>
+
+    ${sectionTitle("Sales")}
+    <p style="margin:0;font-size:12px;color:#6b7280;">${d.sales.orderCount} order${d.sales.orderCount !== 1 ? "s" : ""} this month</p>
+    ${d.sales.topProducts.length > 0 ? `<p style="margin:10px 0 0;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;">Top Products</p>${miniList(d.sales.topProducts.map((p) => ({ label: p.name, value: rs(p.revenue) })))}` : ""}
+    ${d.sales.topSalesmen.length > 0 ? `<p style="margin:10px 0 0;font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;">Top Salesmen</p>${miniList(d.sales.topSalesmen.map((s) => ({ label: s.name, value: rs(s.revenue) })))}` : ""}
+
+    ${sectionTitle("Purchases")}
+    <p style="margin:0;font-size:12px;color:#6b7280;">${d.purchases.invoiceCount} invoice${d.purchases.invoiceCount !== 1 ? "s" : ""} this month</p>
+    ${d.purchases.topVendors.length > 0 ? miniList(d.purchases.topVendors.map((v) => ({ label: v.name, value: rs(v.amount) }))) : ""}
+
+    ${sectionTitle("Production")}
+    ${miniList([
+      { label: "Produced (at cost)", value: rs(d.production.producedValue) },
+      { label: "Waste", value: rs(d.production.wasteValue) },
+      { label: "Damaged", value: rs(d.production.damagedValue) },
+    ])}
+
+    ${sectionTitle("Expenses by Category")}
+    ${miniList(d.expenses.byCategory.map((c) => ({ label: c.name, value: rs(c.amount) })))}
+
+    ${sectionTitle("Cash Position")}
+    ${miniList([
+      { label: "Money In", value: rs(d.cashFlow.totalIn) },
+      { label: "Money Out", value: rs(d.cashFlow.totalOut) },
+      { label: "Cash-in-Hand (closing)", value: rs(d.cashFlow.closingCash) },
+      { label: "Bank Balance (closing)", value: rs(d.cashFlow.closingBank) },
+    ])}
+
+    ${sectionTitle("Outstanding")}
+    ${miniList([
+      { label: "Receivables owed to you", value: rs(d.outstanding.receivables) },
+      { label: "Payables you owe", value: rs(d.outstanding.payables) },
+    ])}
+
+    ${hasAlerts ? `
+    ${sectionTitle("⚠ Inventory Needs Attention")}
+    ${d.inventoryAlerts.negative.length > 0 ? `
+      <p style="margin:6px 0 0;font-size:12px;font-weight:700;color:#991b1b;">Negative stock (${d.inventoryAlerts.negative.length})</p>
+      ${miniList(d.inventoryAlerts.negative.slice(0, 8).map((p) => ({ label: `${p.name} (${p.sku})`, value: `<span style="color:#991b1b;">${p.stock}</span>` })))}
+    ` : ""}
+    ${d.inventoryAlerts.low.length > 0 ? `
+      <p style="margin:10px 0 0;font-size:12px;font-weight:700;color:#92400e;">At or below reorder level (${d.inventoryAlerts.low.length})</p>
+      ${miniList(d.inventoryAlerts.low.slice(0, 8).map((p) => ({ label: `${p.name} (${p.sku})`, value: `${p.stock} / ${p.reorderLevel}` })))}
+    ` : ""}
+    ` : `${sectionTitle("Inventory")}<p style="margin:6px 0 0;font-size:12px;color:#166534;">No products currently negative or below reorder level.</p>`}
+
+    <p style="margin:24px 0 0;font-size:11px;color:#9ca3af;line-height:1.6;">
+      Auto-generated on the 5th of every Nepali month. Figures for Sales, Purchases, Production, and
+      Expenses cover ${d.monthLabel} only; Outstanding and Inventory reflect the current live position.
+    </p>
+  `;
+
+  const { data, error } = await sendWithRetry({
+    from: FROM, to,
+    subject: `Monthly Report — ${d.monthLabel}`,
+    html: layout("linear-gradient(90deg,#0f172a,#334155)", body),
+  });
+  logEmail("monthly-report", to, !error, error ?? { id: data?.id });
+}
+
+function pctChangeForEmail(curr: number, prev: number): number | null {
+  if (Math.abs(prev) < 0.005) return null;
+  return ((curr - prev) / Math.abs(prev)) * 100;
+}
