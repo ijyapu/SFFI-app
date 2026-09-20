@@ -300,7 +300,10 @@ export type MonthlyReportEmailData = {
 };
 
 export async function sendMonthlyReportEmail(to: string, d: MonthlyReportEmailData) {
-  if (!resend) { logEmail("monthly-report", to, false, "RESEND_API_KEY not set"); return; }
+  if (!resend) {
+    logEmail("monthly-report", to, false, "RESEND_API_KEY not set");
+    throw new Error("RESEND_API_KEY is not configured — the report was generated but never sent");
+  }
 
   const hasAlerts = d.inventoryAlerts.negative.length > 0 || d.inventoryAlerts.low.length > 0;
 
@@ -376,6 +379,11 @@ export async function sendMonthlyReportEmail(to: string, d: MonthlyReportEmailDa
     html: layout("linear-gradient(90deg,#0f172a,#334155)", body),
   });
   logEmail("monthly-report", to, !error, error ?? { id: data?.id });
+  // Unlike the other email functions here, a failed send must be visible to the
+  // caller -- this is the only path the cron route has to report a real failure
+  // instead of a false "sent: true" (which is exactly what happened when the
+  // Resend API key was invalid: the send failed, but nothing surfaced it).
+  if (error) throw new Error(`Resend error: ${error.message}`);
 }
 
 function pctChangeForEmail(curr: number, prev: number): number | null {
